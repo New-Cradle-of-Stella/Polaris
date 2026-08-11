@@ -40,7 +40,7 @@ namespace Polaris.Res.Runtime
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogError($"[PolarisRes] ResPump.Tick 订阅方抛出异常：{ex}");
+                Plugin.Logger.LogError($"[PolarisRes] A ResPump.Tick subscriber threw an exception: {ex}");
             }
         }
     }

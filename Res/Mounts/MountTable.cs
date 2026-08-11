@@ -92,8 +92,8 @@ namespace Polaris.Res.Mounts
                     {
                         probeLog.RecordCaseMismatch(relative, actualCasing, mount.RootPath);
                         Plugin.Logger.LogWarning(
-                            $"[PolarisRes] {id} 命中大小写不一致的文件：期望 \"{relative}\"，" +
-                            $"实际 \"{actualCasing}\"（挂载 {mount.RootPath}）。建议统一大小写。");
+                            $"[PolarisRes] {id} matched a file with inconsistent casing: expected \"{relative}\", " +
+                            $"found \"{actualCasing}\" (mount {mount.RootPath}). Making the casing consistent is recommended.");
                         absolutePath = caseInsensitive;
                         mountRoot = mount.RootPath;
                         return true;

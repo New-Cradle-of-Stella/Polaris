@@ -60,8 +60,8 @@ namespace Polaris.Lang
                 }
 
                 Plugin.Logger.LogWarning(
-                    $"[PolarisLang] {source.GetName().Name} 内有多份 .plang 注册了同一个 key「{key}」，"
-                    + "后注册的覆盖了先注册的。");
+                    $"[PolarisLang] Several .plang files inside {source.GetName().Name} registered the same key \"{key}\"; "
+                    + "the later registration overrode the earlier one.");
             }
 
             var normalized = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

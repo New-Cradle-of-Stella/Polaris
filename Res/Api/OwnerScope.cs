@@ -74,7 +74,7 @@ namespace Polaris.Res
                 () =>
                 {
                     PxlsCharacterHandle handle = new PxlsCharacterHandle(id, "<placeholder>", FrameNamePolicy.None, "");
-                    handle.MarkFaulted(new ResourceLoadException(id, "PXLS 加载失败，已使用占位（Faulted）句柄代替。"));
+                    handle.MarkFaulted(new ResourceLoadException(id, "PXLS load failed; a placeholder (Faulted) handle is used instead."));
                     return (handle, (IDisposable)null);
                 });
         }
@@ -96,7 +96,7 @@ namespace Polaris.Res
             catch (Exception ex) when (!ResSettings.StrictMode
                 && (ex is ResourceNotFoundException || ex is ResourceLoadException))
             {
-                Plugin.Logger.LogError($"[PolarisRes] {id} 加载失败，使用占位对象代替：{ex.Message}");
+                Plugin.Logger.LogError($"[PolarisRes] {id} failed to load; using a placeholder object instead: {ex.Message}");
                 (T value, IDisposable cleanup) = placeholder();
                 held[id] = (value, cleanup);
                 return value;

@@ -37,8 +37,8 @@ namespace Polaris
             catch (Exception ex)
             {
                 // 责任人就是这个回调委托本身所在的程序集，不必走堆栈推断。
-                PolarisAPI.Errors.Report(ex, $"自定义分类 \"{reg.DisplayName}\" 的内容构建", reg.BuildContent.Method?.DeclaringType?.Assembly);
-                Plugin.Logger.LogError($"[Polaris] 自定义分类 \"{reg.DisplayName}\" 的内容构建抛出异常，已忽略。");
+                PolarisAPI.Errors.Report(ex, $"building the content of custom category \"{reg.DisplayName}\"", reg.BuildContent.Method?.DeclaringType?.Assembly);
+                Plugin.Logger.LogError($"[Polaris] Building the content of custom category \"{reg.DisplayName}\" threw an exception; ignored.");
             }
 
             return true;

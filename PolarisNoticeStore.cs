@@ -41,7 +41,7 @@ namespace Polaris
                 }
                 catch (Exception e)
                 {
-                    Plugin.Logger.LogError($"[Polaris] 打开 {FileName} 失败，标题画面告知页的状态无法保存：{e}");
+                    Plugin.Logger.LogError($"[Polaris] Failed to open {FileName}; the state of the title-screen notice pages cannot be saved: {e}");
                     file = null;
                 }
 

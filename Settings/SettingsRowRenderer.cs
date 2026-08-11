@@ -73,7 +73,7 @@ namespace Polaris.Settings
                     break;
 
                 default:
-                    Plugin.Logger.LogWarning($"[Polaris.Settings] 不认识的设置项类型 {setting.GetType().Name}，跳过。");
+                    Plugin.Logger.LogWarning($"[Polaris.Settings] Unrecognized setting type {setting.GetType().Name}; skipped.");
                     break;
             }
         }

@@ -169,13 +169,13 @@ namespace Polaris.API
         {
             if (value < 0)
             {
-                return GameActionResult.Fail(GameActionStatus.InvalidArgument, "附加值不能为负。");
+                return GameActionResult.Fail(GameActionStatus.InvalidArgument, "The added value cannot be negative.");
             }
 
             nel.NightController Night = GameBinding.Night;
             if (Night == null)
             {
-                return GameActionResult.Fail(GameActionStatus.TargetUnavailable, "还没有进入游戏世界。");
+                return GameActionResult.Fail(GameActionStatus.TargetUnavailable, "The game world has not been entered yet.");
             }
 
             try
@@ -195,13 +195,13 @@ namespace Polaris.API
         /// 推进结果，没有可以从外部安全调用的 setter。
         /// </summary>
         public GameActionResult SetWeather(GameWeather weather, bool enabled)
-            => GameActionResult.Unsupported("本版本没有可用的天气写入入口。");
+            => GameActionResult.Unsupported("This game version has no usable weather-write entry point.");
 
         /// <summary>
         /// 切换地图。<b>本版本未支持</b>：游戏的切图带着一整套事件、淡入淡出与存档时机，
         /// 从外部直接触发会把游戏留在半切图状态。这是高权限动作，需要单独设计再开放。
         /// </summary>
         public GameActionResult MoveToMap(string mapKey)
-            => GameActionResult.Unsupported("本版本没有可用的地图切换入口。");
+            => GameActionResult.Unsupported("This game version has no usable map-change entry point.");
     }
 }

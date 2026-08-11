@@ -64,7 +64,7 @@ namespace Polaris
             {
                 if (insertIndex < 0 || insertIndex > categories.Count)
                 {
-                    throw new ArgumentException("非法插入分类位置", nameof(insertIndex));
+                    throw new ArgumentException("Illegal category insert position", nameof(insertIndex));
                 }
                 categories.Insert(insertIndex, registration);
                 position = insertIndex;

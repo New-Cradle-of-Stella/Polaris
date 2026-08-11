@@ -74,7 +74,7 @@ namespace Polaris.Patch
                                           new CodeMatch(OpCodes.Ldfld),
                                           new CodeMatch(OpCodes.Sub),
                                           new CodeMatch(OpCodes.Ldc_R4))
-                       .ThrowIfInvalid("未找到 remakeLeftCategories 行高除数的 IL 模式")
+                       .ThrowIfInvalid("Could not find the IL pattern for the remakeLeftCategories row height divisor")
                        .Advance(3)
                        .SetInstructionAndAdvance(CodeInstruction.Call(typeof(GameMenuAPI), nameof(GameMenuAPI.CategoryRowDivisor)));
 

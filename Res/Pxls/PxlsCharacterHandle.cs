@@ -76,7 +76,7 @@ namespace Polaris.Res.Pxls
             catch (Exception ex)
             {
                 // 一个模组的 Ready 回调炸了，不该连累同一帧里其它在途 PXLS 的收尾。
-                Plugin.Logger.LogError($"[PolarisRes] {Title} 的 Ready 回调抛出异常：{ex}");
+                Plugin.Logger.LogError($"[PolarisRes] The Ready callback of {Title} threw an exception: {ex}");
             }
         }
 
@@ -91,7 +91,7 @@ namespace Polaris.Res.Pxls
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogError($"[PolarisRes] {Title} 的 Faulted 回调抛出异常：{ex}");
+                Plugin.Logger.LogError($"[PolarisRes] The Faulted callback of {Title} threw an exception: {ex}");
             }
         }
     }

@@ -40,22 +40,22 @@ namespace Polaris.Res.Mounts
         internal void RecordCaseMismatch(string expected, string actual, string mountRoot)
         {
             caseMismatchHint =
-                $"提示：目录 \"{mountRoot}\" 内存在大小写不同的文件——期望 \"{expected}\"，实际 \"{actual}\"。请统一大小写。";
+                $"Hint: directory \"{mountRoot}\" contains files differing only in case -- expected \"{expected}\", found \"{actual}\". Please make the casing consistent.";
         }
 
         internal string BuildMessage()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("[PolarisRes] 找不到资源 ").Append(id).AppendLine();
+            sb.Append("[PolarisRes] Resource not found: ").Append(id).AppendLine();
 
             if (attempts.Count == 0)
             {
                 // 最常见的原因是调用顺序反了：在 Mount()/MountDefault() 之前就发起了取用。
-                sb.AppendLine("  这个模组还没有注册任何挂载点——是不是在 Mount()/MountDefault() 之前就调用了取用方法？");
+                sb.AppendLine("  This mod has not registered any mount points yet -- was a fetch method called before Mount()/MountDefault()?");
                 return sb.ToString();
             }
 
-            sb.AppendLine("  已尝试的挂载点（按优先级）：");
+            sb.AppendLine("  Mount points tried (in priority order):");
 
             foreach (MountAttempt attempt in attempts)
             {
@@ -63,7 +63,7 @@ namespace Polaris.Res.Mounts
                 foreach ((string relativePath, bool exists) in attempt.Candidates)
                 {
                     sb.Append("          ").Append(relativePath).Append("   ")
-                      .AppendLine(exists ? "存在但读取失败" : "不存在");
+                      .AppendLine(exists ? "exists but could not be read" : "does not exist");
                 }
             }
 

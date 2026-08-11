@@ -43,17 +43,6 @@ namespace Polaris
         const float WindowH = 320f; // 视口高度，比内容矮，靠滚动查看
 
         /// <summary>
-        /// 宿主对象的 z。标题场景把自己整棵 UI 树摆在 z≈0 一带：版本号文本 TxVer 等
-        /// <c>SceneTitleTemp</c> 的直接子对象在 z=0，标题自己的按钮/说明框容器 BxCon 在
-        /// z=-0.125，语言按钮在 z=-0.2；而 <c>XX.Designer</c> 的圆角底板（MdKadomaru）是挂在
-        /// 自己身上 +0.008 处的。宿主用 <c>new GameObject</c> 建出来默认就在 z=0，于是主面板的
-        /// 底板落在 +0.008、正好被 z=0 的版本号文本压住——截图里"ver 0.29j"糊在面板上就是
-        /// 这么来的。这里把整族往前提到 -0.5：稳稳盖住标题界面所有常驻 UI（最靠前的 -0.2），
-        /// 又不会越过那些真正的全屏覆盖层（调试提示 -1、初次启动询问 -2、按键设置 -4.25）。
-        /// </summary>
-        const float HostZ = -0.5f;
-
-        /// <summary>
         /// 同族内每个 <c>Create</c> 之间的 z 间隔。默认值 0.008 恰好等于 Designer 底板自身的
         /// +0.008 偏移，也就是说后一个窗口的底板会和前一个窗口的正文落在同一个 z 上——平局时
         /// 谁在前完全看运气。拉开到 0.05，让"主面板 / 详情浮窗 / 重启确认窗"三层各自分明。
@@ -152,7 +141,9 @@ namespace Polaris
             {
                 host = new GameObject("Polaris.ModuleManager");
                 UnityEngine.Object.DontDestroyOnLoad(host); // 加了 using System 后 Object 会和 System.Object 撞名
-                IN.setZ(host.transform, HostZ);
+                // 往前提到"盖住标题画面常驻 UI"那一层，否则版本号文本会糊在面板上，
+                // 取值与理由见 UiDepth（PUI 窗口用的是同一个常量）。
+                IN.setZ(host.transform, UiDepth.Window);
                 family = host.AddComponent<UiBoxDesignerFamily>();
                 family.slip_z = DesignerSlipZ; // 必须赶在下面这些 Create 之前设，逐个 Create 时才用得上
                 designer = family.Create(
@@ -360,7 +351,7 @@ namespace Polaris
                 if (!scanned.Contains(displayName))
                 {
                     lastErrors.Remove(displayName);
-                    Plugin.Logger.LogWarning($"[Polaris] 模组「{displayName}」已不在 plugins 目录中，跳过其启停修改。");
+                    Plugin.Logger.LogWarning($"[Polaris] Mod \"{displayName}\" is no longer in the plugins directory; skipping its enable/disable change.");
                 }
             }
 
@@ -375,6 +366,7 @@ namespace Polaris
 
         static void BuildContent(UiBoxDesigner box, List<UserModRecord> mods)
         {
+            Logo(box);
             Title(box, ModManagerStrings.Text(ModManagerStrings.Title));
             HrGap(box, 6f, 6f);
 
@@ -444,6 +436,39 @@ namespace Polaris
             });
             box.Br();
             box.alignx = ALIGN.LEFT;
+        }
+
+        /// <summary>
+        /// 页面最上方居中的 Polaris logo（<see cref="PolarisBrandImages.Logo"/>，硬编码在
+        /// <c>plugins/Polaris/</c> 下的 png）。图片取不到就整行跳过，页面其余部分照常显示。
+        /// <para>
+        /// 图块铺满整行、图片画在块的正中（<c>FillImageBlock</c> 就是把图画在块中心），所以看到的
+        /// 是"整行居中的一张方图"。<c>UvRect</c>/<c>scale</c> 的换算交给
+        /// <see cref="PUI.PuiImage.Assign"/>——那两个字段的语义反直觉（前者是纹理像素矩形，
+        /// 绘制尺寸只由它的尺寸 × <c>scale</c> 决定，跟 <c>swidth</c>/<c>sheight</c> 无关），
+        /// 和 PUI 的 Image 元素共用同一份实现，不在这里再手算一遍。
+        /// </para>
+        /// </summary>
+        static float Logo(UiBoxDesigner box)
+        {
+            MImage image = PolarisBrandImages.Logo;
+            if (image == null)
+            {
+                return 0f;
+            }
+
+            const float sheight = 72f;
+            var data = new DsnDataImg
+            {
+                name = "logo",
+                swidth = box.use_w,
+                sheight = sheight,
+            };
+            PUI.PuiImage.Assign(data, image, 0f, 0f, 1f, 1f, sheight, sheight, 1f);
+
+            box.addImg(data);
+            box.Br();
+            return sheight;
         }
 
         // 标题：整行居中、字号加大。返回占用高度供滚动范围累加。

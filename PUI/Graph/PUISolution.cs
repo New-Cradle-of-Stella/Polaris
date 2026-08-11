@@ -98,7 +98,7 @@ namespace Polaris.PUI
         {
             if (string.IsNullOrEmpty(Definition.EntryNodeKey))
             {
-                throw new InvalidOperationException($"图「{Definition.Name}」没有设置入口节点，无法 Start()。");
+                throw new InvalidOperationException($"Graph \"{Definition.Name}\" has no entry node set; cannot Start().");
             }
 
             Enter(Definition.EntryNodeKey);
@@ -109,7 +109,7 @@ namespace Polaris.PUI
         {
             if (!nodesByKey.TryGetValue(nodeKey, out Node target))
             {
-                throw new ArgumentException($"图「{Definition.Name}」里不存在节点：{nodeKey}", nameof(nodeKey));
+                throw new ArgumentException($"No such node in graph \"{Definition.Name}\": {nodeKey}", nameof(nodeKey));
             }
 
             Leave(Current);

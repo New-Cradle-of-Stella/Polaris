@@ -19,7 +19,7 @@ namespace Polaris.API
             if (request.Hp < 0 || request.Mp < 0)
             {
                 return new RecoveryResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "恢复量不能为负；要扣血请用 ApplyDamage。"),
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "Recovery amount cannot be negative; use ApplyDamage to subtract health."),
                     0f, 0f);
             }
 
@@ -64,7 +64,7 @@ namespace Polaris.API
             if (request.HpDamage < 0 || request.MpDamage < 0)
             {
                 return new DamageResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "伤害量不能为负；要回复请用 Recover。"),
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "Damage amount cannot be negative; use Recover to restore health."),
                     0, 0);
             }
 

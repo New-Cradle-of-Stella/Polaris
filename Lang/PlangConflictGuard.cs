@@ -55,7 +55,7 @@ namespace Polaris.Lang
             // 用 LogError 而不是 LogFatal：LogFatal 会被 Polaris 的日志监听器当成
             // "插件报出的严重错误"再建一条普通错误档，同一件事在报告里出现两遍——
             // 这件事的权威记录是下面 Errors.Fatal 写出的那一段。
-            Plugin.Logger.LogError($"[PolarisLang] key 冲突：{conflict.Describe()}");
+            Plugin.Logger.LogError($"[PolarisLang] key conflict: {conflict.Describe()}");
 
             if (scanFinished)
             {

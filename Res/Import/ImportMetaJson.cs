@@ -77,7 +77,7 @@ namespace Polaris.Res.Import
             catch (Exception ex)
             {
                 Plugin.Logger.LogError(
-                    $"[PolarisRes] 解析导入元数据失败（{jsonFilePath}）：{ex.Message}，已忽略此文件（视为无覆盖）。");
+                    $"[PolarisRes] Failed to parse import metadata ({jsonFilePath}): {ex.Message}. Ignoring this file (treated as no overrides).");
                 return null;
             }
 
@@ -101,8 +101,8 @@ namespace Polaris.Res.Import
                     if (!ReservedSectionNames.Contains(property.Name))
                     {
                         Plugin.Logger.LogWarning(
-                            $"[PolarisRes] {sourcePath} 里的节 \"{property.Name}\" 不是已知种类，也不在保留名单" +
-                            "（texture/pxls/audio/video）里，已忽略——检查是否拼错节名。");
+                            $"[PolarisRes] Section \"{property.Name}\" in {sourcePath} is not a known kind and is not on the reserved list " +
+                            "(texture/pxls/audio/video); ignored -- check for a misspelled section name.");
                     }
                     // 保留名单内但当前构建还没实现 DTO 的节（pxls/audio/video）：安静跳过，
                     // 不校验也不警告，等对应里程碑落地后这里会加上真正的 DTO。
@@ -118,7 +118,7 @@ namespace Polaris.Res.Import
                 if (!(property.Value is JObject sectionObject))
                 {
                     Plugin.Logger.LogError(
-                        $"[PolarisRes] {sourcePath} 的 \"{property.Name}\" 节必须是一个 JSON 对象，已忽略这份覆盖。");
+                        $"[PolarisRes] Section \"{property.Name}\" of {sourcePath} must be a JSON object; ignoring this override.");
                     allValid = false;
                     continue;
                 }
@@ -132,8 +132,8 @@ namespace Polaris.Res.Import
                 catch (JsonSerializationException ex)
                 {
                     Plugin.Logger.LogError(
-                        $"[PolarisRes] {sourcePath} 的 \"{property.Name}\" 节有误：{ex.Message}" +
-                        $"（第 {ex.LineNumber} 行，第 {ex.LinePosition} 列），已忽略这份覆盖。");
+                        $"[PolarisRes] Section \"{property.Name}\" of {sourcePath} is malformed: {ex.Message}" +
+                        $" (line {ex.LineNumber}, column {ex.LinePosition}); ignoring this override.");
                     allValid = false;
                 }
             }

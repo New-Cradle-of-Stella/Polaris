@@ -17,7 +17,7 @@ namespace Polaris.Settings
         {
             if (string.IsNullOrEmpty(modId))
             {
-                throw new ArgumentException("ModId 不能为空", nameof(modId));
+                throw new ArgumentException("ModId cannot be empty", nameof(modId));
             }
 
             // ModId 直接拼进文件路径，非法字符会让 ConfigFile 在写盘时炸在很远的地方。
@@ -25,7 +25,7 @@ namespace Polaris.Settings
             {
                 if (modId.IndexOf(c) >= 0)
                 {
-                    throw new ArgumentException($"ModId 含非法文件名字符 '{c}'：{modId}", nameof(modId));
+                    throw new ArgumentException($"ModId contains the illegal file name character '{c}': {modId}", nameof(modId));
                 }
             }
 
@@ -54,7 +54,7 @@ namespace Polaris.Settings
         {
             if (byId.ContainsKey(setting.Id))
             {
-                throw new ArgumentException($"组 {ModId} 里已经有 Id 为 {setting.Id} 的设置项了");
+                throw new ArgumentException($"Group {ModId} already has a setting with Id {setting.Id}");
             }
 
             setting.Group = this;

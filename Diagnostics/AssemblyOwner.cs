@@ -56,14 +56,14 @@ namespace Polaris.Diagnostics
             {
                 switch (Kind)
                 {
-                    case OwnerKind.Runtime: return "运行库";
-                    case OwnerKind.Vanilla: return "原版";
-                    case OwnerKind.Framework: return "框架";
+                    case OwnerKind.Runtime: return "runtime";
+                    case OwnerKind.Vanilla: return "vanilla";
+                    case OwnerKind.Framework: return "framework";
                     case OwnerKind.Polaris: return "Polaris";
-                    case OwnerKind.Mod: return "模组";
-                    case OwnerKind.ModLibrary: return "模组依赖";
-                    case OwnerKind.Dynamic: return "动态生成";
-                    default: return "未知";
+                    case OwnerKind.Mod: return "mod";
+                    case OwnerKind.ModLibrary: return "mod dependency";
+                    case OwnerKind.Dynamic: return "dynamic";
+                    default: return "unknown";
                 }
             }
         }
@@ -74,17 +74,17 @@ namespace Polaris.Diagnostics
         /// </summary>
         public string Describe()
         {
-            string name = string.IsNullOrEmpty(DisplayName) ? FileName ?? "未知程序集" : DisplayName;
+            string name = string.IsNullOrEmpty(DisplayName) ? FileName ?? "unknown assembly" : DisplayName;
 
             if (Kind == OwnerKind.Polaris)
             {
-                return "Polaris 本体";
+                return "Polaris itself";
             }
 
             string author = ModInfo?.Author;
             return author == null
-                ? $"{KindLabel}「{name}」"
-                : $"{KindLabel}「{name}」（作者：{author}）";
+                ? $"{KindLabel} \"{name}\""
+                : $"{KindLabel} \"{name}\" (author: {author})";
         }
 
         public override string ToString() => Describe();

@@ -21,7 +21,7 @@ namespace Polaris.API
 
         public static implicit operator ItemIdentity(string key) => new ItemIdentity(key);
 
-        public override string ToString() => Key ?? "(空)";
+        public override string ToString() => Key ?? "(empty)";
     }
 
     /// <summary>
@@ -95,27 +95,27 @@ namespace Polaris.API
             if (count <= 0)
             {
                 return new ItemChangeResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "数量必须为正。"), 0);
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "Count must be positive."), 0);
             }
 
             if (!ValidGrade(grade))
             {
                 return new ItemChangeResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, $"品级越界：{grade}，应为 0–4。"), 0);
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, $"Grade out of range: {grade}, expected 0-4."), 0);
             }
 
             NelItem Itm = Resolve(item);
             if (Itm == null)
             {
                 return new ItemChangeResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, $"没有这个物品：{item}。"), 0);
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, $"No such item: {item}."), 0);
             }
 
             ItemStorage Storage = GameBinding.Inventory;
             if (Storage == null)
             {
                 return new ItemChangeResult(
-                    GameActionResult.Fail(GameActionStatus.TargetUnavailable, "背包还没就绪。"), 0);
+                    GameActionResult.Fail(GameActionStatus.TargetUnavailable, "The inventory is not ready yet."), 0);
             }
 
             try
@@ -124,7 +124,7 @@ namespace Polaris.API
                 return new ItemChangeResult(
                     added > 0
                         ? GameActionResult.Ok()
-                        : GameActionResult.Fail(GameActionStatus.InsufficientResource, "背包放不下。"),
+                        : GameActionResult.Fail(GameActionStatus.InsufficientResource, "The inventory has no room."),
                     added);
             }
             catch (Exception ex)
@@ -143,13 +143,13 @@ namespace Polaris.API
             if (count <= 0)
             {
                 return new ItemChangeResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "数量必须为正。"), 0);
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "Count must be positive."), 0);
             }
 
             if (!ValidGrade(grade))
             {
                 return new ItemChangeResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, $"品级越界：{grade}，应为 0–4。"), 0);
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, $"Grade out of range: {grade}, expected 0-4."), 0);
             }
 
             NelItem Itm = Resolve(item);
@@ -157,13 +157,13 @@ namespace Polaris.API
             if (Itm == null)
             {
                 return new ItemChangeResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, $"没有这个物品：{item}。"), 0);
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, $"No such item: {item}."), 0);
             }
 
             if (Storage == null)
             {
                 return new ItemChangeResult(
-                    GameActionResult.Fail(GameActionStatus.TargetUnavailable, "背包还没就绪。"), 0);
+                    GameActionResult.Fail(GameActionStatus.TargetUnavailable, "The inventory is not ready yet."), 0);
             }
 
             try
@@ -171,13 +171,13 @@ namespace Polaris.API
                 if (Storage.getCount(Itm, grade) < count)
                 {
                     return new ItemChangeResult(
-                        GameActionResult.Fail(GameActionStatus.InsufficientResource, "背包里的数量不够。"), 0);
+                        GameActionResult.Fail(GameActionStatus.InsufficientResource, "Not enough of that item in the inventory."), 0);
                 }
 
                 return Storage.Reduce(Itm, count, grade)
                     ? new ItemChangeResult(GameActionResult.Ok(), count)
                     : new ItemChangeResult(
-                        GameActionResult.Fail(GameActionStatus.RejectedByState, "游戏拒绝了这次扣除。"), 0);
+                        GameActionResult.Fail(GameActionStatus.RejectedByState, "The game rejected this deduction."), 0);
             }
             catch (Exception ex)
             {
@@ -188,15 +188,15 @@ namespace Polaris.API
 
         /// <summary>使用物品。<b>本版本未支持</b>，理由见类型说明。</summary>
         public GameActionResult Use(ItemIdentity item, int grade = 0)
-            => GameActionResult.Unsupported("本版本没有可用的物品使用入口。");
+            => GameActionResult.Unsupported("This game version has no usable item-use entry point.");
 
         /// <summary>丢弃物品。<b>本版本未支持</b>。</summary>
         public GameActionResult Drop(ItemIdentity item, int count, int grade = 0)
-            => GameActionResult.Unsupported("本版本没有可用的物品丢弃入口。");
+            => GameActionResult.Unsupported("This game version has no usable item-drop entry point.");
 
         /// <summary>把物品提交给 NPC。<b>本版本未支持</b>。</summary>
         public GameActionResult Submit(ItemIdentity item, int count, int grade, CharacterHandle npc)
-            => GameActionResult.Unsupported("本版本没有可用的物品提交入口。");
+            => GameActionResult.Unsupported("This game version has no usable item-submit entry point.");
 
         static bool ValidGrade(int grade) => grade >= 0 && grade <= 4;
 
@@ -235,6 +235,6 @@ namespace Polaris.API
 
         public bool Succeeded => Outcome.Succeeded;
 
-        public override string ToString() => $"{Outcome} ×{Count}";
+        public override string ToString() => $"{Outcome} x{Count}";
     }
 }

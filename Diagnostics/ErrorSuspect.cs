@@ -18,7 +18,7 @@ namespace Polaris.Diagnostics
         /// <summary>为什么上榜，例如 <c>改写了原版方法 nel.title.SceneTitleTemp.initButtons（transpiler）</c>。</summary>
         public string Reason { get; internal set; }
 
-        public string Describe() => $"{Owner?.Describe() ?? "未知"} —— {Reason}";
+        public string Describe() => $"{Owner?.Describe() ?? "unknown"} -- {Reason}";
 
         public override string ToString() => Describe();
     }

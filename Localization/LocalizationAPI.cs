@@ -58,7 +58,7 @@ namespace Polaris.Localization
             {
                 // ?. 而不是直接调：下游模组在自己的 Awake 里登记，而 BepInEx 不保证
                 // Polaris 自己的 Awake（Logger 在那里赋值）一定跑在最前面。
-                Plugin.Logger?.LogWarning($"[Polaris] 内置文案 key「{key}」被登记了不止一次，后者生效。");
+                Plugin.Logger?.LogWarning($"[Polaris] Built-in text key \"{key}\" was registered more than once; the later one wins.");
             }
 
             builtin[key] = text;
@@ -112,7 +112,7 @@ namespace Polaris.Localization
             }
             catch (Exception e)
             {
-                Plugin.Logger?.LogWarning($"[Polaris] 查询本地化键「{key}」时原版查表抛异常：{e.Message}");
+                Plugin.Logger?.LogWarning($"[Polaris] The vanilla lookup threw while querying localization key \"{key}\": {e.Message}");
             }
 
             return key;
@@ -164,8 +164,8 @@ namespace Polaris.Localization
                     // 调用）一起打断。一个 Mod 的 resolver 写坏，不该连累其它 resolver 和原版查表，
                     // 按"未命中"处理，跳到下一个 resolver 继续。
                     // 责任人就是这个 resolver 委托本身所在的程序集，不必走堆栈推断。
-                    PolarisAPI.Errors.Report(ex, $"本地化 resolver 处理 \"{key}\"", resolver.Method?.DeclaringType?.Assembly);
-                    Plugin.Logger.LogError($"[Polaris] 本地化 resolver 处理 \"{key}\" 时抛出异常，已跳过。");
+                    PolarisAPI.Errors.Report(ex, $"a localization resolver handling \"{key}\"", resolver.Method?.DeclaringType?.Assembly);
+                    Plugin.Logger.LogError($"[Polaris] A localization resolver threw while handling \"{key}\"; skipped.");
                     continue;
                 }
 

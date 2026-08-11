@@ -43,7 +43,7 @@ namespace Polaris.PUI.HotReload
         {
             if (instance == null)
             {
-                return (false, "热重载尚未就绪（PuiHotReloadPump 未初始化）");
+                return (false, "Hot reload is not ready yet (PuiHotReloadPump is not initialized)");
             }
 
             var request = new PendingRequest { PuiName = puiName, Commands = commands };
@@ -51,7 +51,7 @@ namespace Polaris.PUI.HotReload
 
             if (!request.Done.Wait(timeout))
             {
-                return (false, "游戏主线程处理超时");
+                return (false, "Timed out waiting for the game main thread");
             }
 
             return (request.Ok, request.Error);

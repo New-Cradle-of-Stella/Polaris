@@ -27,12 +27,12 @@ namespace Polaris.Res
         {
             if (string.IsNullOrEmpty(modId))
             {
-                throw new ArgumentException("modId 不能为空。", nameof(modId));
+                throw new ArgumentException("modId cannot be empty.", nameof(modId));
             }
 
             if (string.IsNullOrEmpty(path))
             {
-                throw new ArgumentException("path 不能为空。", nameof(path));
+                throw new ArgumentException("path cannot be empty.", nameof(path));
             }
 
             ModId = modId;

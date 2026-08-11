@@ -59,7 +59,7 @@ namespace Polaris
             {
                 if (insertIndex < 0 || insertIndex > buttonNames.Count)
                 {
-                    throw new ArgumentException("非法插入按钮位置", nameof(insertIndex));
+                    throw new ArgumentException("Illegal button insert position", nameof(insertIndex));
                 }
                 buttonNames.Insert(insertIndex, name);
             }
@@ -343,7 +343,7 @@ namespace Polaris
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogWarning($"[Polaris] SceneTitleTemp.changeState 调用失败，已忽略：{ex.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] SceneTitleTemp.changeState call failed; ignored: {ex.Message}");
                 return false;
             }
         }
@@ -520,7 +520,7 @@ namespace Polaris
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogWarning($"[Polaris] remakeSumitCancelButton 调用失败，已忽略：{ex.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] remakeSumitCancelButton call failed; ignored: {ex.Message}");
             }
         }
 
@@ -542,7 +542,7 @@ namespace Polaris
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogWarning($"[Polaris] SceneTitleTemp.initDsBlackAfter 调用失败，已忽略：{ex.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] SceneTitleTemp.initDsBlackAfter call failed; ignored: {ex.Message}");
             }
         }
 
@@ -655,8 +655,8 @@ namespace Polaris
                     catch (Exception ex)
                     {
                         // 责任人就是这个回调委托本身所在的程序集，不必走堆栈推断。
-                        PolarisAPI.Errors.Report(ex, $"确定/取消按钮 \"{config.Label}\" 的回调", callback.Method?.DeclaringType?.Assembly);
-                        Plugin.Logger.LogError($"[Polaris] 确定/取消按钮 \"{config.Label}\" 的回调抛出异常，已忽略。");
+                        PolarisAPI.Errors.Report(ex, $"the callback of submit/cancel button \"{config.Label}\"", callback.Method?.DeclaringType?.Assembly);
+                        Plugin.Logger.LogError($"[Polaris] The callback of submit/cancel button \"{config.Label}\" threw an exception; ignored.");
                         return true;
                     }
                 });
@@ -684,7 +684,7 @@ namespace Polaris
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogWarning($"[Polaris] 操作提示行写入失败，已忽略：{ex.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Failed to write the key hint line; ignored: {ex.Message}");
             }
         }
 
@@ -695,7 +695,7 @@ namespace Polaris
                 return;
             }
             warnedCommandButton = true;
-            Plugin.Logger.LogWarning("[Polaris] 标题场景尚未初始化（Current 为空），确定/取消按钮条自定义暂不生效。");
+            Plugin.Logger.LogWarning("[Polaris] The title scene is not initialized yet (Current is null); submit/cancel button bar customization has no effect for now.");
         }
 
         static void WarnHintOnce()
@@ -705,7 +705,7 @@ namespace Polaris
                 return;
             }
             warnedHint = true;
-            Plugin.Logger.LogWarning("[Polaris] 标题场景尚未初始化（Current 为空），操作提示行自定义暂不生效。");
+            Plugin.Logger.LogWarning("[Polaris] The title scene is not initialized yet (Current is null); key hint line customization has no effect for now.");
         }
     }
 }

@@ -105,7 +105,7 @@ namespace Polaris.Diagnostics
         {
             if (args.ExceptionObject is Exception exception)
             {
-                ErrorRegistry.Submit(exception, "后台线程未捕获的异常", null);
+                ErrorRegistry.Submit(exception, "unhandled exception on a background thread", null);
             }
         }
 
@@ -149,7 +149,7 @@ namespace Polaris.Diagnostics
 
                 if (exception != null)
                 {
-                    ErrorRegistry.Submit(exception, $"{source} 报告的错误", AssemblyOf(source));
+                    ErrorRegistry.Submit(exception, $"an error reported by {source}", AssemblyOf(source));
                     return;
                 }
 
@@ -157,7 +157,7 @@ namespace Polaris.Diagnostics
                 {
                     ErrorRegistry.Submit(
                         new PluginReportedError(Convert.ToString(args.Data)),
-                        $"{source} 报告的严重错误",
+                        $"a severe error reported by {source}",
                         AssemblyOf(source));
                     return;
                 }
@@ -208,7 +208,7 @@ namespace Polaris.Diagnostics
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogWarning($"[Polaris] 错误捕获通道安装失败，这一路的错误本局收不到：{ex.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Failed to install an error capture channel; errors on that path will not be seen this session: {ex.Message}");
             }
         }
     }

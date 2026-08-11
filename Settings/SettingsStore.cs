@@ -36,7 +36,7 @@ namespace Polaris.Settings
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogError($"[Polaris.Settings] 打开 {group.ModId} 的配置文件失败，该组设置将不会保存：{e}");
+                Plugin.Logger.LogError($"[Polaris.Settings] Failed to open the config file of {group.ModId}; this group will not be saved: {e}");
                 return;
             }
 
@@ -57,7 +57,7 @@ namespace Polaris.Settings
                 }
                 catch (Exception e)
                 {
-                    Plugin.Logger.LogError($"[Polaris.Settings] 绑定 {group.ModId}.{setting.Id} 失败，该项将不会保存：{e}");
+                    Plugin.Logger.LogError($"[Polaris.Settings] Failed to bind {group.ModId}.{setting.Id}; this entry will not be saved: {e}");
                 }
             }
 
@@ -70,7 +70,7 @@ namespace Polaris.Settings
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogError($"[Polaris.Settings] 写出 {group.ModId} 的默认配置失败：{e}");
+                Plugin.Logger.LogError($"[Polaris.Settings] Failed to write out the default config of {group.ModId}: {e}");
             }
         }
 
@@ -95,7 +95,7 @@ namespace Polaris.Settings
                 }
                 catch (Exception e)
                 {
-                    Plugin.Logger.LogError($"[Polaris.Settings] 保存 {kv.Key} 的配置失败：{e}");
+                    Plugin.Logger.LogError($"[Polaris.Settings] Failed to save the config of {kv.Key}: {e}");
                 }
             }
 

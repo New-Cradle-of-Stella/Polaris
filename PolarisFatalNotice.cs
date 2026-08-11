@@ -232,7 +232,7 @@ namespace Polaris
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogError($"[Polaris] 致命错误页构建失败，直接退出游戏：{e}");
+                Plugin.Logger.LogError($"[Polaris] Failed to build the fatal error page; quitting the game directly: {e}");
                 Teardown();
                 return false;
             }
@@ -385,7 +385,7 @@ namespace Polaris
             catch (Exception e)
             {
                 // 走不了原版流程也必须退出去，否则玩家被永久锁在标题菜单之外，还不知道为什么。
-                Plugin.Logger.LogError($"[Polaris] 走原版退出流程失败，直接退出进程：{e}");
+                Plugin.Logger.LogError($"[Polaris] Failed to use the vanilla quit path; terminating the process directly: {e}");
                 Application.Quit();
             }
         }

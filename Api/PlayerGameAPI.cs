@@ -162,7 +162,7 @@ namespace Polaris.API
         {
             if (string.IsNullOrEmpty(poseTitle))
             {
-                return GameActionResult.Fail(GameActionStatus.InvalidArgument, "姿势名不能为空。");
+                return GameActionResult.Fail(GameActionStatus.InvalidArgument, "Pose name cannot be empty.");
             }
 
             PR Pr = GameBinding.Player;
@@ -175,12 +175,12 @@ namespace Polaris.API
             {
                 if (Pr.Anm == null)
                 {
-                    return GameActionResult.Fail(GameActionStatus.TargetUnavailable, "玩家动画器还没就绪。");
+                    return GameActionResult.Fail(GameActionStatus.TargetUnavailable, "The player animator is not ready yet.");
                 }
 
                 return Pr.Anm.setPose(poseTitle)
                     ? GameActionResult.Ok()
-                    : GameActionResult.Fail(GameActionStatus.RejectedByState, $"游戏拒绝了姿势切换：{poseTitle}。");
+                    : GameActionResult.Fail(GameActionStatus.RejectedByState, $"The game rejected the pose change: {poseTitle}.");
             }
             catch (Exception ex)
             {
@@ -198,6 +198,6 @@ namespace Polaris.API
         /// </para>
         /// </summary>
         public GameActionResult TryAction(string actionKey)
-            => GameActionResult.Unsupported($"本版本还没有核对玩家动作入口：{actionKey}。");
+            => GameActionResult.Unsupported($"This game version has no verified player-action entry point: {actionKey}.");
     }
 }

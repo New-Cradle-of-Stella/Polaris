@@ -46,13 +46,13 @@ namespace Polaris.Res.Loaders
             catch (System.Exception ex)
             {
                 Object.DestroyImmediate(texture);
-                throw new ResourceLoadException(id, $"解码图像失败：{id}", ex);
+                throw new ResourceLoadException(id, $"Failed to decode image: {id}", ex);
             }
 
             if (!ok)
             {
                 Object.DestroyImmediate(texture);
-                throw new ResourceLoadException(id, $"不是有效的 PNG/JPG 数据：{id}");
+                throw new ResourceLoadException(id, $"Not valid PNG/JPG data: {id}");
             }
 
             if (settings.Compress != TextureCompression.None)
@@ -65,7 +65,7 @@ namespace Polaris.Res.Loaders
                 catch (System.Exception ex)
                 {
                     // 压缩失败（比如尺寸不是 4 的倍数）不应该让整张纹理加载失败，跳过压缩即可。
-                    Plugin.Logger.LogWarning($"[PolarisRes] {id} 压缩失败，已跳过：{ex.Message}");
+                    Plugin.Logger.LogWarning($"[PolarisRes] {id} failed to compress; skipped: {ex.Message}");
                 }
             }
 

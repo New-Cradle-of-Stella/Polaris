@@ -70,7 +70,7 @@ namespace Polaris.Res.Core
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogError($"[PolarisRes] 卸载 {entry.Id} 时出现异常：{ex}");
+                Plugin.Logger.LogError($"[PolarisRes] Exception while unloading {entry.Id}: {ex}");
             }
         }
 

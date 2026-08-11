@@ -66,7 +66,7 @@ namespace Polaris.Res.Pxls
             if (existingCount > 1)
             {
                 Plugin.Logger.LogWarning(
-                    $"[PolarisRes] {title} 的外置纹理 #{index} 同时存在多个候选命名，使用了第一个命中的 \"{hit}\"，建议只保留一份。");
+                    $"[PolarisRes] External texture #{index} of {title} has several candidate names at once; using the first match \"{hit}\". Keeping only one copy is recommended.");
             }
 
             return hit;

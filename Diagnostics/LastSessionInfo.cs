@@ -74,18 +74,18 @@ namespace Polaris.Diagnostics
         {
             string when = LastAliveAt == DateTime.MinValue
                 ? ""
-                : $"（最后一次活动：{LastAliveAt:yyyy-MM-dd HH:mm:ss}）";
+                : $" (last activity: {LastAliveAt:yyyy-MM-dd HH:mm:ss})";
 
             switch (Kind)
             {
                 case SessionEndKind.Hung:
-                    return $"上一局疑似卡死：主线程停止推进约 {StallSeconds:0} 秒{when}。";
+                    return $"The previous session probably hung: the main thread stopped advancing for about {StallSeconds:0}s{when}.";
 
                 case SessionEndKind.NotClosed:
-                    return $"上一局没有正常退出{when}。";
+                    return $"The previous session did not exit cleanly{when}.";
 
                 default:
-                    return "上一局的结束方式无从判断。";
+                    return "How the previous session ended cannot be determined.";
             }
         }
 
@@ -97,7 +97,7 @@ namespace Polaris.Diagnostics
         {
             var parts = new List<string>(3);
 
-            parts.Add(LastFrame > 0 ? $"frame {LastFrame}" : "frame 0（还没进入主循环）");
+            parts.Add(LastFrame > 0 ? $"frame {LastFrame}" : "frame 0 (main loop not entered yet)");
 
             if (!string.IsNullOrEmpty(Scene))
             {
@@ -109,7 +109,7 @@ namespace Polaris.Diagnostics
                 parts.Add(Activity);
             }
 
-            return string.Join(" · ", parts.ToArray());
+            return string.Join(" | ", parts.ToArray());
         }
     }
 }

@@ -326,14 +326,26 @@ namespace Polaris.PUI.HotReload
                             name = p.Name ?? "",
                             swidth = (float)p.Width,
                             sheight = (float)p.Height,
-                            scale = (float)p.Scale,
                             stencil_lessequal = p.StencilLessEqual,
-                            UvRect = new Rect((float)p.UvX, (float)p.UvY, (float)p.UvW, (float)p.UvH),
                         };
-                        if (!string.IsNullOrEmpty(p.ImageSource))
+
+                        // UvRect / scale 不在初始化器里直接填：那两个字段的语义（像素矩形、
+                        // 绘制尺寸与 swidth/sheight 无关）都要换算，统一交给 PuiImage.Assign，
+                        // 和编译期生成的代码走同一份实现。
+                        MImage image = null;
+                        if (!string.IsNullOrEmpty(p.ImageResource))
                         {
-                            data.MI = ResolveImage(p.ImageSource, handler);
+                            image = ResolveImageField(p.ImageResource, handler);
                         }
+                        else if (!string.IsNullOrEmpty(p.ImageSource))
+                        {
+                            image = ResolveImage(p.ImageSource, handler);
+                        }
+
+                        PuiImage.Assign(data, image,
+                            (float)p.UvX, (float)p.UvY, (float)p.UvW, (float)p.UvH,
+                            (float)p.Width, (float)p.Height, (float)p.Scale);
+
                         designer.addImg(data);
                         break;
                     }
@@ -394,7 +406,7 @@ namespace Polaris.PUI.HotReload
             FieldInfo field = data.GetType().GetField(fieldName);
             if (field == null)
             {
-                throw new InvalidOperationException($"{data.GetType().Name} 缺少字段 {fieldName}，无法绑定回调 {methodName}");
+                throw new InvalidOperationException($"{data.GetType().Name} has no field {fieldName}; cannot bind callback {methodName}");
             }
 
             Delegate del;
@@ -404,7 +416,7 @@ namespace Polaris.PUI.HotReload
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"回调方法 {methodName} 未找到，或签名跟 {data.GetType().Name}.{fieldName} 不匹配：{ex.Message}", ex);
+                throw new InvalidOperationException($"Callback method {methodName} was not found, or its signature does not match {data.GetType().Name}.{fieldName}: {ex.Message}", ex);
             }
 
             field.SetValue(data, del);
@@ -421,6 +433,86 @@ namespace Polaris.PUI.HotReload
             return Polaris.Res.PolarisResAPI.For(modId).Own.Image(imageSource);
         }
 
+        /// <summary>
+        /// 把编辑器选中的资源字段引用（形如 <c>MyMod.Res.testImage</c>）解析成 <c>MImage</c>：
+        /// 在 <paramref name="handler"/> 所在程序集里找到那个类型，反射读它的 static 字段。
+        /// 编译期路径（<c>CSharpTextEmitter.AddImage</c>）生成的是同一个字段的直接引用，
+        /// 两条路径拿到的是同一个由 <c>AutoBindScanner</c> 回填的 <c>MImage</c> 实例——热重载
+        /// 不会重新挂载目录、也不会重复解码图片。
+        /// <para>
+        /// 解析不出来一律抛异常：调用方（<c>PUIHotReloadRuntime</c>）会在临时对象上捕获并回滚，
+        /// 作者能立刻看到是哪个引用的问题，比静默画一个空图好。
+        /// </para>
+        /// </summary>
+        private static MImage ResolveImageField(string reference, IPUI handler)
+        {
+            Assembly assembly = handler.GetType().Assembly;
+
+            int lastDot = reference.LastIndexOf('.');
+            if (lastDot <= 0 || lastDot == reference.Length - 1)
+            {
+                throw new InvalidOperationException(
+                    $"Image resource reference \"{reference}\" is not a Type.field reference.");
+            }
+
+            string typeName = reference.Substring(0, lastDot);
+            string fieldName = reference.Substring(lastDot + 1);
+
+            Type type = ResolveNestedType(assembly, typeName);
+            if (type == null)
+            {
+                throw new InvalidOperationException(
+                    $"Image resource reference \"{reference}\": type {typeName} was not found in assembly {assembly.GetName().Name}.");
+            }
+
+            FieldInfo field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (field == null)
+            {
+                throw new InvalidOperationException(
+                    $"Image resource reference \"{reference}\": {typeName} has no static field {fieldName}.");
+            }
+
+            if (!typeof(MImage).IsAssignableFrom(field.FieldType))
+            {
+                throw new InvalidOperationException(
+                    $"Image resource reference \"{reference}\": field type is {field.FieldType.Name}, but DsnDataImg.MI requires MImage.");
+            }
+
+            var image = (MImage)field.GetValue(null);
+            if (image == null)
+            {
+                throw new InvalidOperationException(
+                    $"Image resource reference \"{reference}\" is still null. PolarisRes auto-binding fills it in at load time: " +
+                    "check that the class has [PolarisResourceFolder], the field has [PolarisResource], and the image file is deployed next to the dll.");
+            }
+
+            return image;
+        }
+
+        /// <summary>
+        /// 反射里嵌套类型用 <c>'+'</c> 分隔（<c>MyMod.Outer+Inner</c>），编辑器给的是 C# 源码写法的
+        /// <c>'.'</c>，所以从右往左逐个把 <c>'.'</c> 换成 <c>'+'</c> 再试一次，直到找到或试完。
+        /// </summary>
+        private static Type ResolveNestedType(Assembly assembly, string typeName)
+        {
+            string candidate = typeName;
+            while (true)
+            {
+                Type type = assembly.GetType(candidate, false);
+                if (type != null)
+                {
+                    return type;
+                }
+
+                int dot = candidate.LastIndexOf('.');
+                if (dot < 0)
+                {
+                    return null;
+                }
+                candidate = candidate.Substring(0, dot) + "+" + candidate.Substring(dot + 1);
+            }
+        }
+
         private static void InvokeOnBuildCompleted(IPUI handler, string methodName, UiBoxDesigner designer)
         {
             if (string.IsNullOrEmpty(methodName))
@@ -431,7 +523,7 @@ namespace Polaris.PUI.HotReload
             MethodInfo method = handler.GetType().GetMethod(methodName, new[] { typeof(UiBoxDesigner) });
             if (method == null)
             {
-                throw new InvalidOperationException($"找不到 OnBuildCompleted 方法 {methodName}(UiBoxDesigner designer)");
+                throw new InvalidOperationException($"Could not find the OnBuildCompleted method {methodName}(UiBoxDesigner designer)");
             }
 
             method.Invoke(handler, new object[] { designer });

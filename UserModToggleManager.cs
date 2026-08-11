@@ -90,7 +90,7 @@ namespace Polaris
             catch (Exception ex)
             {
                 record.Error = ex.Message;
-                Plugin.Logger.LogWarning($"[Polaris] 切换模组「{record.DisplayName}」启停失败：{ex.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Failed to toggle mod \"{record.DisplayName}\": {ex.Message}");
                 return false;
             }
         }

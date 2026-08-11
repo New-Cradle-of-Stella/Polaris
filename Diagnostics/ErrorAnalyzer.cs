@@ -89,7 +89,7 @@ namespace Polaris.Diagnostics
                 FirstSeen = now,
                 LastSeen = now,
                 Count = 1,
-                ExceptionType = exceptionType ?? "<未知异常>",
+                ExceptionType = exceptionType ?? "<unknown exception>",
                 Message = message,
                 Context = context,
                 Verdict = verdict,
@@ -125,7 +125,7 @@ namespace Polaris.Diagnostics
                 verdict.Culprit = named;
                 verdict.Kind = named.Kind;
                 verdict.Confidence = ErrorConfidence.High;
-                verdict.Reason = "异常是在调用它的代码时当场接住的，责任人不需要推断。";
+                verdict.Reason = "The exception was caught right where its calling code ran; the culprit needs no inference.";
                 return verdict;
             }
 
@@ -143,7 +143,7 @@ namespace Polaris.Diagnostics
                     verdict.Culprit = frame.Owner;
                     verdict.Kind = frame.Owner.Kind;
                     verdict.Confidence = ErrorConfidence.High;
-                    verdict.Reason = $"堆栈里出现了它自己的代码（{frame.TypeName}.{frame.MethodName}）。";
+                    verdict.Reason = $"Its own code appears in the stack ({frame.TypeName}.{frame.MethodName}).";
                     return verdict;
                 }
             }
@@ -153,7 +153,7 @@ namespace Polaris.Diagnostics
             if (blamable.Count == 1)
             {
                 ErrorSuspect only = blamable[0];
-                bool ilRewrite = only.Reason != null && only.Reason.Contains("IL 改写");
+                bool ilRewrite = only.Reason != null && only.Reason.Contains("IL rewrite");
 
                 verdict.Culprit = only.Owner;
                 verdict.Kind = only.Owner.Kind;
@@ -161,7 +161,7 @@ namespace Polaris.Diagnostics
                 // IL 改写意味着它的代码就在那个方法体里，所以证据比"打了个 postfix 但没留下帧"
                 // 强一档。后者更可能是补丁跑完就返回了、真正出事的是原版自己。
                 verdict.Confidence = ilRewrite ? ErrorConfidence.Medium : ErrorConfidence.Low;
-                verdict.Reason = $"堆栈里没有它的帧，但它{only.Reason}。";
+                verdict.Reason = $"None of its frames are in the stack, but it {only.Reason}.";
                 return verdict;
             }
 
@@ -170,8 +170,8 @@ namespace Polaris.Diagnostics
                 verdict.Kind = OwnerKind.Unknown;
                 verdict.Confidence = ErrorConfidence.Low;
                 verdict.Reason =
-                    $"出事的原版方法被 {blamable.Count} 个模组同时改过，无法分清是哪一个——"
-                    + "下面的嫌疑人请逐个关掉验证。";
+                    $"The vanilla method that failed was modified by {blamable.Count} mods at once, so they cannot be"
+                    + " told apart -- disable the suspects below one at a time to verify.";
                 return verdict;
             }
 
@@ -179,7 +179,7 @@ namespace Polaris.Diagnostics
             {
                 verdict.Kind = OwnerKind.Vanilla;
                 verdict.Confidence = ErrorConfidence.Medium;
-                verdict.Reason = "整条堆栈都是原版代码，沿途也没有任何方法被模组改过。";
+                verdict.Reason = "The entire stack is vanilla code, and no method along the way was modified by a mod.";
                 return verdict;
             }
 
@@ -187,13 +187,13 @@ namespace Polaris.Diagnostics
             {
                 verdict.Kind = OwnerKind.Framework;
                 verdict.Confidence = ErrorConfidence.Low;
-                verdict.Reason = "堆栈只落在 BepInEx / Harmony 里，多半是某个补丁没能应用。";
+                verdict.Reason = "The stack lands only inside BepInEx / Harmony; most likely a patch failed to apply.";
                 return verdict;
             }
 
             verdict.Kind = OwnerKind.Unknown;
             verdict.Confidence = ErrorConfidence.Unknown;
-            verdict.Reason = "堆栈里没有一帧能对上已加载的程序集，无法判定。";
+            verdict.Reason = "Not a single frame in the stack maps to a loaded assembly; cannot determine a verdict.";
             return verdict;
         }
 
@@ -242,7 +242,7 @@ namespace Polaris.Diagnostics
             {
                 if (depth > 0)
                 {
-                    builder.Append(new string(' ', depth * 2)).Append("└─ 内层异常：");
+                    builder.Append(new string(' ', depth * 2)).Append("+- inner exception: ");
                 }
 
                 builder.Append(current.GetType().FullName).Append(": ").AppendLine(current.Message);

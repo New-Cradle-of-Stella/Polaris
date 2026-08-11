@@ -58,12 +58,12 @@ namespace Polaris.API
 
         /// <summary>玩家/地图不在场时最常用的一条，措辞统一，方便日志过滤。</summary>
         public static GameActionResult NoPlayer()
-            => new GameActionResult(GameActionStatus.TargetUnavailable, "当前没有在场的玩家角色。");
+            => new GameActionResult(GameActionStatus.TargetUnavailable, "No player character is present right now.");
 
         /// <summary>本局游戏版本上这条能力没有可用入口。</summary>
         public static GameActionResult Unsupported(string what)
             => new GameActionResult(GameActionStatus.UnsupportedInCurrentVersion, what);
 
-        public override string ToString() => Reason == null ? Status.ToString() : $"{Status}：{Reason}";
+        public override string ToString() => Reason == null ? Status.ToString() : $"{Status}: {Reason}";
     }
 }

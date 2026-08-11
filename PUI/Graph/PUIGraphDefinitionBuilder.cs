@@ -21,12 +21,12 @@ namespace Polaris.PUI
         {
             if (string.IsNullOrEmpty(key))
             {
-                throw new ArgumentException("节点 key 不能为空", nameof(key));
+                throw new ArgumentException("Node key cannot be empty", nameof(key));
             }
 
             if (string.IsNullOrEmpty(puiName))
             {
-                throw new ArgumentException("PUI 名称不能为空", nameof(puiName));
+                throw new ArgumentException("PUI name cannot be empty", nameof(puiName));
             }
 
             nodes.Add(new PUINodeDefinition(key, puiName));
@@ -43,22 +43,22 @@ namespace Polaris.PUI
         {
             if (string.IsNullOrEmpty(sourceKey))
             {
-                throw new ArgumentException("源节点 key 不能为空", nameof(sourceKey));
+                throw new ArgumentException("Source node key cannot be empty", nameof(sourceKey));
             }
 
             if (string.IsNullOrEmpty(triggerKey))
             {
-                throw new ArgumentException("触发键不能为空", nameof(triggerKey));
+                throw new ArgumentException("Trigger key cannot be empty", nameof(triggerKey));
             }
 
             if (string.IsNullOrEmpty(targetKey))
             {
-                throw new ArgumentException("目标节点 key 不能为空", nameof(targetKey));
+                throw new ArgumentException("Target node key cannot be empty", nameof(targetKey));
             }
 
             if (!edgeKeys.Add((sourceKey, triggerKey)))
             {
-                throw new InvalidOperationException($"图「{name}」里重复的边：({sourceKey}, {triggerKey})");
+                throw new InvalidOperationException($"Duplicate edge in graph \"{name}\": ({sourceKey}, {triggerKey})");
             }
 
             edges.Add(new PUIEdge(sourceKey, triggerKey, targetKey, blocking));

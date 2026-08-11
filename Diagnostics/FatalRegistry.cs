@@ -101,16 +101,16 @@ namespace Polaris.Diagnostics
             // "插件报出的严重错误"再建一条普通事件档（见 PolarisLogListener），同一件事在
             // 报告里出现两遍。这里本来就已经自己写过报告了。
             Plugin.Logger.LogError(
-                $"[Polaris] 致命错误（由 {fatal.Source} 报出）：{fatal.Reason?.ForReport}");
+                $"[Polaris] Fatal error (reported by {fatal.Source}): {fatal.Reason?.ForReport}");
 
             foreach (string detail in fatal.Details)
             {
-                Plugin.Logger.LogError($"[Polaris]   · {detail}");
+                Plugin.Logger.LogError($"[Polaris]   * {detail}");
             }
 
             Plugin.Logger.LogError(
-                "[Polaris] 本局不会继续：标题画面会拦住菜单并请玩家退出游戏。"
-                + (ReportPath != null ? $"报告：{ReportPath}" : "（报告文件写入失败，详情见上面几行）"));
+                "[Polaris] This session will not continue: the title screen will block the menu and ask the player to quit. "
+                + (ReportPath != null ? $"Report: {ReportPath}" : "(failed to write the report file; see the lines above for details)"));
         }
     }
 }

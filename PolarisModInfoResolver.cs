@@ -89,7 +89,7 @@ namespace Polaris
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogWarning($"[Polaris] 读取模组「{pluginInfo.Metadata?.Name ?? type.FullName}」的 PolarisModInfo 失败：{ex.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Failed to read the PolarisModInfo of mod \"{pluginInfo.Metadata?.Name ?? type.FullName}\": {ex.Message}");
                 return null;
             }
         }

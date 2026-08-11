@@ -61,6 +61,15 @@ namespace Polaris.PUI
             initialized = true;
 
             Root = new GameObject("Polaris.PUI.Root");
+
+            // 根节点自己就带上"盖住标题画面常驻 UI"的 z：所有 PUI 宿主都是
+            // SetParent(Root, worldPositionStays: false) 挂进来的（见 PUIRuntime.CreateHostObject），
+            // 局部 z 保持 0，于是整棵树——正式窗口、状态机图节点、热重载临时宿主——一次性都在这一层。
+            // 不这么做的话宿主停在默认的 z=0，和标题场景里 z=0 的版本号文本平局：那几行
+            // "ver 0.29j / (26/02/10 Early Access Version XI)" 会画在 PUI 窗口上面。
+            // 取值与整张 z 分布表见 UiDepth。
+            XX.IN.setZ(Root.transform, UiDepth.Window);
+
             UnityEngine.Object.DontDestroyOnLoad(Root);
             PUISolutionPump.EnsureInstance(Root);
 
@@ -76,7 +85,7 @@ namespace Polaris.PUI
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger.LogError($"[PolarisUI] 自动注册 PUI {pui.GetType().FullName} 失败，已跳过：{ex}");
+                    Plugin.Logger.LogError($"[PolarisUI] Failed to auto-register PUI {pui.GetType().FullName}; skipped: {ex}");
                 }
             }
 
@@ -93,7 +102,7 @@ namespace Polaris.PUI
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger.LogError($"[PolarisUI] 注册 PUI 状态机图 {graphType.FullName} 失败，已跳过：{ex}");
+                    Plugin.Logger.LogError($"[PolarisUI] Failed to register PUI state machine graph {graphType.FullName}; skipped: {ex}");
                 }
             }
 
@@ -102,7 +111,7 @@ namespace Polaris.PUI
             PolarisAPI.Game.LocaleChanged += OnLocaleChanged;
 
             Plugin.Logger.LogMessage(
-                $"[PolarisUI] 注册了 {puiTypes.Count} 个 PUI、{graphCatalog.Count} 张 PUI 状态机图。");
+                $"[PolarisUI] Registered {puiTypes.Count} PUIs and {graphCatalog.Count} PUI state machine graphs.");
         }
 
         private static void OnLocaleChanged(string locale)
@@ -110,7 +119,7 @@ namespace Polaris.PUI
             int affected = PUIRuntime.RefreshAllForLocaleChange();
             if (affected > 0)
             {
-                Plugin.Logger.LogMessage($"[PolarisUI] 语言切到 {locale}，已刷新 {affected} 个 PUI 的文案。");
+                Plugin.Logger.LogMessage($"[PolarisUI] Language changed to {locale}; refreshed text for {affected} PUIs.");
             }
         }
 
@@ -128,7 +137,7 @@ namespace Polaris.PUI
 
             if (namedInstances.ContainsKey(pui.Name))
             {
-                throw new ArgumentException($"重复的 pui name：{pui.Name}", nameof(pui));
+                throw new ArgumentException($"Duplicate pui name: {pui.Name}", nameof(pui));
             }
 
             PUIRuntime runtime = PUIRuntime.Create(pui);
@@ -142,7 +151,7 @@ namespace Polaris.PUI
         {
             if (!namedInstances.TryGetValue(name, out PUIRuntime runtime))
             {
-                throw new ArgumentException($"未注册的 PUI 名称：{name}", nameof(name));
+                throw new ArgumentException($"Unregistered PUI name: {name}", nameof(name));
             }
 
             return runtime;
@@ -163,7 +172,7 @@ namespace Polaris.PUI
         {
             if (!defaultSolutions.TryGetValue(graphName, out PUISolution solution))
             {
-                throw new ArgumentException($"未注册的 PUI 状态机（图）名称：{graphName}", nameof(graphName));
+                throw new ArgumentException($"Unregistered PUI state machine (graph) name: {graphName}", nameof(graphName));
             }
 
             return solution;
@@ -200,7 +209,7 @@ namespace Polaris.PUI
             if (!puiTypes.TryGetValue(puiName, out Type type))
             {
                 throw new ArgumentException(
-                    $"未知的 PUI 名称：{puiName}（未标 [PUIAutoRegistration] 或所在程序集未加载）", nameof(puiName));
+                    $"Unknown PUI name: {puiName} (not marked [PUIAutoRegistration], or its assembly is not loaded)", nameof(puiName));
             }
 
             var handler = (IPUI)Activator.CreateInstance(type);
@@ -253,8 +262,8 @@ namespace Polaris.PUI
             {
                 bool knownName = namedInstances.ContainsKey(name) || puiTypes.ContainsKey(name);
                 return (false, knownName
-                    ? $"「{name}」所属插件未启用 PUIHotFixEnabled，不支持热重载"
-                    : $"PUI 未注册：{name}");
+                    ? $"The plugin owning \"{name}\" has not enabled PUIHotFixEnabled; hot reload is unsupported"
+                    : $"PUI not registered: {name}");
             }
 
             var failures = new List<string>();
@@ -267,7 +276,7 @@ namespace Polaris.PUI
                 }
             }
 
-            return failures.Count == 0 ? (true, null) : (false, string.Join("；", failures));
+            return failures.Count == 0 ? (true, null) : (false, string.Join("; ", failures));
         }
 
         // 作用域刻意用 InAppDomain 而不是 InPlugins：PUI 实现类不一定住在 BepInEx 插件
@@ -289,7 +298,7 @@ namespace Polaris.PUI
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger.LogError($"[PolarisUI] 构造自动注册的 PUI 类型 {type.FullName} 失败，已跳过：{ex}");
+                    Plugin.Logger.LogError($"[PolarisUI] Failed to construct auto-registered PUI type {type.FullName}; skipped: {ex}");
                     continue;
                 }
 

@@ -63,7 +63,7 @@ namespace Polaris.Res
         /// </summary>
         private static void Apply()
         {
-            Plugin.Logger.LogInfo("[PolarisRes] 设置已加载。");
+            Plugin.Logger.LogInfo("[PolarisRes] Settings loaded.");
         }
     }
 }

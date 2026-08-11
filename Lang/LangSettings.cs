@@ -63,7 +63,7 @@ namespace Polaris.Lang
                 }
                 catch (Exception e)
                 {
-                    Plugin.Logger?.LogWarning($"[PolarisLang] 读取游戏当前语言失败，本次按未知语言处理：{e.Message}");
+                    Plugin.Logger?.LogWarning($"[PolarisLang] Failed to read the game's current language; treating it as unknown this time: {e.Message}");
                     return null;
                 }
             }

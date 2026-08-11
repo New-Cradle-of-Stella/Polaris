@@ -38,7 +38,7 @@ namespace Polaris.Res.Loaders
                 || bytes[0] != (byte)'R' || bytes[1] != (byte)'I' || bytes[2] != (byte)'F' || bytes[3] != (byte)'F'
                 || bytes[8] != (byte)'W' || bytes[9] != (byte)'A' || bytes[10] != (byte)'V' || bytes[11] != (byte)'E')
             {
-                throw new ResourceLoadException(id, "不是有效的 RIFF/WAVE 文件（缺少 RIFF/WAVE 头）。");
+                throw new ResourceLoadException(id, "Not a valid RIFF/WAVE file (missing the RIFF/WAVE header).");
             }
 
             int position = 12;
@@ -83,12 +83,12 @@ namespace Polaris.Res.Loaders
 
             if (channels == 0 || sampleRate == 0 || bitsPerSample == 0)
             {
-                throw new ResourceLoadException(id, "wav 缺少有效的 fmt 块。");
+                throw new ResourceLoadException(id, "wav is missing a valid fmt chunk.");
             }
 
             if (dataChunk == null)
             {
-                throw new ResourceLoadException(id, "wav 缺少 data 块。");
+                throw new ResourceLoadException(id, "wav is missing the data chunk.");
             }
 
             // audioFormat: 1 = PCM 整数，3 = IEEE float32。其它编码（ADPCM、WAVE_FORMAT_EXTENSIBLE 等）
@@ -96,14 +96,14 @@ namespace Polaris.Res.Loaders
             if (audioFormat != 1 && audioFormat != 3)
             {
                 throw new ResourceLoadException(
-                    id, $"不支持的 wav 编码格式（audioFormat={audioFormat}），当前只支持 PCM 整数与 IEEE float32。");
+                    id, $"Unsupported wav encoding (audioFormat={audioFormat}); only PCM integer and IEEE float32 are supported.");
             }
 
             int bytesPerSample = bitsPerSample / 8;
             if (bytesPerSample <= 0 || dataChunk.Length % (bytesPerSample * channels) != 0)
             {
                 throw new ResourceLoadException(
-                    id, $"wav data 块长度与声道/位深不匹配（bitsPerSample={bitsPerSample}, channels={channels}）。");
+                    id, $"wav data chunk length does not match the channel count/bit depth (bitsPerSample={bitsPerSample}, channels={channels}).");
             }
 
             int totalSampleValues = dataChunk.Length / bytesPerSample; // 含全部声道交错在一起的总数
@@ -113,7 +113,7 @@ namespace Polaris.Res.Loaders
             {
                 if (bitsPerSample != 32)
                 {
-                    throw new ResourceLoadException(id, $"不支持的 IEEE float 位深：{bitsPerSample}（只支持 32 位）。");
+                    throw new ResourceLoadException(id, $"Unsupported IEEE float bit depth: {bitsPerSample} (only 32-bit is supported).");
                 }
 
                 for (int i = 0; i < totalSampleValues; i++)
@@ -162,7 +162,7 @@ namespace Polaris.Res.Loaders
 
                         break;
                     default:
-                        throw new ResourceLoadException(id, $"不支持的 PCM 位深：{bitsPerSample}（只支持 8/16/24/32 位）。");
+                        throw new ResourceLoadException(id, $"Unsupported PCM bit depth: {bitsPerSample} (only 8/16/24/32-bit are supported).");
                 }
             }
 

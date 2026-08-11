@@ -33,7 +33,8 @@ namespace Polaris.PUI.Wire
     /// <summary>线协议版本。握手时校验，不匹配就明确报错而不是静默按错误的字节序列解析。</summary>
     public static class PuiProtocol
     {
-        public const int Version = 1;
+        // v2：AddImage 载荷末尾追加了 PuiImageParams.ImageResource（资源字段引用）。
+        public const int Version = 2;
     }
 
     /// <summary>
@@ -361,8 +362,17 @@ namespace Polaris.PUI.Wire
         public double UvW;
         public double UvH;
 
-        /// <summary>PolarisRes 挂载相对路径；空表示未设置图片来源，MI 保持 null。</summary>
+        /// <summary>PolarisRes 挂载相对路径；空表示不走这条路径。见 <see cref="ImageResource"/>。</summary>
         public string ImageSource;
+
+        /// <summary>
+        /// <c>[PolarisResource]</c> <c>MImage</c> static 字段的引用，形如
+        /// <c>MyMod.Res.testImage</c>（编辑器的资源下拉框选出来的那个字段）。非空时优先于
+        /// <see cref="ImageSource"/>：字段的值由 PolarisRes 的 <c>AutoBindScanner</c> 在插件
+        /// 加载时就按 <c>[PolarisResourceFolder]</c> 挂载并回填好了，热重载侧只是反射把它读出来。
+        /// 两者都为空表示未设置图片来源，MI 保持 null。
+        /// </summary>
+        public string ImageResource;
     }
 
     /// <summary>

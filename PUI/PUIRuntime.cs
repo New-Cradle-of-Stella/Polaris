@@ -162,8 +162,8 @@ namespace Polaris.PUI
                 else if (owners.Count > 1)
                 {
                     Plugin.Logger.LogWarning(
-                        $"[PUI] 「{Handler.Name}」同时属于 {owners.Count} 个 PUISolution 且没有当前 " +
-                        $"Controller，无法判定触发键「{triggerKey}」该转给谁，已忽略。");
+                        $"[PUI] \"{Handler.Name}\" belongs to {owners.Count} PUISolutions at once and has no current " +
+                        $"Controller, so there is no way to decide who the trigger key \"{triggerKey}\" should go to; ignored.");
                     return;
                 }
             }
@@ -183,7 +183,7 @@ namespace Polaris.PUI
         {
             if (current == PUIState.Destroyed)
             {
-                throw new InvalidOperationException($"PUI 已销毁，无法执行 {trigger}");
+                throw new InvalidOperationException($"The PUI has been destroyed; cannot run {trigger}");
             }
 
             switch (trigger)
@@ -310,7 +310,7 @@ namespace Polaris.PUI
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger.LogError($"[PolarisUI] 语言切换后重建 PUI「{runtime.Handler.Name}」失败：{ex}");
+                    Plugin.Logger.LogError($"[PolarisUI] Failed to rebuild PUI \"{runtime.Handler.Name}\" after the language change: {ex}");
                 }
             }
 

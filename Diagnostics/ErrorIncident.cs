@@ -89,7 +89,7 @@ namespace Polaris.Diagnostics
             string type = ExceptionType;
             if (string.IsNullOrEmpty(type))
             {
-                type = "未知异常";
+                type = "unknown exception";
             }
             else
             {
@@ -100,7 +100,7 @@ namespace Polaris.Diagnostics
                 }
             }
 
-            return $"{type} — {Verdict.Headline()}";
+            return $"{type} -- {Verdict.Headline()}";
         }
 
         // ================== 指纹 ==================

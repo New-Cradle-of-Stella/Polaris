@@ -146,7 +146,7 @@ namespace Polaris.API
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger.LogWarning($"[Polaris] 探测 MTRX 就绪状态时出现异常，视为未就绪：{ex.Message}");
+                    Plugin.Logger.LogWarning($"[Polaris] Exception while probing MTRX readiness; treating it as not ready: {ex.Message}");
                     return false;
                 }
             }
@@ -162,7 +162,7 @@ namespace Polaris.API
             {
                 loggedReadyOnce = true;
                 Plugin.Logger.LogMessage(
-                    $"[Polaris] MTRX 首次就绪，当前帧号 {UnityEngine.Time.frameCount}。");
+                    $"[Polaris] MTRX became ready for the first time at frame {UnityEngine.Time.frameCount}.");
             }
 
             PumpLocale(ready);
@@ -189,7 +189,7 @@ namespace Polaris.API
                     // 面包屑：这些回调是下游模组"游戏就绪后要做的重活"（解析 PXLS、注册图像、
                     // 建图集），是最有可能一去不回的一类代码。卡住时看门狗要能点出是谁。
                     using (Diagnostics.MainThreadBeat.Enter(
-                        $"WhenReady 回调（{Describe(action)}）", action.Method?.DeclaringType?.Assembly))
+                        $"WhenReady callback ({Describe(action)})", action.Method?.DeclaringType?.Assembly))
                     {
                         action();
                     }
@@ -197,8 +197,8 @@ namespace Polaris.API
                 catch (Exception ex)
                 {
                     // 责任人就是这个回调委托本身所在的程序集，不必走堆栈推断。
-                    PolarisAPI.Errors.Report(ex, "WhenReady 回调", action.Method?.DeclaringType?.Assembly);
-                    Plugin.Logger.LogError("[Polaris] WhenReady 回调抛出异常，已忽略。");
+                    PolarisAPI.Errors.Report(ex, "WhenReady callback", action.Method?.DeclaringType?.Assembly);
+                    Plugin.Logger.LogError("[Polaris] A WhenReady callback threw an exception; ignored.");
                 }
             }
         }
@@ -236,7 +236,7 @@ namespace Polaris.API
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogWarning($"[Polaris] 读取当前语言时出现异常，本帧跳过：{ex.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Exception while reading the current language; skipping this frame: {ex.Message}");
                 return;
             }
 
@@ -259,7 +259,7 @@ namespace Polaris.API
 
             string previous = lastLocale;
             lastLocale = locale;
-            Plugin.Logger.LogMessage($"[Polaris] 游戏语言已切换：{previous} → {locale}。");
+            Plugin.Logger.LogMessage($"[Polaris] Game language changed: {previous} -> {locale}.");
 
             Action<string> handlers = LocaleChanged;
             if (handlers == null)
@@ -275,15 +275,15 @@ namespace Polaris.API
                     // 面包屑：切语言会让下游模组重建自己的全部文案与图像（PolarisLang 要重扫语言包、
                     // PolarisUI 要重排控件），和 WhenReady 一样属于"一去不回"的高危回调。
                     using (Diagnostics.MainThreadBeat.Enter(
-                        $"LocaleChanged 回调（{Describe(handler)}）", handler.Method?.DeclaringType?.Assembly))
+                        $"LocaleChanged callback ({Describe(handler)})", handler.Method?.DeclaringType?.Assembly))
                     {
                         ((Action<string>)handler)(locale);
                     }
                 }
                 catch (Exception ex)
                 {
-                    PolarisAPI.Errors.Report(ex, "LocaleChanged 回调", handler.Method?.DeclaringType?.Assembly);
-                    Plugin.Logger.LogError("[Polaris] LocaleChanged 回调抛出异常，已忽略。");
+                    PolarisAPI.Errors.Report(ex, "LocaleChanged callback", handler.Method?.DeclaringType?.Assembly);
+                    Plugin.Logger.LogError("[Polaris] A LocaleChanged callback threw an exception; ignored.");
                 }
             }
         }

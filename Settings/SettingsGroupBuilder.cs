@@ -63,7 +63,7 @@ namespace Polaris.Settings
         {
             if (choices == null || choices.Length == 0)
             {
-                throw new ArgumentException($"设置项 {id} 的选项列表不能为空", nameof(choices));
+                throw new ArgumentException($"The choice list of setting {id} cannot be empty", nameof(choices));
             }
 
             return Add(new ChoiceSetting(id, label, choices, Math.Min(Math.Max(def, 0), choices.Length - 1)), desc);
@@ -107,7 +107,7 @@ namespace Polaris.Settings
             if (s.Values.Length == 0)
             {
                 // 成员数为 0 的枚举会让 meter 拿到 mx = -1，画出来是坏的；和 Choice 一样提前拦下。
-                throw new ArgumentException($"设置项 {id} 的枚举 {typeof(TEnum).Name} 没有任何成员");
+                throw new ArgumentException($"The enum {typeof(TEnum).Name} of setting {id} has no members");
             }
 
             if (choices != null)
@@ -119,8 +119,8 @@ namespace Polaris.Settings
                 else
                 {
                     Plugin.Logger.LogWarning(
-                        $"[Polaris.Settings] {group.ModId}.{id} 的 Choices 长度({choices.Length})与枚举成员数" +
-                        $"({s.Values.Length})不符，改用枚举名。");
+                        $"[Polaris.Settings] The Choices length ({choices.Length}) of {group.ModId}.{id} does not match the enum member count" +
+                        $" ({s.Values.Length}); falling back to enum names.");
                 }
             }
 

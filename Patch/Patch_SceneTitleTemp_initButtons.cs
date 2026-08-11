@@ -60,7 +60,7 @@ namespace Polaris.Patch
             codeMatcher.MatchStartForward(new CodeMatch(OpCodes.Ldsfld),
                                           new CodeMatch(OpCodes.Neg),
                                           new CodeMatch(OpCodes.Ldc_R4))
-                       .ThrowIfInvalid("未找到顶部按钮容器纵向定位常量 134 的 IL 模式")
+                       .ThrowIfInvalid("Could not find the IL pattern for the top button container vertical position constant 134")
                        .Advance(2)
                        .SetInstructionAndAdvance(new CodeInstruction(OpCodes.Ldarg_0))
                        .InsertAndAdvance(LoadButtonCount())
@@ -70,7 +70,7 @@ namespace Polaris.Patch
             codeMatcher.MatchStartForward(new CodeMatch(OpCodes.Conv_R4),
                                           new CodeMatch(OpCodes.Ldc_R4),
                                           new CodeMatch(OpCodes.Ldc_I4_1))
-                       .ThrowIfInvalid("未找到顶部按钮容器高度常量 54 的 IL 模式")
+                       .ThrowIfInvalid("Could not find the IL pattern for the top button container height constant 54")
                        .Advance(1)
                        .SetInstructionAndAdvance(new CodeInstruction(OpCodes.Ldarg_0))
                        .InsertAndAdvance(LoadButtonCount())

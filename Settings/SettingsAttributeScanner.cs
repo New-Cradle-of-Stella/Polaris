@@ -44,7 +44,7 @@ namespace Polaris.Settings
             if (typeCount > 0)
             {
                 Plugin.Logger.LogMessage(
-                    $"[Polaris.Settings] 从 {typeCount} 个类注册了 {PolarisAPI.Settings.Groups.Count} 组设置项。");
+                    $"[Polaris.Settings] Registered {PolarisAPI.Settings.Groups.Count} setting groups from {typeCount} classes.");
             }
         }
 
@@ -64,7 +64,7 @@ namespace Polaris.Settings
             if (fields.Count == 0)
             {
                 Plugin.Logger.LogWarning(
-                    $"[Polaris.Settings] {type.FullName} 标了 PolarisSettingGroup 但没有任何 PolarisSetting 字段。");
+                    $"[Polaris.Settings] {type.FullName} is marked PolarisSettingGroup but has no PolarisSetting fields.");
                 return false;
             }
 
@@ -75,7 +75,7 @@ namespace Polaris.Settings
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogError($"[Polaris.Settings] {type.FullName} 的分区声明非法，整组跳过：{e.Message}");
+                Plugin.Logger.LogError($"[Polaris.Settings] The section declaration on {type.FullName} is invalid; the whole group is skipped: {e.Message}");
                 return false;
             }
 
@@ -85,7 +85,7 @@ namespace Polaris.Settings
                 if (field.IsInitOnly || field.IsLiteral)
                 {
                     Plugin.Logger.LogWarning(
-                        $"[Polaris.Settings] {type.FullName}.{field.Name} 是 readonly/const，无法回写，跳过。");
+                        $"[Polaris.Settings] {type.FullName}.{field.Name} is readonly/const and cannot be written back; skipped.");
                     continue;
                 }
 
@@ -96,7 +96,7 @@ namespace Polaris.Settings
                 }
                 catch (Exception e)
                 {
-                    Plugin.Logger.LogError($"[Polaris.Settings] 注册 {type.FullName}.{field.Name} 失败，跳过：{e.Message}");
+                    Plugin.Logger.LogError($"[Polaris.Settings] Failed to register {type.FullName}.{field.Name}; skipped: {e.Message}");
                     continue;
                 }
 
@@ -180,8 +180,8 @@ namespace Polaris.Settings
             }
 
             Plugin.Logger.LogError(
-                $"[Polaris.Settings] {owner.FullName} 里找不到 OnChanged 指定的静态方法 {methodName}，" +
-                "签名应为 static void M() 或 static void M(T value)。该项的变更回调将不生效。");
+                $"[Polaris.Settings] Could not find the static method {methodName} named by OnChanged in {owner.FullName}. " +
+                "The signature must be static void M() or static void M(T value). The change callback for this entry will not take effect.");
             return null;
         }
 
@@ -194,7 +194,7 @@ namespace Polaris.Settings
             if (m == null)
             {
                 Plugin.Logger.LogError(
-                    $"[Polaris.Settings] {owner.FullName} 里找不到 OnLoaded 指定的静态方法 {methodName}()。");
+                    $"[Polaris.Settings] Could not find the static method {methodName}() named by OnLoaded in {owner.FullName}.");
                 return;
             }
 
@@ -215,15 +215,15 @@ namespace Polaris.Settings
             {
                 // 责任人就是这个方法本身所在的程序集，不必走堆栈推断；拆开包装是为了不让
                 // 报告里的堆栈只剩一层没有信息量的 TargetInvocationException。
-                PolarisAPI.Errors.Report(e.InnerException ?? e, $"调用 {method.DeclaringType?.FullName}.{method.Name}", method.DeclaringType?.Assembly);
+                PolarisAPI.Errors.Report(e.InnerException ?? e, $"calling {method.DeclaringType?.FullName}.{method.Name}", method.DeclaringType?.Assembly);
                 Plugin.Logger.LogError(
-                    $"[Polaris.Settings] {method.DeclaringType?.FullName}.{method.Name} 抛异常，已忽略。");
+                    $"[Polaris.Settings] {method.DeclaringType?.FullName}.{method.Name} threw an exception; ignored.");
             }
             catch (Exception e)
             {
-                PolarisAPI.Errors.Report(e, $"调用 {method.DeclaringType?.FullName}.{method.Name}", method.DeclaringType?.Assembly);
+                PolarisAPI.Errors.Report(e, $"calling {method.DeclaringType?.FullName}.{method.Name}", method.DeclaringType?.Assembly);
                 Plugin.Logger.LogError(
-                    $"[Polaris.Settings] 调用 {method.DeclaringType?.FullName}.{method.Name} 失败，已忽略。");
+                    $"[Polaris.Settings] Failed to call {method.DeclaringType?.FullName}.{method.Name}; ignored.");
             }
         }
 
@@ -272,16 +272,16 @@ namespace Polaris.Settings
                 if (!string.IsNullOrEmpty(attr.Desc))
                 {
                     Plugin.Logger.LogWarning(
-                        $"[Polaris.Settings] {field.DeclaringType?.FullName}.{field.Name} 是文本项，" +
-                        "游戏的输入框控件不支持悬停说明，Desc 不会显示。");
+                        $"[Polaris.Settings] {field.DeclaringType?.FullName}.{field.Name} is a text entry, and " +
+                        "the game's input-box control does not support hover descriptions, so Desc will not be shown.");
                 }
 
                 return builder.Text(id, label, (string)current ?? "", attr.MaxLength, desc: attr.Desc);
             }
 
             Plugin.Logger.LogWarning(
-                $"[Polaris.Settings] {field.DeclaringType?.FullName}.{field.Name} 的类型 {t.Name} 不受支持，跳过。" +
-                "支持的类型：bool / int / float / double / string / enum。");
+                $"[Polaris.Settings] The type {t.Name} of {field.DeclaringType?.FullName}.{field.Name} is not supported; skipped. " +
+                "Supported types: bool / int / float / double / string / enum.");
             return null;
         }
 

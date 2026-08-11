@@ -33,7 +33,7 @@ namespace Polaris.Diagnostics
         public string Describe()
         {
             string head = $"[{Owner?.KindLabel ?? "未知"}] {TypeName}.{MethodName}()";
-            return PatchNote == null ? head : $"{head}   ← {PatchNote}";
+            return PatchNote == null ? head : $"{head}   <- {PatchNote}";
         }
 
         public override string ToString() => Describe();

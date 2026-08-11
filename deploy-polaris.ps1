@@ -6,6 +6,7 @@
     Polaris 是单个 BepInEx 插件（Polaris.dll），一次构建即可。产物落地分两处：
 
       BepInEx\plugins\Polaris\Polaris.dll   插件本身
+      BepInEx\plugins\Polaris\*.png         插件自带的图片（logo，见 PolarisBrandImages）
       BepInEx\plugins\Polaris\libs\*.dll    随包分发的第三方依赖
 
     分开是为了让"哪个是插件、哪些只是它的依赖"一眼可辨——目前 libs\ 里是 NVorbis
@@ -72,6 +73,10 @@ $PluginsDir = Join-Path $DeployDir 'BepInEx\plugins'
 $PolarisDir = Join-Path $PluginsDir 'Polaris'
 $LibsDir    = Join-Path $PolarisDir 'libs'
 
+# 随插件一起分发的图片资源（相对仓库根）。只列真正被代码用到的：另外三张 *_icon.png 是
+# README 里的插图，不进包。
+$AssetFiles = @('polaris_icon.png')
+
 $DistDir      = Join-Path $Root 'dist'
 $PackageStage = Join-Path $DistDir 'stage\Polaris'
 $PackageLibs  = Join-Path $PackageStage 'libs'
@@ -84,7 +89,7 @@ function Write-Step([string] $Text) {
 function Invoke-Build([string] $ProjectPath) {
     & dotnet build $ProjectPath -c $Configuration --nologo
     if ($LASTEXITCODE -ne 0) {
-        throw "构建失败：$ProjectPath"
+        throw "Build failed: $ProjectPath"
     }
 }
 
@@ -114,12 +119,12 @@ function Copy-Into([object[]] $Items, [string] $Destination) {
 function Copy-Output([string] $Destination, [string] $LibsDestination, [switch] $IncludeSymbols) {
     $srcDir = Get-OutputDir
     if (-not (Test-Path -LiteralPath $srcDir)) {
-        throw "未找到构建输出目录：$srcDir"
+        throw "Build output directory not found: $srcDir"
     }
 
     $mainDll = Join-Path $srcDir "$AssemblyName.dll"
     if (-not (Test-Path -LiteralPath $mainDll)) {
-        throw "未找到构建产物：$mainDll"
+        throw "Build artifact not found: $mainDll"
     }
 
     $patterns = @('*.dll')
@@ -140,16 +145,28 @@ function Copy-Output([string] $Destination, [string] $LibsDestination, [switch] 
     Copy-Into $depFiles  $LibsDestination
 }
 
-try {
-    if (-not $Package -and -not (Test-Path -LiteralPath $PluginsDir)) {
-        throw "找不到 BepInEx 插件目录：$PluginsDir`n请用 -DeployDir 指定，或设置环境变量 AIC_DEPLOY_DIR 指向装了 BepInEx 的游戏根目录，或改用 -Package 打发布 zip（不需要本机装游戏）。"
+# 插件自带的图片：PolarisBrandImages 按硬编码的文件名从 plugins\Polaris\ 直接取，
+# 所以它必须和 Polaris.dll 同级躺在那里。不走 bin\（那里只有编译产物），直接从仓库根拷。
+# 缺文件就报错而不是静默跳过：那会做出一个 logo 消失的包，等玩家反馈才发现。
+function Copy-Assets([string] $Destination) {
+    $missing = @($AssetFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $Root $_)) })
+    if ($missing.Count -gt 0) {
+        throw "Bundled asset(s) not found in the repository root: $($missing -join ', ')"
     }
 
-    Write-Step "[1/2] 编译 Polaris（$Configuration）"
+    Copy-Into @($AssetFiles | ForEach-Object { Get-Item -LiteralPath (Join-Path $Root $_) }) $Destination
+}
+
+try {
+    if (-not $Package -and -not (Test-Path -LiteralPath $PluginsDir)) {
+        throw "BepInEx plugins directory not found: $PluginsDir`nPass -DeployDir, or set the AIC_DEPLOY_DIR environment variable to the game root that has BepInEx installed, or use -Package to build a release zip instead (no local game install needed)."
+    }
+
+    Write-Step "[1/2] Building Polaris ($Configuration)"
     Invoke-Build $Project
 
     if ($Package) {
-        Write-Step '[2/2] 打包发布 zip'
+        Write-Step '[2/2] Packaging release zip'
 
         if (Test-Path -LiteralPath $DistDir) {
             Remove-Item -LiteralPath $DistDir -Recurse -Force
@@ -157,6 +174,7 @@ try {
         New-Item -ItemType Directory -Path $PackageStage -Force | Out-Null
 
         Copy-Output -Destination $PackageStage -LibsDestination $PackageLibs
+        Copy-Assets -Destination $PackageStage
 
         $version = Get-ProjectVersion $Project
         if (-not $version) {
@@ -167,20 +185,21 @@ try {
         Remove-Item -LiteralPath (Join-Path $DistDir 'stage') -Recurse -Force
 
         Write-Host ''
-        Write-Host "打包完成：$zipPath" -ForegroundColor Green
-        Write-Host '玩家把 zip 里的 Polaris\ 整个目录解压进 BepInEx\plugins\ 即可。' -ForegroundColor Green
+        Write-Host "Packaged: $zipPath" -ForegroundColor Green
+        Write-Host 'Players extract the whole Polaris\ directory from the zip into BepInEx\plugins\.' -ForegroundColor Green
         exit 0
     }
 
-    Write-Step '[2/2] 部署到游戏 BepInEx\plugins\Polaris\'
+    Write-Step '[2/2] Deploying to the game at BepInEx\plugins\Polaris\'
     Copy-Output -Destination $PolarisDir -LibsDestination $LibsDir -IncludeSymbols
+    Copy-Assets -Destination $PolarisDir
 
     Write-Host ''
-    Write-Host "部署完成：$PolarisDir" -ForegroundColor Green
+    Write-Host "Deployed: $PolarisDir" -ForegroundColor Green
     exit 0
 }
 catch {
     Write-Host ''
-    Write-Host "失败：$($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Failed: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }

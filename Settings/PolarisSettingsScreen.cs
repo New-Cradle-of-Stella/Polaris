@@ -83,12 +83,12 @@ namespace Polaris.Settings
                     // 一个模组的设置项画崩了不能连累整个设置界面——原版行已经画完了，
                     // 这里抛出去会让 createBoxDesignerContentMain 半途夭折。
                     // SettingGroup 不携带程序集信息（ModId 只是个字符串），责任方交给堆栈推断。
-                    PolarisAPI.Errors.Report(e, $"渲染 {group.ModId} 的设置项");
-                    Plugin.Logger.LogError($"[Polaris.Settings] 渲染 {group.ModId} 的设置项失败，已忽略。");
+                    PolarisAPI.Errors.Report(e, $"rendering the settings of {group.ModId}");
+                    Plugin.Logger.LogError($"[Polaris.Settings] Failed to render the settings of {group.ModId}; ignored.");
                 }
             }
 
-            Plugin.Logger.LogInfo($"[Polaris.Settings] 已向设置界面追加 {groups.Count} 组、{rendered.Count} 个设置项。");
+            Plugin.Logger.LogInfo($"[Polaris.Settings] Appended {groups.Count} groups and {rendered.Count} settings to the settings screen.");
         }
 
         /// <summary>分区标题：一条分隔线 + 一行居中文字，与原版的行样式同色系。</summary>
@@ -143,7 +143,7 @@ namespace Polaris.Settings
                 }
                 catch (Exception e)
                 {
-                    Plugin.Logger.LogWarning($"[Polaris.Settings] 同步 {setting.RowKey} 的控件显示失败：{e}");
+                    Plugin.Logger.LogWarning($"[Polaris.Settings] Failed to sync the control display of {setting.RowKey}: {e}");
                 }
             }
         }

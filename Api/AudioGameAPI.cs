@@ -18,7 +18,7 @@ namespace Polaris.API
 
         public bool IsEmpty => Id == 0;
 
-        public override string ToString() => IsEmpty ? "AudioHandle(空)" : $"AudioHandle({Id})";
+        public override string ToString() => IsEmpty ? "AudioHandle(empty)" : $"AudioHandle({Id})";
     }
 
     /// <summary>播放状态。</summary>
@@ -85,7 +85,7 @@ namespace Polaris.API
 
             if (Players.Count >= MaxConcurrentSounds)
             {
-                Plugin.Logger.LogWarning($"[Polaris] 同时播放的音效已达上限 {MaxConcurrentSounds}，忽略：{cueName}。");
+                Plugin.Logger.LogWarning($"[Polaris] Reached the concurrent sound limit of {MaxConcurrentSounds}; ignoring: {cueName}.");
                 return AudioHandle.None;
             }
 
@@ -204,7 +204,7 @@ namespace Polaris.API
         {
             if (handle.IsEmpty)
             {
-                return GameActionResult.Fail(GameActionStatus.InvalidArgument, "空的音频句柄。");
+                return GameActionResult.Fail(GameActionStatus.InvalidArgument, "Empty audio handle.");
             }
 
             if (!Players.TryGetValue(handle.Id, out Entry Slot))

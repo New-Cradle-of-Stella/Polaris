@@ -56,10 +56,10 @@ namespace Polaris.Diagnostics
             {
                 switch (Confidence)
                 {
-                    case ErrorConfidence.High: return "高";
-                    case ErrorConfidence.Medium: return "中";
-                    case ErrorConfidence.Low: return "低";
-                    default: return "无法判定";
+                    case ErrorConfidence.High: return "high";
+                    case ErrorConfidence.Medium: return "medium";
+                    case ErrorConfidence.Low: return "low";
+                    default: return "undetermined";
                 }
             }
         }
@@ -72,18 +72,18 @@ namespace Polaris.Diagnostics
         {
             if (Culprit != null)
             {
-                string prefix = Confidence == ErrorConfidence.High ? "责任方" : "疑似";
-                return $"{prefix}：{Culprit.Describe()}";
+                string prefix = Confidence == ErrorConfidence.High ? "Responsible" : "Suspected";
+                return $"{prefix}: {Culprit.Describe()}";
             }
 
             switch (Kind)
             {
                 case OwnerKind.Vanilla:
-                    return "责任方：原版游戏（堆栈里没有任何模组代码）";
+                    return "Responsible: the vanilla game (no mod code in the stack)";
                 case OwnerKind.Framework:
-                    return "责任方：BepInEx / Harmony 框架";
+                    return "Responsible: the BepInEx / Harmony framework";
                 default:
-                    return "责任方：无法判定";
+                    return "Responsible: could not be determined";
             }
         }
     }

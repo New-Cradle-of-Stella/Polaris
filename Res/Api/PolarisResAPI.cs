@@ -16,7 +16,7 @@ namespace Polaris.Res
         {
             if (string.IsNullOrEmpty(modId))
             {
-                throw new ArgumentException("modId 不能为空。", nameof(modId));
+                throw new ArgumentException("modId cannot be empty.", nameof(modId));
             }
 
             if (!registry.TryGetValue(modId, out ModResources resources))

@@ -100,7 +100,7 @@ namespace Polaris.Diagnostics
             {
                 installed = false;
                 thread = null;
-                Plugin.Logger.LogWarning($"[Polaris] 卡死检测线程启动失败，本局不做卡死判定：{e.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Hang detection thread failed to start; no hang judgement this session: {e.Message}");
             }
         }
 
@@ -284,8 +284,8 @@ namespace Polaris.Diagnostics
             {
                 warnedAboutLeak = true;
                 Plugin.Logger.LogWarning(
-                    $"[Polaris] 有一个「预期卡顿」声明（{stallReason ?? "未命名"}）超过了自己声明的时限还没释放，"
-                    + "卡死检测继续正常工作。");
+                    $"[Polaris] An \"expected stall\" declaration ({stallReason ?? "unnamed"}) outlived the limit it declared"
+                    + " without being released. Hang detection continues to work normally.");
             }
 
             return false;
@@ -319,10 +319,10 @@ namespace Polaris.Diagnostics
             {
                 warned = true;
                 Plugin.Logger.LogWarning(
-                    $"[Polaris] 主线程已经 {stall:0} 秒没有推进"
-                    + (boot ? "（还在启动阶段）" : $"（frame {MainThreadBeat.LastFrame}）")
-                    + $"。当前在执行：{MainThreadBeat.ActivityChain() ?? "（不在任何 Polaris 埋点里）"}。"
-                    + $"超过 {reportAt:0} 秒会按卡死记录一份报告。");
+                    $"[Polaris] The main thread has not advanced for {stall:0}s"
+                    + (boot ? " (still in startup)" : $" (frame {MainThreadBeat.LastFrame})")
+                    + $". Currently executing: {MainThreadBeat.ActivityChain() ?? "(not inside any Polaris instrumentation point)"}."
+                    + $" Past {reportAt:0}s a hang report will be written.");
 
                 // 立刻落一次盘：这一刻的面包屑是最接近病根的，等下一次周期性心跳可能就没机会了。
                 SessionSentinel.Flush();
@@ -343,7 +343,7 @@ namespace Polaris.Diagnostics
             if (warned && !silent)
             {
                 Plugin.Logger.LogMessage(
-                    $"[Polaris] 主线程已恢复（这次一共停了约 {episodePeakSeconds:0} 秒）。");
+                    $"[Polaris] The main thread has recovered (it was stalled for about {episodePeakSeconds:0}s in total).");
             }
 
             warned = false;
@@ -392,7 +392,7 @@ namespace Polaris.Diagnostics
 
         static void Log(HangReport report)
         {
-            Plugin.Logger.LogError($"[Polaris] 疑似卡死：{report.OneLine()}");
+            Plugin.Logger.LogError($"[Polaris] Suspected hang: {report.OneLine()}");
 
             if (report.Culprit != null)
             {
@@ -403,20 +403,20 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    owner = "（查不出归属）";
+                    owner = "(owner could not be determined)";
                 }
 
-                Plugin.Logger.LogError($"[Polaris] 停止响应时正在执行的代码属于：{owner}");
+                Plugin.Logger.LogError($"[Polaris] The code executing when it stopped responding belongs to: {owner}");
             }
 
             string path = ErrorReportWriter.LastWrittenPath;
             Plugin.Logger.LogError(path != null
-                ? $"[Polaris] 卡死报告：{path}"
-                : "[Polaris] 报告文件写入失败，线索只能从本日志里找。");
+                ? $"[Polaris] Hang report: {path}"
+                : "[Polaris] Failed to write the report file; the only clues are in this log.");
 
             Plugin.Logger.LogError(
-                "[Polaris] 游戏可能已经无法操作。下次启动时标题画面会再提醒一次这件事。"
-                + (DiagnosticsConfig.KillOnHang ? "" : "（Polaris 不会自动结束游戏，见 _polaris_diagnostics.cfg）"));
+                "[Polaris] The game may already be unresponsive. The title screen will remind you about this on the next launch."
+                + (DiagnosticsConfig.KillOnHang ? "" : " (Polaris will not end the game by itself; see _polaris_diagnostics.cfg)"));
         }
 
         static void Raise(HangReport report)
@@ -447,7 +447,7 @@ namespace Polaris.Diagnostics
         /// </summary>
         static void Kill()
         {
-            Plugin.Logger.LogError("[Polaris] KillOnHang 已开启，正在结束游戏进程。");
+            Plugin.Logger.LogError("[Polaris] KillOnHang is enabled; ending the game process.");
 
             try
             {
@@ -455,7 +455,7 @@ namespace Polaris.Diagnostics
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogError($"[Polaris] 结束进程失败，请手动关闭游戏：{e.Message}");
+                Plugin.Logger.LogError($"[Polaris] Failed to end the process; please close the game manually: {e.Message}");
             }
         }
 

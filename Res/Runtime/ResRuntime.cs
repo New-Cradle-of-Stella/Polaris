@@ -12,7 +12,7 @@ namespace Polaris.Res.Runtime
         {
             if (initialized)
             {
-                Plugin.Logger.LogWarning("[PolarisRes] ResRuntime.Init 被重复调用，已忽略。");
+                Plugin.Logger.LogWarning("[PolarisRes] ResRuntime.Init was called more than once; ignored.");
                 return;
             }
 
@@ -26,7 +26,7 @@ namespace Polaris.Res.Runtime
             // UnityChainloader.Instance.Plugins 已经是全量的。
             AutoBindScanner.ScanAll();
 
-            Plugin.Logger.LogInfo("[PolarisRes] 资源库运行时已初始化。");
+            Plugin.Logger.LogInfo("[PolarisRes] Resource runtime initialized.");
         }
     }
 }

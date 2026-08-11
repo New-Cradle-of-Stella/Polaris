@@ -53,7 +53,7 @@ namespace Polaris.Infra
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogWarning($"[Polaris.Types] 读取 {assembly.GetName().Name} 的类型失败：{e.Message}");
+                Plugin.Logger.LogWarning($"[Polaris.Types] Failed to read the types of {assembly.GetName().Name}: {e.Message}");
                 types = [];
             }
 
@@ -110,7 +110,7 @@ namespace Polaris.Infra
                 }
                 catch (Exception e)
                 {
-                    Plugin.Logger.LogWarning($"[Polaris.Types] 读取 {type.FullName} 上的 {typeof(TAttr).Name} 失败：{e.Message}");
+                    Plugin.Logger.LogWarning($"[Polaris.Types] Failed to read {typeof(TAttr).Name} on {type.FullName}: {e.Message}");
                     continue;
                 }
 

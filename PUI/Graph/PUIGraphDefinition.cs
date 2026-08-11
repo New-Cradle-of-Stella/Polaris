@@ -49,14 +49,14 @@ namespace Polaris.PUI
             {
                 if (!nodeKeys.Add(node.Key))
                 {
-                    throw new InvalidOperationException($"图「{Name}」里重复的节点 key：{node.Key}");
+                    throw new InvalidOperationException($"Duplicate node key in graph \"{Name}\": {node.Key}");
                 }
 
                 if (!PUIManager.IsKnownPuiName(node.PuiName))
                 {
                     throw new InvalidOperationException(
-                        $"图「{Name}」的节点「{node.Key}」引用了未知的 PUI「{node.PuiName}」：" +
-                        "请确认它标了 [PUIAutoRegistration] 且所在程序集已加载。");
+                        $"Node \"{node.Key}\" of graph \"{Name}\" references an unknown PUI \"{node.PuiName}\": " +
+                        "check that it is marked [PUIAutoRegistration] and that its assembly is loaded.");
                 }
             }
 
@@ -64,18 +64,18 @@ namespace Polaris.PUI
             {
                 if (!nodeKeys.Contains(edge.SourceNodeKey))
                 {
-                    throw new InvalidOperationException($"图「{Name}」的边引用了不存在的源节点：{edge.SourceNodeKey}");
+                    throw new InvalidOperationException($"An edge of graph \"{Name}\" references a source node that does not exist: {edge.SourceNodeKey}");
                 }
 
                 if (!edge.IsExit && !nodeKeys.Contains(edge.TargetNodeKey))
                 {
-                    throw new InvalidOperationException($"图「{Name}」的边引用了不存在的目标节点：{edge.TargetNodeKey}");
+                    throw new InvalidOperationException($"An edge of graph \"{Name}\" references a target node that does not exist: {edge.TargetNodeKey}");
                 }
             }
 
             if (EntryNodeKey != null && !nodeKeys.Contains(EntryNodeKey))
             {
-                throw new InvalidOperationException($"图「{Name}」的入口节点「{EntryNodeKey}」不存在。");
+                throw new InvalidOperationException($"Entry node \"{EntryNodeKey}\" of graph \"{Name}\" does not exist.");
             }
         }
     }

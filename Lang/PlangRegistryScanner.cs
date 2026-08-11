@@ -55,7 +55,7 @@ namespace Polaris.Lang
                 }
                 catch (Exception e)
                 {
-                    Plugin.Logger.LogError($"[PolarisLang] 自动注册 {type.FullName} 失败，已跳过：{e}");
+                    Plugin.Logger.LogError($"[PolarisLang] Failed to auto-register {type.FullName}; skipped: {e}");
                 }
                 finally
                 {
@@ -63,7 +63,7 @@ namespace Polaris.Lang
                 }
             }
 
-            Plugin.Logger.LogMessage($"[PolarisLang] 已从 {count} 个生成类注册本地化文案。");
+            Plugin.Logger.LogMessage($"[PolarisLang] Registered localization text from {count} generated classes.");
 
             // 所有注册都到齐了才处置冲突：一次启动只报一条致命错误，里面列全所有撞车的 key，
             // 而不是发现一个报一条。

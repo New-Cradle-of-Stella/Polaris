@@ -212,8 +212,8 @@ namespace Polaris.Diagnostics
                 return null;
             }
 
-            string chain = string.Join(" → ", parts.ToArray());
-            return d > MaxDepth ? chain + $" → …（还有 {d - MaxDepth} 层）" : chain;
+            string chain = string.Join(" -> ", parts.ToArray());
+            return d > MaxDepth ? chain + $" -> ... ({d - MaxDepth} more levels)" : chain;
         }
 
         static int Top()

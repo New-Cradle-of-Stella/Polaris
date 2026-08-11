@@ -39,7 +39,7 @@ namespace Polaris.Settings
             if (!TryGet(id, out T value))
             {
                 throw new ArgumentException(
-                    $"模组「{ModId}」没有类型为 {typeof(T).Name} 的设置项「{id}」。", nameof(id));
+                    $"Mod \"{ModId}\" has no setting \"{id}\" of type {typeof(T).Name}.", nameof(id));
             }
 
             return value;

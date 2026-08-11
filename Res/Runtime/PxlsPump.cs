@@ -45,7 +45,7 @@ namespace Polaris.Res.Runtime
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger.LogError($"[PolarisRes] PxlsLoadOperation.Tick 抛出异常：{ex}");
+                    Plugin.Logger.LogError($"[PolarisRes] PxlsLoadOperation.Tick threw an exception: {ex}");
                 }
 
                 if (operation.IsDone)

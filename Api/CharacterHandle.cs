@@ -31,7 +31,7 @@ namespace Polaris.API
         /// <summary>只判断句柄本身是不是空的；<b>不代表目标还活着</b>，那要靠解析。</summary>
         public bool IsEmpty => StableId == 0;
 
-        public override string ToString() => IsEmpty ? "CharacterHandle(空)" : $"CharacterHandle({StableId}#{Generation})";
+        public override string ToString() => IsEmpty ? "CharacterHandle(empty)" : $"CharacterHandle({StableId}#{Generation})";
     }
 
     /// <summary>

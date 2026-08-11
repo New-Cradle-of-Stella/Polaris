@@ -44,10 +44,10 @@ namespace Polaris.Diagnostics
         }
 
         /// <summary>
-        /// 报告文件里用的那一份。报告正文通篇是中文（见 <see cref="ErrorReportWriter"/>），
-        /// 这一段跟着走中文，没有中文再退回英文。
+        /// 报告文件里用的那一份。报告正文通篇是英文（见 <see cref="ErrorReportWriter"/>），
+        /// 这一段跟着走英文。
         /// </summary>
-        internal string ForReport => Chinese ?? English;
+        internal string ForReport => English;
 
         public override string ToString() => English;
     }

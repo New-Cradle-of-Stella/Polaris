@@ -84,33 +84,35 @@ namespace Polaris.Diagnostics
                 file = new ConfigFile(Path.Combine(PolarisAPI.Paths.ConfigDir, FileName), saveOnInit: true);
 
                 enabled = file.Bind(WatchdogSection, "Enabled", DefaultEnabled,
-                    "是否启用卡死检测（一条后台线程盯着主线程还在不在推进帧）。关掉之后崩溃检测仍然有效。");
+                    "Enable hang detection (a background thread watches whether the main thread is still advancing frames). Crash detection stays active when this is off.");
 
                 warnSeconds = file.Bind(WatchdogSection, "WarnSeconds", DefaultWarnSeconds,
-                    "主线程停止推进多少秒后，在 BepInEx 日志里记一行警告。只记日志，不写报告、不打扰玩家。");
+                    "How many seconds of no main-thread progress before a warning line is written to the BepInEx log. Log only -- no report file, no player-facing notice.");
 
                 reportSeconds = file.Bind(WatchdogSection, "ReportSeconds", DefaultReportSeconds,
-                    "主线程停止推进多少秒后判定为疑似卡死：写报告文件，并让下一局启动时的标题画面告知玩家。"
-                    + "调小会更灵敏，但读档、场景切换这类正常的长耗时也更容易被错判。");
+                    "How many seconds of no main-thread progress before it is judged a suspected hang: a report file is written"
+                    + " and the next session's title screen tells the player about it."
+                    + " Lowering it is more sensitive, but normal long operations such as loading a save or switching scenes are then more easily misjudged.");
 
                 bootReportSeconds = file.Bind(WatchdogSection, "BootReportSeconds", DefaultBootReportSeconds,
-                    "游戏启动阶段（首个 Update 之前）单独使用的判定阈值。这一段里所有插件的 Awake、"
-                    + "首个场景加载、游戏自己的资源初始化都还没跑完，本来就会长时间不进 Update。");
+                    "Separate threshold used during game startup (before the first Update). In that stretch every plugin's"
+                    + " Awake, the first scene load, and the game's own asset init have not finished, so long gaps before Update are normal.");
 
                 killOnHang = file.Bind(WatchdogSection, "KillOnHang", DefaultKillOnHang,
-                    "判定为卡死后是否直接结束游戏进程。默认关闭：一次误判就会让玩家丢掉这一局的进度，"
-                    + "比卡在那里更糟；卡死了玩家自己也能关掉窗口，而报告在判定的那一刻就已经写好了。");
+                    "Whether to kill the game process outright once a hang is judged. Off by default: one false positive"
+                    + " costs the player this session's progress, which is worse than hanging; a hung player can close the"
+                    + " window themselves, and the report was already written the moment it was judged.");
 
                 stormWindowSeconds = file.Bind(StormSection, "WindowSeconds", DefaultStormWindowSeconds,
-                    "异常风暴的判定窗口（秒）。同一类错误在这个窗口内发生次数超过 Threshold 就算持续性故障。");
+                    "Detection window for an exception storm, in seconds. The same class of error occurring more than Threshold times inside this window counts as a persistent failure.");
 
                 stormThreshold = file.Bind(StormSection, "Threshold", DefaultStormThreshold,
-                    "异常风暴的次数阈值。每帧抛一次异常大约是每秒 60 次，默认值相当于连续三秒多每帧都在抛。");
+                    "Occurrence threshold for an exception storm. Throwing once per frame is roughly 60 times per second, so the default is about three seconds of throwing every frame.");
             }
             catch (Exception e)
             {
                 Plugin.Logger.LogWarning(
-                    $"[Polaris] 打开 {FileName} 失败，诊断阈值本局全部使用默认值：{e.Message}");
+                    $"[Polaris] Failed to open {FileName}; diagnostics thresholds fall back to defaults for this session: {e.Message}");
                 file = null;
             }
         }

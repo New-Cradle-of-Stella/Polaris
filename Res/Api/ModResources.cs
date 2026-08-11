@@ -63,7 +63,7 @@ namespace Polaris.Res
         {
             if (string.IsNullOrEmpty(absoluteRoot))
             {
-                throw new ArgumentException("absoluteRoot 不能为空。", nameof(absoluteRoot));
+                throw new ArgumentException("absoluteRoot cannot be empty.", nameof(absoluteRoot));
             }
 
             mountTable.Add(absoluteRoot, priority);
@@ -178,8 +178,8 @@ namespace Polaris.Res
                 if (!PolarisAPI.Game.IsMtrxReady)
                 {
                     throw new InvalidOperationException(
-                        $"[PolarisRes] {id} 加载太早：PXLS 必须在游戏就绪之后加载，请包在 " +
-                        "PolarisAPI.Game.WhenReady(...) 回调里调用。");
+                        $"[PolarisRes] {id} loaded too early: PXLS must be loaded after the game is ready. " +
+                        "Wrap the call in a PolarisAPI.Game.WhenReady(...) callback.");
                 }
 
                 byte[] bytes = LoadBytes(id, out string absolutePath, out string mountRoot);
@@ -196,7 +196,7 @@ namespace Polaris.Res
                 if (character == null)
                 {
                     throw new ResourceLoadException(
-                        id, $"PXLS 加载失败：title \"{title}\" 已存在（可能是同一路径的上一次加载还没被正确释放）。");
+                        id, $"PXLS load failed: title \"{title}\" already exists (a previous load of the same path may not have been released properly).");
                 }
 
                 // no_load_external_texture_on_first 必须为 true，否则解析期会尝试用
@@ -270,7 +270,7 @@ namespace Polaris.Res
             }
             catch (Exception ex)
             {
-                throw new ResourceLoadException(id, $"读取文件失败：{absolutePath}", ex);
+                throw new ResourceLoadException(id, $"Failed to read file: {absolutePath}", ex);
             }
         }
 
@@ -326,7 +326,7 @@ namespace Polaris.Res
                 if (field.IsInitOnly || field.IsLiteral)
                 {
                     Plugin.Logger.LogWarning(
-                        $"[PolarisRes] {type.FullName}.{field.Name} 是 readonly/const，无法回填，跳过。");
+                        $"[PolarisRes] {type.FullName}.{field.Name} is readonly/const and cannot be back-filled; skipped.");
                     continue;
                 }
 
@@ -338,7 +338,7 @@ namespace Polaris.Res
                 catch (Exception ex)
                 {
                     Plugin.Logger.LogError(
-                        $"[PolarisRes] 绑定 {type.FullName}.{field.Name}（\"{attr.Path}\"）失败：{ex}");
+                        $"[PolarisRes] Failed to bind {type.FullName}.{field.Name} (\"{attr.Path}\"): {ex}");
                 }
             }
 
@@ -388,7 +388,7 @@ namespace Polaris.Res
                     catch (Exception ex)
                     {
                         Plugin.Logger.LogError(
-                            $"[PolarisRes] 延迟绑定 {field.DeclaringType?.FullName}.{field.Name}（\"{path}\"）失败：{ex}");
+                            $"[PolarisRes] Deferred binding of {field.DeclaringType?.FullName}.{field.Name} (\"{path}\") failed: {ex}");
                     }
                 });
                 return;
@@ -407,8 +407,8 @@ namespace Polaris.Res
             }
 
             throw new NotSupportedException(
-                $"字段类型 {fieldType.Name} 暂不支持自动绑定。当前支持：byte[] / Texture2D / XX.MImage / " +
-                "PxlsCharacterHandle / AudioClip / VideoHandle。");
+                $"Field type {fieldType.Name} is not supported for auto-binding yet. Currently supported: byte[] / Texture2D / XX.MImage / " +
+                "PxlsCharacterHandle / AudioClip / VideoHandle.");
         }
     }
 }

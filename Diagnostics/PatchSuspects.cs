@@ -74,7 +74,7 @@ namespace Polaris.Diagnostics
             Collect(patches.Postfixes, "postfix", byOwner, scan);
             Collect(patches.Finalizers, "finalizer", byOwner, scan);
             Collect(patches.Transpilers, "transpiler", byOwner, scan);
-            Collect(patches.ILManipulators, "IL 改写", byOwner, scan);
+            Collect(patches.ILManipulators, "IL rewrite", byOwner, scan);
 
             if (byOwner.Count == 0)
             {
@@ -84,28 +84,28 @@ namespace Polaris.Diagnostics
             foreach (KeyValuePair<AssemblyOwner, List<string>> pair in byOwner)
             {
                 string kinds = string.Join("/", pair.Value.Distinct().ToArray());
-                bool invisible = pair.Value.Any(k => k == "transpiler" || k == "IL 改写");
+                bool invisible = pair.Value.Any(k => k == "transpiler" || k == "IL rewrite");
 
                 scan.Suspects.Add(new ErrorSuspect
                 {
                     Owner = pair.Key,
                     Reason = invisible
-                        ? $"以 {kinds} 改写了 {methodDisplay}（IL 改写不会在堆栈里留下自己的帧）"
-                        : $"以 {kinds} 修改了 {methodDisplay}",
+                        ? $"rewrote {methodDisplay} via {kinds} (an IL rewrite leaves no frame of its own in the stack)"
+                        : $"modified {methodDisplay} via {kinds}",
                 });
             }
 
             // transpiler 排前面：它是唯一"堆栈上完全隐形"的那种，最需要被看见。
             scan.Suspects.Sort((a, b) => Rank(b).CompareTo(Rank(a)));
 
-            scan.Note = "被 " + string.Join("、", scan.Suspects
-                .Select(s => $"「{s.Owner.DisplayName}」").ToArray()) + " 修改过";
+            scan.Note = "modified by " + string.Join(", ", scan.Suspects
+                .Select(s => $"\"{s.Owner.DisplayName}\"").ToArray());
 
             return scan;
         }
 
         static int Rank(ErrorSuspect suspect)
-            => suspect.Reason != null && suspect.Reason.Contains("IL 改写") ? 1 : 0;
+            => suspect.Reason != null && suspect.Reason.Contains("IL rewrite") ? 1 : 0;
 
         /// <summary>
         /// 只有类型名和方法名（字符串堆栈那一路，没有 <see cref="MethodBase"/>）时，
@@ -168,7 +168,7 @@ namespace Polaris.Diagnostics
 
                 kinds.Add(kind);
 
-                if (kind == "transpiler" || kind == "IL 改写")
+                if (kind == "transpiler" || kind == "IL rewrite")
                 {
                     scan.HasIlRewrite = true;
                 }

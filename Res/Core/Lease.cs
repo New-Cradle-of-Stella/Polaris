@@ -33,7 +33,7 @@ namespace Polaris.Res.Core
             {
                 if (IsDisposed)
                 {
-                    throw new ObjectDisposedException(nameof(Lease<T>), $"租约已释放：{entry.Id}");
+                    throw new ObjectDisposedException(nameof(Lease<T>), $"Lease already released: {entry.Id}");
                 }
 
                 switch (entry.State)
@@ -49,11 +49,11 @@ namespace Polaris.Res.Core
                             ExceptionDispatchInfo.Capture(entry.Error).Throw();
                         }
 
-                        throw new ResourceLoadException(entry.Id, $"加载失败：{entry.Error?.Message}", entry.Error);
+                        throw new ResourceLoadException(entry.Id, $"Load failed: {entry.Error?.Message}", entry.Error);
 
                     default:
                         // M1/M2 的同步加载路径不会走到这里；留给 M4 的异步 Loading/Pending 状态。
-                        throw new InvalidOperationException($"资源尚未就绪：{entry.Id}（当前状态 {entry.State}）");
+                        throw new InvalidOperationException($"Resource is not ready yet: {entry.Id} (current state {entry.State})");
                 }
             }
         }
@@ -84,7 +84,7 @@ namespace Polaris.Res.Core
             // LeaseRegistry，这里先保证引用计数本身不会因为忘记 Dispose 而永久泄漏。
             try
             {
-                Plugin.Logger.LogWarning($"[PolarisRes] 检测到未释放的租约（由终结器回收）：{entry.Id}");
+                Plugin.Logger.LogWarning($"[PolarisRes] Detected an unreleased lease (reclaimed by the finalizer): {entry.Id}");
             }
             catch
             {

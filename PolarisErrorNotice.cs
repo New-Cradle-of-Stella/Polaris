@@ -168,12 +168,12 @@ namespace Polaris
             try
             {
                 pendingCount = file.Bind(ConfigSection, "PendingCount", 0,
-                    "上一局归档的模组相关错误种类数。标题画面告知页据此判断要不要弹出；" +
-                    "玩家确认后归零。");
+                    "How many classes of mod-related error the previous session archived. The title-screen notice page " +
+                    "uses this to decide whether to appear; it resets to zero once the player acknowledges it.");
                 pendingPath = file.Bind(ConfigSection, "PendingReportPath", "",
-                    "上一局写出的报告文件路径。");
+                    "Path of the report file written by the previous session.");
                 pendingMore = file.Bind(ConfigSection, "PendingMoreCount", 0,
-                    $"超出下面 {MaxPersistedLines} 条摘要之外、未逐条列出的错误种类数。");
+                    $"How many classes of error were not listed individually beyond the {MaxPersistedLines} summaries below.");
 
                 for (int i = 0; i < pendingLines.Length; i++)
                 {
@@ -184,7 +184,7 @@ namespace Polaris
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogError($"[Polaris] 绑定错误告知页的待读状态失败：{e}");
+                Plugin.Logger.LogError($"[Polaris] Failed to bind the pending state of the error notice page: {e}");
                 pendingCount = null;
                 return false;
             }
@@ -202,6 +202,21 @@ namespace Polaris
         const float PathH = 40f;
         const float ButtonRowH = 56f;
         const float HintH = 32f;
+
+        /// <summary>
+        /// 确认按钮上方的空行高度。
+        /// <para>
+        /// 需要它是因为两件事凑在一起：<c>Designer.Smallest()</c> 把 <c>item_margin_y_px</c> 归零，
+        /// 行与行之间没有任何间距；而 <c>addButtonT</c> 建完皮肤后会用
+        /// <c>val.h = skin.sheight</c> 覆盖掉这里传进去的 <see cref="ButtonH"/>——aBtnNel 的
+        /// 菱形装饰比标称高度高出一截。两者相加，按钮就顶到了上一行文字上。
+        /// </para>
+        /// <para>
+        /// 不改 <c>item_margin_y_px</c> 是因为它是整页共用的单值（理由同
+        /// <see cref="PolarisModWarning"/> 里那段注释），调大它会把每一条摘要都撑开。
+        /// </para>
+        /// </summary>
+        const float ButtonGapH = 24f;
 
         const float ButtonW = 260f;
         const float ButtonH = 38f;
@@ -332,7 +347,7 @@ namespace Polaris
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogError($"[Polaris] 错误告知页构建失败，本局跳过：{e}");
+                Plugin.Logger.LogError($"[Polaris] Failed to build the error notice page; skipped this session: {e}");
                 Teardown();
                 return false;
             }
@@ -353,7 +368,7 @@ namespace Polaris
             float contentH = HeadingH + SummaryH + shown * LineH
                               + (more > 0 ? MoreH : 0f)
                               + (hasPath ? PathH : 0f)
-                              + ButtonRowH + HintH;
+                              + ButtonGapH + ButtonRowH + HintH;
 
             host = IN.CreateGob(scene.gameObject, "-polaris_error_notice");
             IN.setZ(host.transform, OverlayZ);
@@ -390,6 +405,8 @@ namespace Polaris
             {
                 AddParagraph(w.PathLabel + Clip(path, 90), PathH, PathSize, PathColor, font, border: false);
             }
+
+            AddSpacer(ButtonGapH);
 
             aBtn confirm = designer.addButtonT<aBtnNel>(new DsnDataButton
             {
@@ -437,6 +454,21 @@ namespace Polaris
             designer.Br();
         }
 
+        /// <summary>
+        /// 占位空行。空文本的 <c>FillBlock</c> 照样按 <c>heightPixel</c> 占位
+        /// （<c>get_sheight_px</c> 取的是"文字高"与它的较大者），底色默认全透明，
+        /// 所以这就是一行看不见的间距。
+        /// </summary>
+        static void AddSpacer(float height)
+        {
+            designer.addP(new DsnDataP("", false)
+            {
+                swidth = designer.use_w,
+                sheight = height,
+            });
+            designer.Br();
+        }
+
         static string Clip(string text, int max)
         {
             if (string.IsNullOrEmpty(text) || text.Length <= max)
@@ -472,7 +504,7 @@ namespace Polaris
             catch (Exception e)
             {
                 // 落不了盘只影响"下次还弹一次"，不影响本局。
-                Plugin.Logger.LogWarning($"[Polaris] 错误告知页的确认状态没能写入配置：{e.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Could not write the acknowledged state of the error notice page to config: {e.Message}");
             }
         }
 

@@ -21,8 +21,8 @@ namespace Polaris.PUI.HotReload
             if (version != PuiProtocol.Version)
             {
                 throw new InvalidOperationException(
-                    $"PUI 热重载线协议版本不匹配：编辑器发来 v{version}，本游戏侧是 v{PuiProtocol.Version}。" +
-                    "请让 PolarisTools 扩展与 Polaris 保持同一次构建。");
+                    $"PUI hot reload wire protocol version mismatch: the editor sent v{version}, this game side is v{PuiProtocol.Version}. " +
+                    "Keep the PolarisTools extension and Polaris on the same build.");
             }
 
             string puiName = r.ReadString();
@@ -261,6 +261,7 @@ namespace Polaris.PUI.HotReload
                             UvW = r.ReadDouble(),
                             UvH = r.ReadDouble(),
                             ImageSource = r.ReadString(),
+                            ImageResource = r.ReadString(),
                         };
                         break;
 

@@ -86,7 +86,7 @@ namespace Polaris.Res.Import
             {
                 // 拼错键 / 类型不匹配：报错但不让这一个文件的手滑拖垮整次加载，回退到内置默认值。
                 Plugin.Logger.LogError(
-                    $"[PolarisRes] 导入元数据里的 \"{sectionName}\" 节有误（用于 {absoluteFilePath}）：{ex.Message}，已回退到内置默认值。");
+                    $"[PolarisRes] Section \"{sectionName}\" in the import metadata is malformed (used for {absoluteFilePath}): {ex.Message}. Falling back to built-in defaults.");
                 settings = new T();
             }
 

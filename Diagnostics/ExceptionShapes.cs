@@ -37,63 +37,63 @@ namespace Polaris.Diagnostics
                 case "TypeLoadException":
                     return new Shape
                     {
-                        Diagnosis = "版本不匹配：有代码在找一个此刻并不存在的方法/字段/类型。"
-                                    + "通常是某个模组照着另一个版本的游戏（或另一个版本的 Polaris）编译的。",
-                        Action = "确认游戏版本与该模组要求的版本一致；优先更新模组，其次考虑回退游戏版本。",
+                        Diagnosis = "Version mismatch: some code is looking for a method/field/type that does not exist right now."
+                                    + " Usually a mod compiled against a different version of the game (or of Polaris).",
+                        Action = "Check that the game version matches what the mod requires; update the mod first, and only then consider rolling the game back.",
                     };
 
                 case "ReflectionTypeLoadException":
                     return new Shape
                     {
-                        Diagnosis = "某个程序集里有类型加载不了，通常是它依赖的 dll 没装，或版本对不上。",
-                        Action = "看下面异常消息里点名的程序集，把缺的依赖补齐。",
+                        Diagnosis = "Some assembly has types that will not load, usually because a dll it depends on is missing or is the wrong version.",
+                        Action = "Look at the assembly named in the exception message below and install the missing dependency.",
                     };
 
                 case "FileNotFoundException":
                     return LooksLikeAssembly(message)
                         ? new Shape
                         {
-                            Diagnosis = "缺依赖：有模组要加载一个不存在的程序集。",
-                            Action = "按该模组的说明补装它依赖的 dll（Polaris 系列的依赖应放在 plugins/Polaris/libs/）。",
+                            Diagnosis = "Missing dependency: a mod is trying to load an assembly that is not there.",
+                            Action = "Install the dll it depends on as described by that mod (Polaris-family dependencies belong in plugins/Polaris/libs/).",
                         }
                         : null;
 
                 case "BadImageFormatException":
                     return new Shape
                     {
-                        Diagnosis = "有 dll 读不动：文件损坏、下载不完整，或是给别的运行时/位数编译的。",
-                        Action = "重新下载该 dll；确认它是给 BepInEx 6（Mono）用的版本。",
+                        Diagnosis = "A dll cannot be read: the file is corrupt, was downloaded incompletely, or was built for a different runtime/bitness.",
+                        Action = "Re-download that dll and confirm it is the build for BepInEx 6 (Mono).",
                     };
 
                 case "AmbiguousMatchException":
                     return new Shape
                     {
-                        Diagnosis = "反射/Harmony 匹配到了多个同名成员却没指定参数类型。"
-                                    + "游戏更新新增一个重载就会突然触发——Polaris 自己在 TX.Get 上栽过一次。",
-                        Action = "报给该模组作者，附上下面的方法名；这是模组侧一行代码就能修的问题。",
+                        Diagnosis = "Reflection/Harmony matched several members with the same name without specifying parameter types."
+                                    + " A game update that adds one overload triggers this out of nowhere -- Polaris itself got caught by this on TX.Get.",
+                        Action = "Report it to that mod's author with the method name below; this is a one-line fix on the mod side.",
                     };
 
                 case "InvalidCastException":
                     return SameTypeOnBothSides(message)
                         ? new Shape
                         {
-                            Diagnosis = "同一个类型被加载了两遍：多半是同一个依赖 dll 在 plugins 下存在多份拷贝。",
-                            Action = "在 plugins 目录里搜一下这个 dll，只保留一份（版本最高的那份）。",
+                            Diagnosis = "The same type was loaded twice: usually the same dependency dll exists in more than one copy under plugins.",
+                            Action = "Search for that dll under the plugins directory and keep only one copy (the highest version).",
                         }
                         : null;
 
                 case "OutOfMemoryException":
                     return new Shape
                     {
-                        Diagnosis = "内存耗尽。装了大量高清素材类模组时最常见。",
-                        Action = "减少同时启用的资源类模组；确认游戏跑在 64 位下。",
+                        Diagnosis = "Out of memory. Most common with a lot of high-resolution asset mods installed.",
+                        Action = "Enable fewer asset mods at the same time, and confirm the game is running 64-bit.",
                     };
 
                 case "DllNotFoundException":
                     return new Shape
                     {
-                        Diagnosis = "缺原生库（非托管 dll）。",
-                        Action = "按该模组说明补装它的原生依赖，并确认没被杀毒软件拦掉。",
+                        Diagnosis = "Missing native library (unmanaged dll).",
+                        Action = "Install the mod's native dependency as it describes, and confirm antivirus has not blocked it.",
                     };
 
                 default:

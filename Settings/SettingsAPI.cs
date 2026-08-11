@@ -73,8 +73,8 @@ namespace Polaris.Settings
             if (ScreenBuilt)
             {
                 Plugin.Logger.LogWarning(
-                    $"[Polaris.Settings] 组 {group.ModId} 在设置界面建好之后才注册，本局不会显示。" +
-                    "请把注册挪到插件的 Awake 里。");
+                    $"[Polaris.Settings] Group {group.ModId} registered after the settings screen was built, so it will not show this session. " +
+                    "Move the registration into the plugin's Awake.");
             }
 
             return group;
@@ -95,7 +95,7 @@ namespace Polaris.Settings
         {
             if (string.IsNullOrEmpty(modId))
             {
-                throw new ArgumentException("modId 不能为空。", nameof(modId));
+                throw new ArgumentException("modId cannot be empty.", nameof(modId));
             }
 
             return new SettingsScope(this, modId);

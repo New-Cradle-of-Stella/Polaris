@@ -49,7 +49,7 @@ namespace Polaris.Settings
         {
             if (string.IsNullOrEmpty(id))
             {
-                throw new ArgumentException("设置项 Id 不能为空", nameof(id));
+                throw new ArgumentException("Setting Id cannot be empty", nameof(id));
             }
 
             Id = id;
@@ -115,7 +115,7 @@ namespace Polaris.Settings
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogWarning($"[Polaris.Settings] 回写 {RowKey} 的字段失败：{e}");
+                Plugin.Logger.LogWarning($"[Polaris.Settings] Failed to write back the field of {RowKey}: {e}");
             }
 
             if (!notify)
@@ -129,7 +129,7 @@ namespace Polaris.Settings
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogWarning($"[Polaris.Settings] {RowKey} 的 Changed 订阅者抛异常：{e}");
+                Plugin.Logger.LogWarning($"[Polaris.Settings] A Changed subscriber of {RowKey} threw an exception: {e}");
             }
         }
 

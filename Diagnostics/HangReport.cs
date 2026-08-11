@@ -52,10 +52,10 @@ namespace Polaris.Diagnostics
         /// <summary>控制台与报告共用的一行摘要。</summary>
         internal string OneLine()
         {
-            string where = Activity ?? "（当时不在任何 Polaris 埋点里）";
+            string where = Activity ?? "(was not inside any Polaris instrumentation point)";
             return DuringBoot
-                ? $"启动阶段卡住约 {StallSeconds:0} 秒：{where}"
-                : $"主线程停止推进约 {StallSeconds:0} 秒（frame {LastFrame}）：{where}";
+                ? $"stuck for about {StallSeconds:0}s during startup: {where}"
+                : $"main thread stopped advancing for about {StallSeconds:0}s (frame {LastFrame}): {where}";
         }
     }
 }

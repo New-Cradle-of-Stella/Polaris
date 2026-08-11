@@ -38,12 +38,12 @@ namespace Polaris.Res.Runtime
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger.LogError($"[PolarisRes] 自动扫描程序集 {assembly.GetName().Name} 失败：{ex}");
+                    Plugin.Logger.LogError($"[PolarisRes] Failed to auto-scan assembly {assembly.GetName().Name}: {ex}");
                 }
             }
 
             Plugin.Logger.LogMessage(
-                $"[PolarisRes] 自动资源发现完成：共发现 {totalFolders} 个资源文件夹，绑定 {totalFields} 个资源字段。");
+                $"[PolarisRes] Automatic resource discovery finished: found {totalFolders} resource folders, bound {totalFields} resource fields.");
         }
 
         /// <returns>(挂载的不同文件夹数, 成功绑定的字段数)——都只统计这个程序集自己的。</returns>
@@ -75,7 +75,7 @@ namespace Polaris.Res.Runtime
                 catch (Exception ex)
                 {
                     Plugin.Logger.LogError(
-                        $"[PolarisRes] {type.FullName} 的 [PolarisResourceFolder(\"{folderAttr.Folder}\")] 路径无效：{ex.Message}");
+                        $"[PolarisRes] The [PolarisResourceFolder(\"{folderAttr.Folder}\")] path on {type.FullName} is invalid: {ex.Message}");
                     continue;
                 }
 
@@ -94,7 +94,7 @@ namespace Polaris.Res.Runtime
             if (mountedFolders.Count > 0)
             {
                 Plugin.Logger.LogInfo(
-                    $"[PolarisRes] {modId}：发现 {mountedFolders.Count} 个资源文件夹，绑定 {fieldsBound} 个资源字段。");
+                    $"[PolarisRes] {modId}: found {mountedFolders.Count} resource folders, bound {fieldsBound} resource fields.");
             }
 
             return (mountedFolders.Count, fieldsBound);
@@ -117,8 +117,8 @@ namespace Polaris.Res.Runtime
             if (orphanCount > 0)
             {
                 Plugin.Logger.LogWarning(
-                    $"[PolarisRes] {type.FullName} 有 {orphanCount} 个 [PolarisResource] 字段，但类上缺少 " +
-                    "[PolarisResourceFolder]，已跳过自动绑定。");
+                    $"[PolarisRes] {type.FullName} has {orphanCount} [PolarisResource] fields but the class is missing " +
+                    "[PolarisResourceFolder]; auto-binding skipped.");
             }
         }
     }

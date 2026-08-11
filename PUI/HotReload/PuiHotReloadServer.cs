@@ -98,7 +98,7 @@ namespace Polaris.PUI.HotReload
                         break;
                     }
 
-                    Plugin.Logger?.LogError($"[Polaris.PUI.HotReload] 管道处理异常：{ex}");
+                    Plugin.Logger?.LogError($"[Polaris.PUI.HotReload] Pipe handling exception: {ex}");
                 }
             }
         }

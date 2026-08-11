@@ -36,7 +36,7 @@ namespace Polaris.API
             if (amount <= 0)
             {
                 return new MoneyChangeResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "增加量必须为正；要扣钱请用 Spend。"),
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "Amount to add must be positive; use Spend to deduct."),
                     Amount(currency));
             }
 
@@ -61,7 +61,7 @@ namespace Polaris.API
             if (amount <= 0)
             {
                 return new MoneyChangeResult(
-                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "扣除量必须为正；要加钱请用 Add。"),
+                    GameActionResult.Fail(GameActionStatus.InvalidArgument, "Amount to deduct must be positive; use Add to credit."),
                     Amount(currency));
             }
 
@@ -69,7 +69,7 @@ namespace Polaris.API
             if (balance < amount)
             {
                 return new MoneyChangeResult(
-                    GameActionResult.Fail(GameActionStatus.InsufficientResource, $"余额不足：有 {balance}，要 {amount}。"),
+                    GameActionResult.Fail(GameActionStatus.InsufficientResource, $"Insufficient balance: have {balance}, need {amount}."),
                     balance);
             }
 
@@ -101,6 +101,6 @@ namespace Polaris.API
 
         public bool Succeeded => Outcome.Succeeded;
 
-        public override string ToString() => $"{Outcome} 余额={Balance}";
+        public override string ToString() => $"{Outcome} balance={Balance}";
     }
 }

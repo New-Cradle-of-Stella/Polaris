@@ -34,7 +34,7 @@ namespace Polaris.Lang
         /// 截图或复制给作者时不会因为语言不同而对不上。
         /// </summary>
         internal string Describe()
-            => $"{Key}  —  {NameOf(Kept)} (used) ↔ {NameOf(Ignored)} (ignored)";
+            => $"{Key}  --  {NameOf(Kept)} (used) <-> {NameOf(Ignored)} (ignored)";
 
         static string NameOf(Assembly assembly)
         {

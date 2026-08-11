@@ -65,7 +65,7 @@ namespace Polaris.Diagnostics
                 Type declaring = SafeDeclaringType(method);
                 var entry = new ErrorFrame
                 {
-                    TypeName = declaring?.FullName ?? "<未知类型>",
+                    TypeName = declaring?.FullName ?? "<unknown type>",
                     MethodName = method.Name,
                     Owner = AssemblyOwnerIndex.Of(declaring?.Assembly),
                 };

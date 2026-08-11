@@ -132,6 +132,6 @@ namespace Polaris.API
         }
 
         internal static GameActionResult Expired()
-            => GameActionResult.Fail(GameActionStatus.TargetUnavailable, "角色句柄已失效（地图已切换或目标已离场）。");
+            => GameActionResult.Fail(GameActionStatus.TargetUnavailable, "Character handle is stale (the map changed or the target left).");
     }
 }

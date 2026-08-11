@@ -26,7 +26,7 @@ namespace Polaris.Diagnostics
         /// <param name="reason">一句话说清为什么这一局不能继续，给玩家看。</param>
         public FatalError(string source, FatalText reason)
         {
-            Source = string.IsNullOrEmpty(source) ? "未知模块" : source;
+            Source = string.IsNullOrEmpty(source) ? "unknown module" : source;
             Reason = reason;
         }
 

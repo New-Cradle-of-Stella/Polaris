@@ -95,11 +95,11 @@ namespace Polaris.API
         /// 硬做一个会让两边对"现在是不是暂停"的判断打架。详见 <see cref="GameCapabilities"/>。
         /// </summary>
         public GameActionResult Pause(string ownerKey)
-            => GameActionResult.Unsupported("本版本没有可用的全局暂停入口。");
+            => GameActionResult.Unsupported("This game version has no usable global pause entry point.");
 
         /// <summary>与 <see cref="Pause"/> 成对，同样未支持。</summary>
         public GameActionResult Resume(string ownerKey)
-            => GameActionResult.Unsupported("本版本没有可用的全局暂停入口。");
+            => GameActionResult.Unsupported("This game version has no usable global pause entry point.");
 
         internal void PumpUpdate() => Raise(UpdatingHandlers, "Loop.Updating");
 
@@ -197,7 +197,7 @@ namespace Polaris.API
         static void Report(Exception ex, Delegate handler, string what)
         {
             MethodInfo method = handler?.Method;
-            PolarisAPI.Errors.Report(ex, $"{what} 回调", method?.DeclaringType?.Assembly);
+            PolarisAPI.Errors.Report(ex, $"{what} callback", method?.DeclaringType?.Assembly);
         }
     }
 }

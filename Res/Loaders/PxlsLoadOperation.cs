@@ -66,7 +66,7 @@ namespace Polaris.Res.Loaders
 
             if (character.errorOccured())
             {
-                Fail(new ResourceLoadException(handle.Id, $"{title} 解析失败：{character.error_str}"));
+                Fail(new ResourceLoadException(handle.Id, $"{title} failed to parse: {character.error_str}"));
                 return;
             }
 
@@ -126,7 +126,7 @@ namespace Polaris.Res.Loaders
                         if (path == null)
                         {
                             throw new ResourceLoadException(
-                                handle.Id, $"{title} 缺少外置纹理 #{i}（三级候选文件名都没找到，见 PxlsNaming）。");
+                                handle.Id, $"{title} is missing external texture #{i} (none of the three candidate file names were found; see PxlsNaming).");
                         }
 
                         byte[] bytes;
@@ -136,7 +136,7 @@ namespace Polaris.Res.Loaders
                         }
                         catch (Exception ex)
                         {
-                            throw new ResourceLoadException(handle.Id, $"读取 {title} 的外置纹理 #{i} 失败：{path}", ex);
+                            throw new ResourceLoadException(handle.Id, $"Failed to read external texture #{i} of {title}: {path}", ex);
                         }
 
                         // 复用现有 TextureLoader/ImportMetaResolver：这些外置贴图依然吃
@@ -157,7 +157,7 @@ namespace Polaris.Res.Loaders
                     if (embedded == null)
                     {
                         throw new ResourceLoadException(
-                            handle.Id, $"{title} 既没有外置纹理也没有内嵌图像，PXLS 文件可能已损坏。");
+                            handle.Id, $"{title} has neither external textures nor an embedded image; the PXLS file may be corrupt.");
                     }
 
                     image = new XX.MImage(embedded) { dispose_texture = false };
@@ -172,8 +172,8 @@ namespace Polaris.Res.Loaders
                 if (!ReferenceEquals(roundTrip, image))
                 {
                     Plugin.Logger.LogError(
-                        $"[PolarisRes] {title} 的 assignMI 校验失败：getMI(no_make_mi:true) 返回的不是刚绑定的 MImage，" +
-                        "可能有顺序回归，请检查 PxlsLoadOperation.Finish 的调用顺序。");
+                        $"[PolarisRes] assignMI check failed for {title}: getMI(no_make_mi:true) did not return the MImage that was just bound. " +
+                        "There may be an ordering regression -- check the call order in PxlsLoadOperation.Finish.");
                 }
 
                 succeeded = true;
@@ -185,7 +185,7 @@ namespace Polaris.Res.Loaders
                 // Finish 执行到一半就失败，可能已经建了几张纹理/绑了部分 MTRX 状态，
                 // 必须清理干净，不能就地放着——否则残留半初始化的 OMI/OMeshImages 条目或纹理泄漏。
                 CleanupPartialFinish();
-                Fail(ex as ResourceLoadException ?? new ResourceLoadException(handle.Id, $"{title} 完成阶段失败：{ex.Message}", ex));
+                Fail(ex as ResourceLoadException ?? new ResourceLoadException(handle.Id, $"{title} failed during the finish stage: {ex.Message}", ex));
             }
         }
 

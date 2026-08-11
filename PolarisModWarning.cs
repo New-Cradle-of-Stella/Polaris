@@ -384,7 +384,7 @@ namespace Polaris
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogError($"[Polaris] 模组警示页构建失败，本局跳过：{e}");
+                Plugin.Logger.LogError($"[Polaris] Failed to build the mod warning page; skipped this session: {e}");
                 Teardown();
                 return false;
             }
@@ -620,7 +620,7 @@ namespace Polaris
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogWarning($"[Polaris] 取语言族 {family} 的字体失败，改用当前语言字体：{e.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Failed to get the font for language family {family}; falling back to the current language font: {e.Message}");
             }
 
             return TX.getDefaultFont();
@@ -645,7 +645,7 @@ namespace Polaris
             catch (Exception e)
             {
                 // 打不开浏览器不影响本页的任何其它功能，记一条日志就够——网址还印在页面上。
-                Plugin.Logger.LogWarning($"[Polaris] 打开官方规则页失败：{e.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Failed to open the official rules page: {e.Message}");
             }
         }
 
@@ -728,7 +728,7 @@ namespace Polaris
             catch (Exception e)
             {
                 // 落不了盘只影响"下次还弹一次"，不影响本局，所以不往上抛。
-                Plugin.Logger.LogWarning($"[Polaris] 模组警示页的确认状态没能写入配置：{e.Message}");
+                Plugin.Logger.LogWarning($"[Polaris] Could not write the acknowledged state of the mod warning page to config: {e.Message}");
             }
         }
 
@@ -751,11 +751,11 @@ namespace Polaris
             {
                 acknowledged = file.Bind(
                     ConfigSection, ConfigKey, false,
-                    "玩家是否已经确认过标题画面的模组环境警示页。改回 false（或删掉本文件）会让它重新弹一次。");
+                    "Whether the player has acknowledged the mod environment warning page on the title screen. Setting it back to false (or deleting this file) makes it appear again.");
             }
             catch (Exception e)
             {
-                Plugin.Logger.LogError($"[Polaris] 绑定模组警示页的确认状态失败：{e}");
+                Plugin.Logger.LogError($"[Polaris] Failed to bind the acknowledged state of the mod warning page: {e}");
                 acknowledged = null;
             }
 

@@ -214,11 +214,11 @@ namespace Polaris.Diagnostics
             ErrorReportWriter.AppendStorm(existing);
 
             Plugin.Logger.LogError(
-                $"[Polaris] 事件 #{existing.Index} 正在持续反复发生"
-                + $"（{DiagnosticsConfig.StormWindowSeconds:0.#} 秒内 {existing.StormBurst} 次，累计 {existing.Count} 次）："
+                $"[Polaris] Event #{existing.Index} is happening repeatedly"
+                + $" ({existing.StormBurst} times within {DiagnosticsConfig.StormWindowSeconds:0.#}s, {existing.Count} in total): "
                 + $"{existing.OneLine()}");
             Plugin.Logger.LogError(
-                "[Polaris] 这类错误多半长在每帧都会走的代码上，对应的功能这一局已经完全不工作了。");
+                "[Polaris] This class of error most likely lives in code that runs every frame; the matching feature is now completely broken for this session.");
         }
 
         static bool WithinRateLimit()
@@ -315,21 +315,21 @@ namespace Polaris.Diagnostics
                     total += incident.Count;
                 }
 
-                string text = $"[Polaris] 本局共记录 {incidents.Count} 类错误，累计发生 {total} 次。";
+                string text = $"[Polaris] Recorded {incidents.Count} classes of error this session, {total} occurrences in total.";
 
                 if (Storms > 0)
                 {
-                    text += $"其中 {Storms} 类在持续反复发生。";
+                    text += $" {Storms} of them are happening repeatedly.";
                 }
 
                 if (Suppressed > 0)
                 {
-                    text += $"另有 {Suppressed} 类因超出上限未记录。";
+                    text += $" {Suppressed} more classes were not recorded because the cap was reached.";
                 }
 
                 if (VanillaOnly > 0)
                 {
-                    text += $"另有 {VanillaOnly} 次与模组无关的报错未归档。";
+                    text += $" {VanillaOnly} more mod-unrelated errors were not archived.";
                 }
 
                 return text;

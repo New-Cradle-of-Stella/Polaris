@@ -40,7 +40,7 @@ namespace Polaris.Res.Runtime
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger.LogError($"[PolarisRes] 主线程派发队列中的动作抛出异常：{ex}");
+                    Plugin.Logger.LogError($"[PolarisRes] An action in the main-thread dispatch queue threw an exception: {ex}");
                 }
             }
         }

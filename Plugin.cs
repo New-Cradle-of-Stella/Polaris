@@ -31,7 +31,7 @@ namespace Polaris
             // PatchAllIndividually 当初要解决的那类失败模式，同一个坑不该在这里再踩一次。
             PolarisAPI.Errors.Guard(
                 PolarisAPI.Paths.EnsureDirectories,
-                "创建 Polaris 目录结构");
+                "creating the Polaris directory structure");
 
             // 崩溃与卡死检测。三步都要在这里、都要在目录建好之后：
             //   1. 阈值：看门狗线程一起跑就得带着它们，等不到 Start 阶段的设置项扫描；
@@ -39,8 +39,8 @@ namespace Polaris
             //   3. 哨兵：先读掉上一局留下的标记（那是崩溃的唯一证据），再为本局写一个新的。
             Diagnostics.DiagnosticsConfig.Resolve();
             Diagnostics.ErrorReportWriter.PrimeEnvironment();
-            PolarisAPI.Errors.Guard(Diagnostics.SessionSentinel.Install, "登记本局会话哨兵");
-            PolarisAPI.Errors.Guard(ReportLastSession, "读取上一局的结束情况");
+            PolarisAPI.Errors.Guard(Diagnostics.SessionSentinel.Install, "registering this session's sentinel");
+            PolarisAPI.Errors.Guard(ReportLastSession, "reading how the previous session ended");
             Diagnostics.Watchdog.Install();
 
             // 内置文案表。三张表都必须早于 Start 阶段的设置项扫描：绑定配置文件时要拿说明
@@ -69,7 +69,7 @@ namespace Polaris
             }
 
             Logger.LogWarning($"[Polaris] {last.OneLine()}");
-            Logger.LogWarning($"[Polaris] 停在何处：{last.Where()}");
+            Logger.LogWarning($"[Polaris] Stalled at: {last.Where()}");
 
             Diagnostics.ErrorReportWriter.AppendPreviousSession(last);
             PolarisErrorNotice.AdoptLastSession(last);
@@ -97,7 +97,7 @@ namespace Polaris
                 {
                     // 面包屑：补丁应用是启动阶段少数几个"会执行大量反射与 IL 生成"的地方，
                     // 卡在这里时看门狗要能说出卡在哪一个补丁上。
-                    using (Diagnostics.MainThreadBeat.Enter($"应用补丁 {type.Name}", type.Assembly))
+                    using (Diagnostics.MainThreadBeat.Enter($"applying patch {type.Name}", type.Assembly))
                     {
                         // 没标 [HarmonyPatch] 的类型，Patch() 是空操作。
                         if (harmony.CreateClassProcessor(type).Patch() != null)
@@ -111,12 +111,12 @@ namespace Polaris
                     // 责任人直接点名（就是 Polaris 自己——这些补丁类都在本程序集里），
                     // 不必走堆栈推断。归因、去重与报告归档都由 Errors 统一负责，这里只补一句
                     // 玩家最需要知道的后果。
-                    PolarisAPI.Errors.Report(ex, $"应用补丁 {type.Name}", type.Assembly);
-                    Logger.LogError($"[Polaris] 补丁 {type.Name} 负责的功能本局不可用。");
+                    PolarisAPI.Errors.Report(ex, $"applying patch {type.Name}", type.Assembly);
+                    Logger.LogError($"[Polaris] The feature owned by patch {type.Name} is unavailable this session.");
                 }
             }
 
-            Logger.LogMessage($"[Polaris] 已应用 {applied} 个 Harmony 补丁。");
+            Logger.LogMessage($"[Polaris] Applied {applied} Harmony patches.");
         }
 
         /// <summary>
@@ -136,9 +136,9 @@ namespace Polaris
 
             // 每个子系统各自兜底：一个起不来不该连累另外两个，更不该把异常抛回 Start
             // ——那会让后面的设置项扫描也一起不执行。
-            InitSubsystem("资源", Res.Runtime.ResRuntime.Init);
+            InitSubsystem("resource", Res.Runtime.ResRuntime.Init);
 
-            InitSubsystem("本地化", () =>
+            InitSubsystem("localization", () =>
             {
                 Lang.PlangRegistryScanner.ScanAll();
                 PolarisAPI.Localization.RegisterResolver(Lang.PlangRuntime.Get);
@@ -157,9 +157,9 @@ namespace Polaris
         /// </summary>
         private static void InitSubsystem(string name, Action init)
         {
-            if (!PolarisAPI.Errors.Guard(init, $"{name}子系统初始化"))
+            if (!PolarisAPI.Errors.Guard(init, $"{name} subsystem initialization"))
             {
-                Logger.LogError($"[Polaris] {name}子系统初始化失败，它的功能本局不可用。");
+                Logger.LogError($"[Polaris] The {name} subsystem failed to initialize; its features are unavailable this session.");
             }
         }
 
@@ -230,7 +230,7 @@ namespace Polaris
                 Logger.LogMessage(summary);
             }
 
-            PolarisAPI.Errors.Guard(PolarisErrorNotice.PersistPending, "保存上一局错误摘要");
+            PolarisAPI.Errors.Guard(PolarisErrorNotice.PersistPending, "saving the previous session's error summary");
 
             // 最后一件事：删掉会话哨兵，这是"这一局是正常结束的"唯一表达方式。必须排在
             // PersistPending 之后——那一步才是正常退出路径下真正把摘要交给下一局的地方，
@@ -277,6 +277,9 @@ namespace Polaris
                                                      .+=.                                                
                                                      .--                                                 
                                                       ..                                                 
+                                                 
+                                                  AIC-Polaris
+                                       by Alon_ · github.com/AAAA9731
                 """;
     }
 }

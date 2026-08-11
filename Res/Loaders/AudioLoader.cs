@@ -33,7 +33,7 @@ namespace Polaris.Res.Loaders
                 return FromOgg(bytes, id);
             }
 
-            throw new ResourceLoadException(id, $"不支持的音频扩展名：\"{extension}\"（当前只支持 .wav/.ogg）。");
+            throw new ResourceLoadException(id, $"Unsupported audio extension: \"{extension}\" (only .wav/.ogg are supported).");
         }
 
         private static AudioClip FromOgg(byte[] bytes, ResourceId id)
@@ -46,7 +46,7 @@ namespace Polaris.Res.Loaders
                 long totalSamples = reader.TotalSamples;
                 if (totalSamples <= 0 || channels <= 0)
                 {
-                    throw new ResourceLoadException(id, "ogg 解码结果为空（TotalSamples/Channels <= 0）。");
+                    throw new ResourceLoadException(id, "ogg decode produced nothing (TotalSamples/Channels <= 0).");
                 }
 
                 float[] samples = new float[totalSamples * channels];

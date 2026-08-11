@@ -40,7 +40,7 @@ namespace Polaris.PUI
         {
             if (!PolarisUIAPI.Pui.TryGet(puiName, out PUIRuntime runtime))
             {
-                throw new ArgumentException($"「{puiName}」不是已注册的 PUI", nameof(puiName));
+                throw new ArgumentException($"\"{puiName}\" is not a registered PUI", nameof(puiName));
             }
 
             return AddCategory(name, displayName, runtime.Handler, canEnter, insertIndex);

@@ -69,7 +69,7 @@ namespace Polaris.PUI
         {
             if (string.IsNullOrEmpty(puiOrGraphName))
             {
-                throw new ArgumentException("PUI / 状态机名称不能为空", nameof(puiOrGraphName));
+                throw new ArgumentException("PUI / state machine name cannot be empty", nameof(puiOrGraphName));
             }
 
             if (PolarisUIAPI.Pui.TryGet(puiOrGraphName, out PUIRuntime pui))
@@ -84,7 +84,7 @@ namespace Polaris.PUI
                 return;
             }
 
-            throw new ArgumentException($"「{puiOrGraphName}」既不是已注册的 PUI，也不是已注册的 PUI 状态机（图）", nameof(puiOrGraphName));
+            throw new ArgumentException($"\"{puiOrGraphName}\" is neither a registered PUI nor a registered PUI state machine (graph)", nameof(puiOrGraphName));
         }
 
         /// <summary>

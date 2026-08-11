@@ -32,7 +32,7 @@ namespace Polaris.Diagnostics
         static readonly AssemblyOwner UnknownOwner = new AssemblyOwner
         {
             Kind = OwnerKind.Unknown,
-            DisplayName = "未知",
+            DisplayName = "unknown",
         };
 
         // ================== 对外查询 ==================
