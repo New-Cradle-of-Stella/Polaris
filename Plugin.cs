@@ -4,6 +4,7 @@ using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.Mono;
 using HarmonyLib;
+using UnityEngine.SceneManagement;
 
 namespace Polaris
 {
@@ -53,8 +54,23 @@ namespace Polaris
             harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
             PatchAllIndividually();
 
+            // Unity 自己的场景生命周期不需要 Harmony：SceneManager 本来就有事件。订阅一次留到
+            // 进程结束，不需要反订阅。
+            SceneManager.sceneLoaded += OnUnitySceneLoaded;
+            SceneManager.sceneUnloaded += OnUnitySceneUnloaded;
+            SceneManager.activeSceneChanged += OnUnityActiveSceneChanged;
+
             Logger.LogMessage(Logo);
         }
+
+        static void OnUnitySceneLoaded(Scene scene, LoadSceneMode mode)
+            => API.LifecycleCallbacks.PublishSceneLoaded(scene.name, scene.buildIndex, mode == LoadSceneMode.Additive);
+
+        static void OnUnitySceneUnloaded(Scene scene)
+            => API.LifecycleCallbacks.PublishSceneUnloaded(scene.name, scene.buildIndex);
+
+        static void OnUnityActiveSceneChanged(Scene previous, Scene current)
+            => API.LifecycleCallbacks.PublishActiveSceneChanged(previous.name, current.name);
 
         /// <summary>
         /// 上一局没有正常结束时，把结论摊到控制台、写进本局报告、并给标题画面的告知页上膛。
@@ -103,6 +119,7 @@ namespace Polaris
                         if (harmony.CreateClassProcessor(type).Patch() != null)
                         {
                             applied++;
+                            Infra.CallbackPatchRegistry.ReportApplied(type);
                         }
                     }
                 }
@@ -113,6 +130,7 @@ namespace Polaris
                     // 玩家最需要知道的后果。
                     PolarisAPI.Errors.Report(ex, $"applying patch {type.Name}", type.Assembly);
                     Logger.LogError($"[Polaris] The feature owned by patch {type.Name} is unavailable this session.");
+                    Infra.CallbackPatchRegistry.ReportFailed(type, ex);
                 }
             }
 
@@ -177,6 +195,7 @@ namespace Polaris
             Diagnostics.MainThreadBeat.Beat(UnityEngine.Time.frameCount);
 
             PolarisAPI.Game.Pump();
+            PolarisAPI.GameMenu.Pump();
         }
 
         /// <summary>
@@ -206,6 +225,14 @@ namespace Polaris
         private void OnApplicationPause(bool isPaused)
         {
             Diagnostics.Watchdog.SetPaused(isPaused);
+            API.LifecycleCallbacks.PublishApplicationPauseChanged(isPaused);
+        }
+
+        /// <summary>物理步进；只驱动新版 <c>Callbacks.Loop.FixedUpdating</c>，不进普通队列——
+        /// 队列语义（跨领域因果顺序）对物理步进没有意义，同步直发即可。</summary>
+        private void FixedUpdate()
+        {
+            API.LoopCallbacks.RaiseFixedUpdating();
         }
 
         /// <summary>
@@ -219,6 +246,9 @@ namespace Polaris
             // 先通知能力层的订阅者：这是它们做快速收尾的唯一时机，排在看门狗停掉之前，
             // 万一某个订阅者在这里卡住，那还应该被当成卡死记下来。
             PolarisAPI.Game.Loop.RaiseStopping();
+
+            // 只清零本地标志，不调用 PauseMem/ResumeMem：进程都要退出了，没有必要主动恢复世界。
+            API.GameMenuPauseRuntime.Reset();
 
             // 第一件事：停掉看门狗。这之后 Unity 不再调 Update，而进程还要活一会儿（存档、淡出、
             // 资源释放），不停掉就会把正常的退出过程判成卡死，还顺手给下一局上一发误报。

@@ -56,6 +56,12 @@ namespace Polaris.API
         public AudioGameAPI Audio { get; } = new();
 
         /// <summary>
+        /// 下游模组订阅游戏内回调的统一入口：生命周期、循环、世界、角色、输入……
+        /// 见 <see cref="GameCallbacksAPI"/>；本局每条回调通不通见 <see cref="GameCallbackStatus"/>。
+        /// </summary>
+        public GameCallbacksAPI Callbacks { get; } = new();
+
+        /// <summary>
         /// <c>XX.MTRX</c> 是否已经完全就绪：PXL 图标、Shader、私有的 <c>init2()</c>、
         /// 音频 sheet 全部完成。任何 PXLS 解析（<c>PxlCharacter</c>）或图像注册
         /// （<c>MImage</c>/<c>MTRX.assignMI</c>）都依赖 <c>MTRX.OMI</c>/<c>MTRX.OMeshImages</c>
@@ -98,6 +104,10 @@ namespace Polaris.API
         /// <para>
         /// 首次探到语言（启动那一下）只记下来、不触发；只有真正从一种语言变成另一种才算。
         /// 单个订阅者抛异常不会连累其它订阅者。
+        /// </para>
+        /// <para>
+        /// 同一次探测结果也会经 <see cref="Callbacks"/> 的 <see cref="LifecycleCallbacks.LocaleChanged"/>
+        /// 发一次：两条路径共享同一次差分，不会各自探测、各发一次。
         /// </para>
         /// </summary>
         public event Action<string> LocaleChanged;
@@ -163,6 +173,7 @@ namespace Polaris.API
                 loggedReadyOnce = true;
                 Plugin.Logger.LogMessage(
                     $"[Polaris] MTRX became ready for the first time at frame {UnityEngine.Time.frameCount}.");
+                LifecycleCallbacks.PublishReady();
             }
 
             PumpLocale(ready);
@@ -171,7 +182,20 @@ namespace Polaris.API
             // 该失效的应该已经失效了。
             GameBinding.Pump();
             Audio.Pump();
+
+            // 状态差分探测：都在"入队"这一层完成，真正派发给下游订阅者要等下面的 Drain。
+            WorldCallbacks.Pump();
+            ActorCallbacks.Pump();
+            InputCallbacks.Pump();
+            LoopCallbacks.PumpGameFrame();
+
+            // 旧的 Loop.Updating 兼容事件保持原有时机不变。
             Loop.PumpUpdate();
+
+            // 先把这一帧探测到的事件派发出去，再触发新版 Updating 信号——这样"状态差分事件在
+            // 普通 Updating 之前可见"，下游在 Updating 回调里读到的状态已经是这一帧的最终结果。
+            Infra.CallbackRuntime.Drain();
+            LoopCallbacks.RaiseUpdating();
 
             if (!ready || pendingReady.Count == 0)
             {
@@ -204,7 +228,16 @@ namespace Polaris.API
         }
 
         /// <summary>由 <see cref="Plugin.LateUpdate"/> 每帧调用。</summary>
-        internal void PumpLate() => Loop.PumpLateUpdate();
+        internal void PumpLate()
+        {
+            Loop.PumpLateUpdate();
+
+            // 大多数 Update 阶段产生的事件能在同帧 LateUpdate 收到；Update 里已经排过一轮，
+            // 这里再排一轮兜底 Update 之后、LateUpdate 之前发生的任何入队（例如其它插件的
+            // Update 比 Polaris 晚跑，在这段时间里触发了 Harmony 补丁）。
+            Infra.CallbackRuntime.Drain();
+            LoopCallbacks.RaiseLateUpdating();
+        }
 
         /// <summary>面包屑用的一句话："类型.方法"；委托本身没有方法信息时给个占位。</summary>
         static string Describe(Delegate callback)
@@ -260,6 +293,8 @@ namespace Polaris.API
             string previous = lastLocale;
             lastLocale = locale;
             Plugin.Logger.LogMessage($"[Polaris] Game language changed: {previous} -> {locale}.");
+
+            LifecycleCallbacks.PublishLocaleChanged(previous, locale);
 
             Action<string> handlers = LocaleChanged;
             if (handlers == null)

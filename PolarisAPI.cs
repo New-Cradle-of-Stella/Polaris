@@ -8,7 +8,7 @@
         public static MainMenuAPI MainMenu { get; } = new();
 
         /// <summary>
-        /// 游戏内 ESC 菜单分类相关 API
+        /// 游戏内 ESC 菜单分类扩展，以及菜单本身的打开/关闭与世界暂停策略控制
         /// </summary>
         public static GameMenuAPI GameMenu { get; } = new();
 

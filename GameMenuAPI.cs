@@ -1,15 +1,144 @@
 using System;
 using System.Collections.Generic;
 using nel;
+using nel.gm;
+using Polaris.API;
 
 namespace Polaris
 {
     /// <summary>
-    /// 游戏内 ESC 菜单（<see cref="nel.gm.UiGameMenu"/>）的分类扩展 API。
+    /// 游戏内 ESC 菜单（<see cref="nel.gm.UiGameMenu"/>）的分类扩展 API，以及原版 ESC 菜单本身的
+    /// 打开/关闭与"打开时是否暂停世界"控制。
     /// </summary>
     public class GameMenuAPI
     {
         internal GameMenuAPI() { }
+
+        /// <summary>原版 ESC 菜单当前是否已经激活；待处理的打开请求不计入。</summary>
+        public bool IsOpen => GameBinding.NelM2D?.GM?.isActive() ?? false;
+
+        /// <summary>普通 ESC 菜单打开时是否应暂停世界；默认 <c>true</c>，仅在当前进程有效。</summary>
+        public bool PauseWorldWhileOpen => GameMenuPauseRuntime.PauseWorldWhileOpen;
+
+        /// <summary>
+        /// 请求打开原版 ESC 菜单，语义等同于玩家按下 ESC——不是"无条件冻结世界"，是否暂停世界
+        /// 由 <see cref="PauseWorldWhileOpen"/> 决定。成功仅表示原版接受了这次请求：菜单会在本帧
+        /// 稍后的 <c>NelM2DBase.runPost()</c> 中才真正激活，调用后立即读 <see cref="IsOpen"/>
+        /// 可能仍是 <c>false</c>。
+        /// </summary>
+        public GameActionResult Pause()
+        {
+            try
+            {
+                NelM2DBase m2d = GameBinding.NelM2D;
+                if (m2d == null || m2d.GM == null || m2d.curMap == null || m2d.PlayerNoel == null)
+                {
+                    return GameActionResult.Fail(GameActionStatus.TargetUnavailable, "The game menu is not ready.");
+                }
+
+                if (m2d.GM.isActive() || m2d.menu_open_ == NelM2DBase.MENU_OPEN.OPEN)
+                {
+                    return GameActionResult.Ok();
+                }
+
+                if (!CanRequestNormalMenu(m2d))
+                {
+                    return GameActionResult.Fail(GameActionStatus.RejectedByState, "The current game state does not allow the ESC menu.");
+                }
+
+                m2d.menu_open = NelM2DBase.MENU_OPEN.OPEN;
+                if (m2d.menu_open_ != NelM2DBase.MENU_OPEN.OPEN)
+                {
+                    return GameActionResult.Fail(GameActionStatus.RejectedByState, "The game rejected the ESC menu request.");
+                }
+
+                return GameActionResult.Ok();
+            }
+            catch (Exception ex)
+            {
+                PolarisAPI.Errors.Report(ex, "GameMenu.Pause", typeof(GameMenuAPI).Assembly);
+                return GameActionResult.Fail(GameActionStatus.Failed, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 取消待处理的 ESC 菜单打开请求，或关闭已激活的原版 ESC 菜单（<c>UiGameMenu.deactivate(false)</c>，
+        /// 完整原版收尾）。不会恢复事件、转场或其它系统各自拥有的暂停。
+        /// </summary>
+        public GameActionResult Resume()
+        {
+            try
+            {
+                NelM2DBase m2d = GameBinding.NelM2D;
+                if (m2d == null || m2d.GM == null)
+                {
+                    return GameActionResult.Fail(GameActionStatus.TargetUnavailable, "The game menu is not ready.");
+                }
+
+                if (!m2d.GM.isActive() && m2d.menu_open_ == NelM2DBase.MENU_OPEN.OPEN)
+                {
+                    m2d.menu_open = NelM2DBase.MENU_OPEN.NONE;
+                    return GameActionResult.Ok();
+                }
+
+                if (!m2d.GM.isActive())
+                {
+                    return GameActionResult.Ok();
+                }
+
+                if (!CanCloseAsEscMenu(m2d.GM))
+                {
+                    return GameActionResult.Fail(GameActionStatus.RejectedByState, "The active menu is in a non-interruptible state.");
+                }
+
+                m2d.GM.deactivate(false);
+                return GameActionResult.Ok();
+            }
+            catch (Exception ex)
+            {
+                PolarisAPI.Errors.Report(ex, "GameMenu.Resume", typeof(GameMenuAPI).Assembly);
+                return GameActionResult.Fail(GameActionStatus.Failed, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 设置 ESC 菜单打开时是否暂停世界。<c>true</c>（默认）保持原版行为；<c>false</c> 时菜单
+        /// 打开期间地图、角色、物理与世界绘制继续推进，菜单仍占用 UI 输入。这是进程级全局状态，
+        /// 不区分调用方，也不持久化。
+        /// </summary>
+        public GameActionResult SetWorldPause(bool enabled)
+        {
+            if (!GameMenuPauseRuntime.FeatureAvailable)
+            {
+                return GameActionResult.Unsupported("ESC-menu world-pause control is unavailable in this game version.");
+            }
+
+            try
+            {
+                GameMenuPauseRuntime.SetPolicy(enabled);
+                return GameActionResult.Ok();
+            }
+            catch (Exception ex)
+            {
+                PolarisAPI.Errors.Report(ex, "GameMenu.SetWorldPause", typeof(GameMenuAPI).Assembly);
+                return GameActionResult.Fail(GameActionStatus.Failed, ex.Message);
+            }
+        }
+
+        /// <summary>由 <see cref="Plugin.Update"/> 每帧调用：外部暂停（事件/转场）结束后的所有权对账。</summary>
+        internal void Pump() => GameMenuPauseRuntime.Pump();
+
+        static bool CanRequestNormalMenu(NelM2DBase m2d)
+            => m2d.can_open_gamemenu
+               && m2d.pre_map_active
+               && !m2d.transferring_game_stopping
+               && !m2d.Freezer.isPausing()
+               && !m2d.GM.isActive();
+
+        static bool CanCloseAsEscMenu(UiGameMenu gm)
+            => !gm.isClosingGame()
+               && gm.postype != UiGameMenu.POSTYPE.BENCH
+               && !GAMEOVER.isActive();
 
         /// <summary>一次 <see cref="AddCategory"/> 注册的完整信息。</summary>
         internal sealed class CategoryRegistration

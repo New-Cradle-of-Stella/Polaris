@@ -45,6 +45,9 @@ namespace Polaris.API
 
         AudioQuery,
         AudioPlay,
+
+        GameMenuControl,
+        GameMenuWorldPausePolicy,
     }
 
     /// <summary>某条能力在本局的可用状态。</summary>
@@ -93,6 +96,10 @@ namespace Polaris.API
                 { GameCapability.AudioQuery,       CapabilityAvailability.Available },
                 { GameCapability.AudioPlay,        CapabilityAvailability.Available },
 
+                // ESC 菜单打开/关闭走 NelM2DBase.menu_open 请求 + UiGameMenu.deactivate，两者都是
+                // 稳定入口，不依赖任何 Harmony transpiler。
+                { GameCapability.GameMenuControl,  CapabilityAvailability.Available },
+
                 // ── 只读 ───────────────────────────────────────────────────────────
                 // 天气：NightController 只暴露了 hasWeather/current_weather_bit 这些读取口，
                 // 写入走的是它自己的日夜与事件推进逻辑，没有可以安全外部调用的 setter。
@@ -126,11 +133,27 @@ namespace Polaris.API
                 { GameCapability.MagicCast,        CapabilityAvailability.Unsupported },
             };
 
-        /// <summary>查这条能力本局通不通。未登记的能力按 <see cref="CapabilityAvailability.Unsupported"/> 处理。</summary>
+        /// <summary>
+        /// 查这条能力本局通不通。未登记的能力按 <see cref="CapabilityAvailability.Unsupported"/> 处理。
+        /// <para>
+        /// <see cref="GameCapability.GameMenuWorldPausePolicy"/> 是本表里唯一一条运行时探测的能力，
+        /// 不走静态声明：它依赖 <see cref="GameMenuPauseRuntime"/> 的四个 Harmony transpiler
+        /// 是否全部成功应用，这件事只有启动后逐补丁应用完才知道，写成静态表反而会撒谎。
+        /// </para>
+        /// </summary>
         public static CapabilityAvailability Status(GameCapability capability)
-            => Table.TryGetValue(capability, out CapabilityAvailability status)
+        {
+            if (capability == GameCapability.GameMenuWorldPausePolicy)
+            {
+                return GameMenuPauseRuntime.FeatureAvailable
+                    ? CapabilityAvailability.Available
+                    : CapabilityAvailability.Unsupported;
+            }
+
+            return Table.TryGetValue(capability, out CapabilityAvailability status)
                 ? status
                 : CapabilityAvailability.Unsupported;
+        }
 
         /// <summary>能不能执行写操作。<see cref="CapabilityAvailability.QueryOnly"/> 在这里算不能。</summary>
         public static bool CanWrite(GameCapability capability)

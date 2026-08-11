@@ -107,6 +107,8 @@ namespace Polaris.API
 
         internal void RaiseFocusChanged(bool hasFocus)
         {
+            LifecycleCallbacks.PublishFocusChanged(hasFocus);
+
             Action<bool> handlers = FocusChanged;
             if (handlers == null)
             {
@@ -128,6 +130,8 @@ namespace Polaris.API
 
         internal void RaiseStopping()
         {
+            LifecycleCallbacks.PublishStopping();
+
             Action handlers = Stopping;
             if (handlers == null)
             {
