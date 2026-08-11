@@ -70,6 +70,27 @@ namespace Polaris
         /// </summary>
         static readonly Dictionary<string, string> lastErrors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>一条模组行：它在行管理器里的显隐开关，以及这一行代表的模组。</summary>
+        readonly struct ModRow
+        {
+            internal ModRow(DesignerRowMem.DsnMem mem, UserModRecord record)
+            {
+                Mem = mem;
+                Record = record;
+            }
+
+            internal DesignerRowMem.DsnMem Mem { get; }
+
+            internal UserModRecord Record { get; }
+        }
+
+        /// <summary>本次 <see cref="Rebuild"/> 画出来的模组行，供 <see cref="Filter"/> 收放。</summary>
+        static readonly List<ModRow> rowMems = [];
+
+        /// <summary>列表上方那条搜索栏。栏本身的画法与设置界面那条共用，见 <see cref="PolarisSearchRow"/>。</summary>
+        static readonly PolarisSearchRow search = new PolarisSearchRow(
+            "plrs:manager:search", Localization.SearchStrings.HintMods, Filter);
+
         /// <summary>必须在 Plugin.Start() 最开始调用，赶在其它模组注册按钮之前占住"设置"后面的位置。</summary>
         internal static void RegisterButton()
         {
@@ -202,6 +223,9 @@ namespace Polaris
         static void Close()
         {
             PolarisRestartPrompt.Hide();
+            // 搜索留到下次打开会让玩家对着一份"缺了大半"的列表发懵。放在 deactivate 之前：
+            // 这一步还要去拨行的显隐，控件得还活着。
+            search.Reset();
             // 必须先清掉浮窗记住的当前项，否则下次 Open 的 Rebuild 会把它抢在主面板之前点亮。
             PolarisModDetailPopup.Reset();
             family?.deactivate();
@@ -215,13 +239,67 @@ namespace Polaris
         {
             designer.Clear();
             designer.init();
+            rowMems.Clear();
 
             // 只扫一次磁盘，列表与浮窗共用同一份快照，避免两边看到不一致的结果。
             List<UserModRecord> mods = UserModToggleManager.Scan();
             BuildContent(designer, mods);
 
+            // 重建会把上面画的这批行全都摆出来，搜索框里的查询得重新过一遍。
+            // 不走 search.Apply()：那还会再刷一次状态文字，而文字刚在 BuildContent 里画过。
+            Filter(search.Query);
+
             // 重建后按钮全是新实例，旧的悬停状态失效；主动按记住的键刷新一次浮窗内容。
             PolarisModDetailPopup.Refresh(mods, TargetEnabled, lastErrors);
+        }
+
+        /// <summary>
+        /// 按查询串收放模组行，返回命中条数。<b>刻意不重建页面</b>——重建会把玩家正在输入的
+        /// 那个搜索框自己销毁掉，打到一半焦点就没了。就地拨 <c>DsnMem</c> 的显隐再重排，
+        /// 控件原封不动，做法与设置界面那条搜索栏一致（见 <see cref="PolarisSearchRow.SetVisible"/>）。
+        /// </summary>
+        static int Filter(string query)
+        {
+            if (designer == null)
+            {
+                return 0;
+            }
+
+            string[] tokens = Settings.SettingsSearchQuery.Tokenize(query);
+            int matched = 0;
+
+            try
+            {
+                foreach (ModRow row in rowMems)
+                {
+                    PolarisModInfo info = row.Record.Info;
+
+                    // 匹配的是这一行、以及悬停浮窗里能看到的那几项：文件名、展示名、作者、简介。
+                    // 都是原样展示的字面量（模组信息不走本地化查表），所以搜到什么就能在页面上看到什么。
+                    bool hit = Settings.SettingsSearchQuery.MatchesAny(
+                        tokens, row.Record.DisplayName,
+                        info?.DisplayName, info?.Author, info?.Description);
+
+                    if (hit)
+                    {
+                        matched++;
+                    }
+
+                    PolarisSearchRow.SetVisible(row.Mem, hit);
+                }
+
+                designer.rowRemakeCheck(force: true);
+            }
+            catch (Exception e)
+            {
+                // 这个方法是从输入框的回调里跑的，异常会一路飞进 designer 的每帧循环。
+                // 过滤崩了最坏也就是列表停在半过滤的样子，玩家清掉搜索框就能恢复，
+                // 不该顺手把整个管理页掀掉。
+                PolarisAPI.Errors.Report(e, "filtering the mod manager list");
+                Plugin.Logger.LogError($"[Polaris] Failed to apply the mod manager search filter \"{query}\".");
+            }
+
+            return matched;
         }
 
         // ================== 启停改动的缓存与应用 ==================
@@ -371,19 +449,24 @@ namespace Polaris
             HrGap(box, 6f, 6f);
 
             Section(box, ModManagerStrings.Text(ModManagerStrings.SectionMods));
+
             if (mods.Count == 0)
             {
                 Muted(box, ModManagerStrings.Text(ModManagerStrings.Empty));
             }
             else
             {
+                // 搜索栏摆在分区标题与列表之间。一个 dll 都没有时不画——
+                // 摆一个搜不出东西的框只是碍事。
+                search.Build(box);
+
                 foreach (UserModRecord record in mods)
                 {
                     bool target = TargetEnabled(record);
                     string prefix = target ? "[✓] " : "[ ] ";
                     string dirtyMark = target != record.Enabled ? "  *" : "";
                     lastErrors.TryGetValue(record.DisplayName, out string error);
-                    box.addButtonT<aBtnNel>(new DsnDataButton
+                    aBtnNel rowButton = box.addButtonT<aBtnNel>(new DsnDataButton
                     {
                         name = record.DisplayName,
                         title = prefix + Headline(record.Info, record.DisplayName) + dirtyMark
@@ -403,6 +486,10 @@ namespace Polaris
                             return true;
                         }
                     });
+
+                    // 登记这一行的显隐开关。取的是行管理器里的 DsnMem——搜索过滤就是拨它，
+                    // 而不是重建页面（理由见 Filter）。
+                    rowMems.Add(new ModRow(box.getRowManager().getBlockMemory(rowButton), record));
                 }
             }
 

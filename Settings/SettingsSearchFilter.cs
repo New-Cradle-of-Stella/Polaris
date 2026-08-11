@@ -90,10 +90,7 @@ namespace Polaris.Settings
         /// </summary>
         static DesignerRowMem rows;
 
-        /// <summary>当前查询串（原始输入，未切词）。空串表示没有过滤。</summary>
-        internal static string Query { get; private set; } = "";
-
-        /// <summary>当前查询命中的设置项条数，供搜索框右侧的状态文字用。</summary>
+        /// <summary>当前查询命中的设置项条数，供搜索栏右侧的状态文字用。</summary>
         internal static int MatchCount { get; private set; }
 
         /// <summary>
@@ -107,7 +104,6 @@ namespace Polaris.Settings
         internal static void Begin(UiCFG cfg)
         {
             groups.Clear();
-            Query = "";
             MatchCount = 0;
             tab = cfg.BxOut?.CurrentAttachTarget;
             rows = tab?.getRowManager();
@@ -140,26 +136,15 @@ namespace Polaris.Settings
 
         /// <summary>
         /// 界面关掉了：丢掉登记表。<b>不</b>在这里恢复可见性——块可能已经被 <c>Clear</c> 掉了，
-        /// 而且下次打开会重新 <see cref="Begin"/>。要"关掉时把过滤撤销"请用 <see cref="Reset"/>。
+        /// 而且下次打开会重新 <see cref="Begin"/>。"关掉时把过滤撤销"是搜索栏自己的事
+        /// （<see cref="PolarisSearchRow.Reset"/>）。
         /// </summary>
         internal static void Forget()
         {
             groups.Clear();
             tab = null;
             rows = null;
-            Query = "";
             MatchCount = 0;
-        }
-
-        /// <summary>清空查询并把所有行放回来。设置界面收起时调用，免得下次打开还停在上次的过滤上。</summary>
-        internal static void Reset()
-        {
-            if (Query.Length == 0)
-            {
-                return;
-            }
-
-            Apply("");
         }
 
         /// <summary>
@@ -171,15 +156,13 @@ namespace Polaris.Settings
         /// </summary>
         internal static void Apply(string query)
         {
-            Query = query ?? "";
-
             if (tab == null)
             {
                 MatchCount = 0;
                 return;
             }
 
-            string[] tokens = SettingsSearchQuery.Tokenize(Query);
+            string[] tokens = SettingsSearchQuery.Tokenize(query);
             int matched = 0;
 
             try
@@ -202,13 +185,13 @@ namespace Polaris.Settings
 
                         foreach (DesignerRowMem.DsnMem block in row.Blocks)
                         {
-                            SetVisible(block, hit);
+                            PolarisSearchRow.SetVisible(block, hit);
                         }
                     }
 
                     foreach (DesignerRowMem.DsnMem block in group.Header)
                     {
-                        SetVisible(block, anyRow);
+                        PolarisSearchRow.SetVisible(block, anyRow);
                     }
                 }
 
@@ -221,47 +204,10 @@ namespace Polaris.Settings
                 // 过滤画崩了不能把设置界面一起带走——最坏的结果是界面停在半过滤的样子，
                 // 玩家清掉搜索框就能恢复。
                 PolarisAPI.Errors.Report(e, "filtering the settings screen");
-                Plugin.Logger.LogError($"[Polaris.Settings] Failed to apply the search filter \"{Query}\".");
+                Plugin.Logger.LogError($"[Polaris.Settings] Failed to apply the search filter \"{query}\".");
             }
 
             MatchCount = matched;
-        }
-
-        /// <summary>
-        /// 拨一个块的显隐。<c>DsnMem.active</c> 自己会开关 GameObject，但那只管画不画；
-        /// 按钮还得额外 <c>hide()</c>/<c>bind()</c>——原版的方向键导航是按
-        /// <c>aBtn.isActive()</c> 跳过节点的（见 <c>aBtn.simulateNaviTranslation</c>），
-        /// 而那个标志只有 <c>hide()</c>/<c>bind()</c> 会动，光把 GameObject 关掉的话
-        /// 焦点还是会走进看不见的行里。
-        /// </summary>
-        static void SetVisible(DesignerRowMem.DsnMem mem, bool visible)
-        {
-            if (mem.active == visible)
-            {
-                return;
-            }
-
-            // Unity 的假 null：块可能已经随界面销毁了，必须用 != null 走重载。
-            aBtn button = mem.Blk as aBtn;
-            if (button == null)
-            {
-                mem.active = visible;
-                return;
-            }
-
-            // 收起时先 hide 再关 GameObject、放回时反过来：hide/bind 会去动 Skin 与焦点，
-            // 让它们跑在对象还活着的时候。
-            if (!visible)
-            {
-                button.hide();
-            }
-
-            mem.active = visible;
-
-            if (visible)
-            {
-                button.bind();
-            }
         }
     }
 }
