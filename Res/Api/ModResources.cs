@@ -165,7 +165,7 @@ namespace Polaris.Res
         /// <see cref="PxlsCharacterHandle"/>，订阅它的 <c>Ready</c>/<c>Faulted</c> 事件获知结果——
         /// 不存在"加载失败时的占位 PXLS 角色"这种东西，失败语义天然是异步的。
         /// <para>
-        /// 必须在 <see cref="Polaris.GameApi.GameStateAPI.IsMtrxReady"/> 之后调用：PXLS 解析依赖 <c>MTRX.OMI</c>/
+        /// 必须在 <see cref="Polaris.API.GameStateAPI.IsMtrxReady"/> 之后调用：PXLS 解析依赖 <c>MTRX.OMI</c>/
         /// <c>OMeshImages</c> 这两个只在 <c>MTRX.init1()</c> 之后才存在的静态字典，太早调用会直接
         /// 抛 <see cref="InvalidOperationException"/>（用法错误，不受"严格模式"设置影响）。
         /// </para>

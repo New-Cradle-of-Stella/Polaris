@@ -164,9 +164,10 @@ namespace Polaris
         }
 
         /// <summary>
-        /// Polaris 自己的每帧泵。目前只驱动 MTRX 就绪门控的等待队列
-        /// （见 <see cref="GameApi.GameStateAPI.WhenReady"/>）——这件事所有下游模组都要用，
-        /// 放在这里比让每个模组各建一个 MonoBehaviour 轮询划算。
+        /// Polaris 自己的每帧泵。驱动 MTRX 就绪门控的等待队列
+        /// （见 <see cref="API.GameStateAPI.WhenReady"/>）、语言变更探测、地图代数推进，
+        /// 以及能力层的每帧回调——这些事所有下游模组都要用，放在这里比让每个模组各建一个
+        /// MonoBehaviour 轮询划算。
         /// </summary>
         private void Update()
         {
@@ -179,6 +180,15 @@ namespace Polaris
         }
 
         /// <summary>
+        /// 这一帧里所有 <c>Update</c> 都跑完之后。单独留一个泵是因为"读别人算完的结果"
+        /// （相机位置、角色最终坐标）只有在这个时机才准。
+        /// </summary>
+        private void LateUpdate()
+        {
+            PolarisAPI.Game.PumpLate();
+        }
+
+        /// <summary>
         /// 窗口失焦/回到前台。这是卡死误报的最大来源：<c>Application.runInBackground</c> 为 false 时，
         /// 窗口一失焦 Unity 就不再调 <see cref="Update"/>——主线程完全健康，只是没事干。
         /// 玩家去泡杯茶回来，看门狗已经"发现"了一次五分钟的卡死。
@@ -186,6 +196,7 @@ namespace Polaris
         private void OnApplicationFocus(bool hasFocus)
         {
             Diagnostics.Watchdog.SetPaused(!hasFocus);
+            PolarisAPI.Game.Loop.RaiseFocusChanged(hasFocus);
         }
 
         /// <summary>
@@ -205,6 +216,10 @@ namespace Polaris
         /// </summary>
         private void OnApplicationQuit()
         {
+            // 先通知能力层的订阅者：这是它们做快速收尾的唯一时机，排在看门狗停掉之前，
+            // 万一某个订阅者在这里卡住，那还应该被当成卡死记下来。
+            PolarisAPI.Game.Loop.RaiseStopping();
+
             // 第一件事：停掉看门狗。这之后 Unity 不再调 Update，而进程还要活一会儿（存档、淡出、
             // 资源释放），不停掉就会把正常的退出过程判成卡死，还顺手给下一局上一发误报。
             Diagnostics.Watchdog.Uninstall();

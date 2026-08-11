@@ -35,7 +35,7 @@
 
   <!--
     只 Publicize 这两个：Polaris 对游戏内部结构（私有字段/方法、Harmony 补丁目标）的假设
-    全部集中在 Polaris.GameApi 与 Polaris.Patch 命名空间下，那是唯一需要看进游戏内部的地方。
+    全部集中在 Polaris.API 与 Polaris.Patch 命名空间下，那是唯一需要看进游戏内部的地方。
     pixelliner 与 Newtonsoft.Json 刻意不 publicize——用到的成员（PxlCharacter/PxlsLoader/
     PxlPose/PxlSequence/PxlFrame 等，已用 ilspycmd 反编译核实）本来就全是 public，
     多 publicize 一个程序集就多一份需要跟着游戏版本更新的内部结构假设。

@@ -18,9 +18,10 @@
         public static Settings.SettingsAPI Settings { get; } = new();
 
         /// <summary>
-        /// 对游戏内部运行状态的只读探测（如 MTRX 是否就绪）。见 <see cref="GameApi.GameStateAPI"/>。
+        /// 游戏能力层：就绪探测、每帧回调、输入、世界、角色与玩家、背包、金钱、战斗、音频。
+        /// 见 <see cref="API.GameStateAPI"/>；本局各条能力通不通见 <see cref="API.GameCapabilities"/>。
         /// </summary>
-        public static GameApi.GameStateAPI Game { get; } = new();
+        public static API.GameStateAPI Game { get; } = new();
 
         /// <summary>
         /// 本地化 resolver 注册表：本地化子系统与下游模组在这里注册 key→文案的查询回调，

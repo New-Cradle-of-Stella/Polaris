@@ -2,18 +2,59 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace Polaris.GameApi
+namespace Polaris.API
 {
     /// <summary>
-    /// 对游戏内部运行状态的只读探测。<c>Polaris.GameApi</c> 与 <c>Polaris.Patch</c> 是全库对
-    /// 游戏内部结构的唯一兼容层：任何需要 Publicizer 才能触达的私有字段/方法，都应该集中在
+    /// 游戏能力层的总入口，挂在 <c>PolarisAPI.Game</c> 下。<c>Polaris.API</c> 与 <c>Polaris.Patch</c>
+    /// 是全库对游戏内部结构的唯一兼容层：任何需要 Publicizer 才能触达的私有字段/方法，都应该集中在
     /// 这里实现一次，再以稳定的公开 API 暴露出去。下游模组不应该自己对 <c>Assembly-CSharp</c>/
     /// <c>unsafeAssem</c>/<c>pixelliner</c> 之类的游戏程序集做 Publicizer——那样每个模组
     /// 都要各自跟踪游戏内部结构，换一次游戏版本就要改所有模组；集中在这里之后，换版本
     /// 只需要改 Polaris 这一处。
+    /// <para>
+    /// 下面按领域分成若干门面（<see cref="Loop"/>/<see cref="Input"/>/<see cref="World"/>…）。
+    /// 它们只是分组，<b>不是</b>需要各自初始化的子系统：整个能力层没有初始化步骤，
+    /// 也没有自己的生命周期，第一次访问就能用，用不到的分组不产生任何开销。
+    /// </para>
+    /// <para>
+    /// 三条贯穿全层的约定：
+    /// <list type="number">
+    /// <item>查询不产生副作用，取不到就返回空值/零值，永远不抛异常给调用方。</item>
+    /// <item>动作一律返回 <see cref="GameActionResult"/>，失败有明确原因，没有"静默什么都没发生"。</item>
+    /// <item>公开签名里不出现任何游戏类型，收发的是 Polaris 自己的句柄、快照与请求。</item>
+    /// </list>
+    /// 本局哪些能力真的通、哪些只读、哪些本版本没有入口，查 <see cref="GameCapabilities"/>。
+    /// </para>
     /// </summary>
     public sealed class GameStateAPI
     {
+        /// <summary>游戏循环：每帧回调、焦点、退出。</summary>
+        public GameLoopAPI Loop { get; } = new();
+
+        /// <summary>玩家输入的只读查询（按游戏动作，不按键码）。</summary>
+        public InputGameAPI Input { get; } = new();
+
+        /// <summary>世界状态：地图、危险度、日夜与天气。</summary>
+        public WorldGameAPI World { get; } = new();
+
+        /// <summary>场上角色的查询与位移。</summary>
+        public CharacterGameAPI Characters { get; } = new();
+
+        /// <summary>玩家角色专属的查询与动作。</summary>
+        public PlayerGameAPI Player { get; } = new();
+
+        /// <summary>玩家背包。</summary>
+        public InventoryGameAPI Inventory { get; } = new();
+
+        /// <summary>金钱。</summary>
+        public EconomyGameAPI Economy { get; } = new();
+
+        /// <summary>伤害与恢复。</summary>
+        public CombatGameAPI Combat { get; } = new();
+
+        /// <summary>音频。</summary>
+        public AudioGameAPI Audio { get; } = new();
+
         /// <summary>
         /// <c>XX.MTRX</c> 是否已经完全就绪：PXL 图标、Shader、私有的 <c>init2()</c>、
         /// 音频 sheet 全部完成。任何 PXLS 解析（<c>PxlCharacter</c>）或图像注册
@@ -34,7 +75,7 @@ namespace Polaris.GameApi
         /// 当前生效的本地化 family key（如 <c>"_"</c>/<c>"en"</c>/<c>"zh-cn"</c>/<c>"ko-kr"</c>），
         /// 直通 <c>XX.TX.getCurrentFamilyName()</c>。
         /// <para>
-        /// 已用 ilspycmd 反编译 <c>XX.TX</c> 核实：family 集合不是固定枚举，而是
+        /// 已用 ilspycmd 反编译核实：family 集合不是固定枚举，而是
         /// <c>TX.reloadTx()</c> 在启动/切换语言时按 <c>StreamingAssets/localization/</c> 下
         /// 每个 <c>___family*.txt</c> 里的 <c>%DEFAULT_LANGUAGE</c>/<c>%SYSTEM_LANGUAGE</c> 等
         /// 指令动态建出的 <c>TXFamily</c> 表；<c>TX.changeFamily(key)</c> 切换当前 family，
@@ -126,6 +167,12 @@ namespace Polaris.GameApi
 
             PumpLocale(ready);
 
+            // 地图代数要先于任何对外回调推进：订阅者在自己的回调里拿句柄时，
+            // 该失效的应该已经失效了。
+            GameBinding.Pump();
+            Audio.Pump();
+            Loop.PumpUpdate();
+
             if (!ready || pendingReady.Count == 0)
             {
                 return;
@@ -155,6 +202,9 @@ namespace Polaris.GameApi
                 }
             }
         }
+
+        /// <summary>由 <see cref="Plugin.LateUpdate"/> 每帧调用。</summary>
+        internal void PumpLate() => Loop.PumpLateUpdate();
 
         /// <summary>面包屑用的一句话："类型.方法"；委托本身没有方法信息时给个占位。</summary>
         static string Describe(Delegate callback)

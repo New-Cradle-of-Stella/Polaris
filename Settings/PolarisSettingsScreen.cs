@@ -254,7 +254,7 @@ namespace Polaris.Settings
 
             // 缩小字号会让每行装下更多字、总行数变少，高度只会跟着降，所以这个循环一定收敛；
             // 从 16 缩到 12 最多走四步，一次悬停付得起。
-            while (size > DescMinTextSize && GameApi.TextMetrics.TextHeightOf(block) > available)
+            while (size > DescMinTextSize && API.TextMetrics.TextHeightOf(block) > available)
             {
                 size = Math.Max(DescMinTextSize, size - DescSizeStep);
                 block.size = size;

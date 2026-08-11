@@ -10,8 +10,17 @@ namespace Polaris
     /// <summary>
     /// 一次性的模组环境警示页：仿原版首次启动的敏感内容告知页（<c>SceneTitleTemp</c> 的
     /// <c>STATE.SENSITIVE_ANNOUNCE</c>，文案 key <c>Title_Announce_For_Sensitive</c>）——
-    /// 全屏暗底、居中正文、下方一个语言切换按钮加一个确认按钮，再加一行按键提示。内容是告诉
-    /// 玩家：这份游戏跑在模组环境下，出了问题先自己排查，别拿去找游戏原作者。
+    /// 全屏暗底、居中正文、最上面一个语言切换按钮，下方一个"打开官方规则页"按钮加一个确认按钮，
+    /// 再加一行按键提示。内容分两段：
+    /// 先告诉玩家这份游戏跑在模组环境下、出了问题先自己排查别拿去找游戏原作者，再是与官方的
+    /// 关系界定（非商业、社区自制、与官方无隶属、模组责任归各自作者）＋官方规则页地址。
+    /// <para>
+    /// 后一段是硬要求，不是可有可无的免责话术：Polaris 得以公开发布的前提就是遵守官方那份
+    /// 《Game Program Modifying &amp; Mod Creation Limitation》（见
+    /// <see cref="PolarisMeta.ModGuidelinesUrl"/>），其中明确要求"必须写明本框架为社区自制、
+    /// 与官方无关，且用它做出的 MOD 由各自作者负责"，以及"必须写明使用 MOD 可能引发异常且
+    /// 官方不提供支持"。删改这两段之前请先回去核对那一页的最新版本。
+    /// </para>
     /// <para>
     /// 一次只显示一种语言，不跟随游戏语言设置——默认英语，玩家可以点语言按钮在
     /// 英/中/日之间循环切换。之所以不跟随游戏当前语言：这一页的责任声明必须对所有玩家
@@ -71,11 +80,14 @@ namespace Polaris
 
         const float LangRowH = 34f;
         const float HeadingH = 44f;
+        const float LinkRowH = 42f;
         const float ConfirmRowH = 56f;
         const float HintH = 32f;
 
         const float LangButtonW = 90f;
         const float LangButtonH = 26f;
+        const float LinkButtonW = 340f;
+        const float LinkButtonH = 30f;
         const float ConfirmButtonW = 400f;
         const float ButtonH = 38f;
 
@@ -90,6 +102,12 @@ namespace Polaris
         const float HintSize = 13f;
 
         /// <summary>
+        /// 声明块的字号。比正文小半档：正文是"出了问题该怎么办"的操作指引，声明块是
+        /// 与官方的关系界定＋规则页地址，玩家不需要逐字读也该一眼看出它在那儿。
+        /// </summary>
+        const float NoticeSize = 13.5f;
+
+        /// <summary>
         /// 整页在标题场景里的 z。越负越靠前：标题常驻 UI 最靠前的是语言按钮 -0.2，
         /// 模组管理页整族在 -0.5，原版首次启动询问在 -2，按键设置在 -4.25。取 -3 稳稳盖住
         /// 标题画面的一切，又不越过按键设置——虽然本页只在 TOP 状态出现、两者不会同框。
@@ -102,6 +120,7 @@ namespace Polaris
         static readonly Color32 HeadingColor = new Color32(255, 255, 255, 255);
         static readonly Color32 BodyColor = new Color32(220, 220, 220, 255);
         static readonly Color32 HintColor = new Color32(200, 200, 200, 255);
+        static readonly Color32 NoticeColor = new Color32(196, 196, 196, 255);
 
         /// <summary>正文描边色，抄原版 TxOnePoint 的 <c>BorderCol(3707764736u)</c>。</summary>
         static readonly Color32 BorderColor = C32.d2c(3707764736u);
@@ -118,16 +137,27 @@ namespace Polaris
         /// </summary>
         const string ReportTarget = PolarisMeta.ReportTarget;
 
+        /// <summary>
+        /// 官方规则页地址，取自 <see cref="PolarisMeta.ModGuidelinesUrl"/>。三段声明文案都把它
+        /// 单独放在最后一行——一行 80 来个半角字符，在 <see cref="ContentW"/> 的宽度下不会被
+        /// 自动换行拆开，玩家可以照着抄下来。
+        /// </summary>
+        const string GuidelinesUrl = PolarisMeta.ModGuidelinesUrl;
+
         /// <summary>一种语言的完整页面文案 + 排版参数 + 取字体用的语言族 key。</summary>
         readonly struct Wording
         {
             public Wording(string heading, string body, float bodyH, float bodySize,
+                string notice, float noticeH, string linkLabel,
                 string confirmLabel, string switchLabel, string hint, string fontFamily)
             {
                 Heading = heading;
                 Body = body;
                 BodyH = bodyH;
                 BodySize = bodySize;
+                Notice = notice;
+                NoticeH = noticeH;
+                LinkLabel = linkLabel;
                 ConfirmLabel = confirmLabel;
                 SwitchLabel = switchLabel;
                 Hint = hint;
@@ -138,6 +168,16 @@ namespace Polaris
             public string Body { get; }
             public float BodyH { get; }
             public float BodySize { get; }
+
+            /// <summary>
+            /// 与官方的关系界定：非商业、社区自制、与官方无隶属、模组责任归各自作者，
+            /// 末行是官方规则页地址。这一段是遵守该规则页的一部分，不是可选的装饰文字。
+            /// </summary>
+            public string Notice { get; }
+            public float NoticeH { get; }
+
+            /// <summary>打开官方规则页那个按钮上的文字，见 <see cref="OpenGuidelines"/>。</summary>
+            public string LinkLabel { get; }
             public string ConfirmLabel { get; }
 
             /// <summary>语言按钮上显示的文字——切过去之后会变成哪种语言，而不是"当前是哪种"。</summary>
@@ -151,21 +191,33 @@ namespace Polaris
             "This copy is modded, so it no longer behaves like the original. A crash, a freeze, a broken save or anything else odd is not automatically a bug in the base game.\n" +
             "Check it yourself first: turn the suspect mods off from the Polaris page and restart; if it still happens with every mod disabled, confirm it once on a clean, unmodded copy. Until then, do not report it to the game's original author or the official channels. Report confirmed mod issues to that mod's author.\n" +
             "If Polaris itself produces an error report, please submit that to " + ReportTarget + ".",
-            210f, 15f, "I UNDERSTAND", "中文", $"{KeyHint.Submit} confirm", EnglishFamily);
+            210f, 15f,
+            "Polaris is a non-commercial, community-created framework. It is not an official product, and it carries no affiliation with, endorsement by, or support from NanameHacha. It is published with the game author's permission, on the condition that it follows the official mod-creation guidelines; that permission is not an endorsement. Mods built on Polaris are the sole responsibility of their own authors.\n" +
+            GuidelinesUrl,
+            150f, "OPEN THE GUIDELINES PAGE",
+            "I UNDERSTAND", "中文", $"{KeyHint.Submit} confirm", EnglishFamily);
 
         static readonly Wording ChineseWording = new Wording(
             "模组环境提示",
             "你的游戏装了模组，运行结果和原版并不一致。崩溃、卡死、存档损坏或任何奇怪的表现，都不能默认是游戏本体的问题。\n" +
             "请先自己排查：在标题画面的 Polaris 页里关掉可疑的模组，重启看问题是否还在；全部模组都关掉后仍然复现，再用一份干净的游戏本体确认一次。在这之前请不要把问题反馈给游戏原作者或官方渠道；确认是某个模组导致的，请反馈给该模组的作者。\n" +
             "如果 Polaris 自己弹出了错误报告，请把它提交到 " + ReportTarget + "。",
-            160f, 16f, "我已了解", "日本語", $"{KeyHint.Submit} 确认", ChineseFamily);
+            160f, 16f,
+            "Polaris 是非商业的社区自制框架，并非官方产品，与 NanameHacha 没有任何隶属关系，也未获得其背书或技术支持。本框架是在遵守官方模组创作规则的前提下、经游戏作者许可公开发布的；许可不等于官方认可。使用 Polaris 制作的模组，责任完全由各自的模组作者承担。\n" +
+            GuidelinesUrl,
+            130f, "打开官方规则页",
+            "我已了解", "日本語", $"{KeyHint.Submit} 确认", ChineseFamily);
 
         static readonly Wording JapaneseWording = new Wording(
             "MOD環境について",
             "このゲームにはMODが導入されており、挙動はオリジナルと同じではありません。クラッシュ・フリーズ・セーブデータの破損など、おかしな症状がゲーム本体の不具合とは限りません。\n" +
             "まずご自身で切り分けてください：タイトル画面の Polaris ページで疑わしいMODを無効化して再起動し、すべてのMODを無効にしても再現する場合は、MODを一切入れていない状態でもう一度確認してください。それまではゲームの原作者や公式の窓口へ報告しないでください。MODが原因と判明した場合は、そのMODの作者へご報告ください。\n" +
             "Polaris 自体がエラーレポートを出力した場合は、" + ReportTarget + " へご提出ください。",
-            210f, 15.5f, "了解しました", "English", $"{KeyHint.Submit} 決定", JapaneseFamily);
+            210f, 15.5f,
+            "Polaris は非営利のコミュニティ制作フレームワークであり、公式の製品ではありません。NanameHacha とは一切関係がなく、公認およびサポートも受けていません。公式のMOD作成規約を遵守することを条件に、ゲーム作者の許可を得て公開されています（許可は公認を意味するものではありません）。Polaris を用いて制作されたMODの責任は、それぞれのMOD作者にあります。\n" +
+            GuidelinesUrl,
+            150f, "規約ページを開く",
+            "了解しました", "English", $"{KeyHint.Submit} 決定", JapaneseFamily);
 
         /// <summary>
         /// 循环顺序：英 → 中 → 日 → 英……<see cref="langIndex"/> 默认 0，也就是默认英语。
@@ -260,7 +312,8 @@ namespace Polaris
             float screenW = IN.wh * 2f;
             float screenH = IN.hh * 2f;
             float contentW = Mathf.Min(ContentW, screenW - ContentMinSideMargin * 2f);
-            float contentH = LangRowH + LangGapY + HeadingH + w.BodyH + ConfirmRowH + HintH;
+            float contentH = LangRowH + LangGapY + HeadingH + w.BodyH + w.NoticeH
+                + LinkRowH + ConfirmRowH + HintH;
 
             // 挂在标题场景对象下面：场景卸载时跟着一起销毁，不需要自己管生命周期。
             // CreateGob 会连 layer/tag 一起继承过来，这是原版 UI 能被 GUI 相机拍到的前提。
@@ -305,6 +358,29 @@ namespace Polaris
             designer.item_margin_y_px = 0f;
 
             AddParagraph(w.Body, w.BodyH, w.BodySize, BodyColor, font, border: false);
+
+            // 声明块紧跟正文、排在确认按钮之前：玩家点"我已了解"之前必须先看见它。
+            AddParagraph(w.Notice, w.NoticeH, NoticeSize, NoticeColor, font, border: false);
+
+            // 规则页做成按钮，而不是把声明块末行那个网址变成可点的富文本：游戏的文本标签只有
+            // align/b/bmc/bmcs/fiximg/font/i/img/key/key_s/rb/s/shape 这些（见 unsafeAssem 里
+            // TextRendererHtmlTag.TagNameIs 的全部调用点），没有链接类标签，文本块本身也不做
+            // 命中测试——整个游戏里连一次 Application.OpenURL 都没有。网址仍然照原样印在声明块里，
+            // 这个按钮只是省掉手抄。
+            designer.addButtonT<aBtnNel>(new DsnDataButton
+            {
+                name = "polaris_warning_guidelines",
+                skin = "normal_dark",
+                title = w.LinkLabel,
+                w = LinkButtonW,
+                h = LinkButtonH,
+                fnClick = _ =>
+                {
+                    OpenGuidelines();
+                    return true;
+                }
+            });
+            designer.Br();
 
             aBtn confirm = designer.addButtonT<aBtnNel>(new DsnDataButton
             {
@@ -393,6 +469,29 @@ namespace Polaris
             }
 
             return TX.getDefaultFont();
+        }
+
+        // ================== 打开规则页 ==================
+
+        /// <summary>
+        /// 交给系统默认浏览器打开官方规则页。
+        /// <para>
+        /// 全屏独占的时候浏览器可能被压在游戏窗口后面（玩家 Alt+Tab 才看得到），所以声明块末行
+        /// 那个网址一直保留着——按钮只是省掉手抄，不是唯一的路。刻意不动系统剪贴板：玩家没让
+        /// Polaris 覆盖剪贴板内容，点一下按钮就悄悄清掉他原本复制的东西不合适。
+        /// </para>
+        /// </summary>
+        static void OpenGuidelines()
+        {
+            try
+            {
+                Application.OpenURL(GuidelinesUrl);
+            }
+            catch (Exception e)
+            {
+                // 打不开浏览器不影响本页的任何其它功能，记一条日志就够——网址还印在页面上。
+                Plugin.Logger.LogWarning($"[Polaris] 打开官方规则页失败：{e.Message}");
+            }
         }
 
         // ================== 语言切换 ==================

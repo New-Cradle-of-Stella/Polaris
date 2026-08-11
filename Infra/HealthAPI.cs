@@ -67,7 +67,7 @@ namespace Polaris.Infra
         /// 就能直接说出卡在哪一步、该找谁，而不是只报一句"游戏不动了"。
         /// <para>
         /// Polaris 自己已经在几个转发模组代码的关口埋好了（模块初始化、补丁应用、
-        /// <see cref="GameApi.GameStateAPI.WhenReady"/> 与 <c>LocaleChanged</c> 的回调、
+        /// <see cref="API.GameStateAPI.WhenReady"/> 与 <c>LocaleChanged</c> 的回调、
         /// <see cref="ErrorsAPI.Guard"/>），所以多数模组不需要手动调它。值得自己埋的是那种
         /// <b>耗时长、又不经 Polaris 转发</b>的活儿：自己的 <c>Update</c> 里的重计算、
         /// 自己起的协程、自己挂的 Harmony 补丁里的循环。
