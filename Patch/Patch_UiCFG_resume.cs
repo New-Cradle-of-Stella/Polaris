@@ -19,6 +19,13 @@ namespace Polaris.Patch
         {
             PolarisSettingsScreen.Sync(__instance);
             SettingsStore.Snapshot();
+
+            // 标题画面从按键设置页退回来：UiCFG 没被 destruct，内容还在，只要把搜索框亮回来。
+            // 游戏内不用管——ESC 菜单的搜索框在原版底部子区里，跟着菜单一起收放。
+            if (__instance.is_title)
+            {
+                SettingsSearchWindow.Resume();
+            }
         }
     }
 }

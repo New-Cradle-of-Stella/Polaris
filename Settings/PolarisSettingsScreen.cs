@@ -44,6 +44,11 @@ namespace Polaris.Settings
         /// <summary>原版文字色；<c>UiCFG.P</c> 的标签和 <c>fnShowDesc</c> 的说明框用的是同一个值。</summary>
         const uint TextColor = 4283780170u;
 
+        /// <summary>分区分隔线的样式，取值抄自 <c>UiBoxDesigner.Hr</c> 与原来那句 <c>Hr(0.94f, 16f, 8f)</c>。</summary>
+        const float HrWidthRatio = 0.94f;
+        const float HrMargin = 16f;
+        const uint HrColor = 2857717320u;
+
         /// <summary>Unity 单位与界面像素的换算：1 单位 = 64 像素。</summary>
         const float PixelsPerUnit = 64f;
 
@@ -57,6 +62,7 @@ namespace Polaris.Settings
         internal static void Append(UiCFG cfg)
         {
             rendered.Clear();
+            SettingsSearchFilter.Begin(cfg);
             PolarisAPI.Settings.ScreenBuilt = true;
 
             IReadOnlyList<SettingGroup> groups = PolarisAPI.Settings.Groups;
@@ -71,10 +77,11 @@ namespace Polaris.Settings
             {
                 try
                 {
-                    GroupHeader(box, group);
+                    SettingsSearchFilter.GroupRecorder recorder = SettingsSearchFilter.OpenGroup(group);
+                    GroupHeader(box, group, recorder);
                     foreach (SettingDefinition setting in group.Settings)
                     {
-                        SettingsRowRenderer.Render(cfg, box, setting);
+                        SettingsRowRenderer.Render(cfg, box, setting, recorder.OpenRow(setting));
                         rendered.Add(setting);
                     }
                 }
@@ -91,11 +98,30 @@ namespace Polaris.Settings
             Plugin.Logger.LogInfo($"[Polaris.Settings] Appended {groups.Count} groups and {rendered.Count} settings to the settings screen.");
         }
 
-        /// <summary>分区标题：一条分隔线 + 一行居中文字，与原版的行样式同色系。</summary>
-        static void GroupHeader(UiBoxDesigner box, SettingGroup group)
+        /// <summary>
+        /// 分区标题：一条分隔线 + 一行居中文字，与原版的行样式同色系。
+        /// <para>
+        /// 分隔线这里是把 <c>UiBoxDesigner.Hr</c> 的实现<b>照抄</b>一遍，而不是直接调它：
+        /// 搜索过滤要能把整个分区（连同这条线）收起来，就得拿到 <c>addHr</c> 返回的那个块，
+        /// 而 <c>Hr()</c> 只返回 box 自己。抄的时候连它 <c>margin_b = _margin_t</c> 那个
+        /// 手误一起保留——那是当前这一版界面实际的间距，改掉就是无关的排版变动。
+        /// </para>
+        /// </summary>
+        static void GroupHeader(UiBoxDesigner box, SettingGroup group, SettingsSearchFilter.GroupRecorder recorder)
         {
-            box.Hr(0.94f, 16f, 8f);
-            Caption(box, group.DisplayTitle, "P_PLRS_GROUP_" + group.ModId, box.use_w);
+            box.Br();
+            recorder.AddHeader(box.addHr(new DsnDataHr
+            {
+                draw_width_rate = HrWidthRatio,
+                swidth = box.use_w,
+                Col = C32.d2c(HrColor),
+                margin_t = HrMargin,
+                margin_b = HrMargin,
+                line_height = 1f,
+            }));
+            box.Br();
+
+            recorder.AddHeader(Caption(box, group.DisplayTitle, "P_PLRS_GROUP_" + group.ModId, box.use_w));
             box.Br();
         }
 
@@ -109,9 +135,10 @@ namespace Polaris.Settings
         /// </para>
         /// </summary>
         /// <param name="width">文字块宽度：标签用固定的标签栏宽度，分区标题铺满整行</param>
-        internal static void Caption(UiBoxDesigner box, string text, string name, float width)
+        /// <returns>画出来的文字块，供 <see cref="SettingsSearchFilter"/> 登记显隐。</returns>
+        internal static FillBlock Caption(UiBoxDesigner box, string text, string name, float width)
         {
-            box.Br().addP(new DsnDataP
+            return box.Br().addP(new DsnDataP
             {
                 text = text,
                 name = name,

@@ -29,7 +29,8 @@ namespace Polaris.Patch
         typeof(UiCFG.FnCfgTabCreateAfter), typeof(bool))]
     internal static class Patch_UiCFG_Constructor
     {
-        static void Prefix(UiCFG __instance, ref UiCFG.FnCfgTabCreateAfter _FnDesignerCreateAfter)
+        static void Prefix(UiCFG __instance, UiBoxDesigner _Bx, bool _is_title,
+                           ref UiCFG.FnCfgTabCreateAfter _FnDesignerCreateAfter)
         {
             UiCFG.FnCfgTabCreateAfter original = _FnDesignerCreateAfter;
 
@@ -45,6 +46,27 @@ namespace Polaris.Patch
 
             // 界面即将建起来，此刻的值就是"取消"要回滚到的基准。
             SettingsStore.Snapshot();
+
+            // 标题画面的设置面板底部让出一条给搜索框。必须赶在构造函数<b>之前</b>：
+            // 构造函数里 BxOut.use_h 会被拿去给主标签页定高
+            // （addTab("_DsmInner", use_w, use_h, ...)），改晚了就是面板缩了、里面的滚动区没缩。
+            if (SettingsSearchWindow.Wanted(_is_title))
+            {
+                SettingsSearchWindow.ShrinkPanel(_Bx);
+            }
+        }
+
+        /// <summary>
+        /// 设置项这时已经画完（委托是在构造函数末尾跑的），
+        /// <see cref="SettingsSearchFilter"/> 的登记表是新鲜的，可以把搜索框摆出来了。
+        /// </summary>
+        static void Postfix(UiBoxDesigner _Bx, bool _is_title)
+        {
+            // 条件与 Prefix 里那次缩短严格一致：缩了却不摆搜索框，面板底下就白空一条。
+            if (SettingsSearchWindow.Wanted(_is_title))
+            {
+                SettingsSearchWindow.ShowUnder(_Bx);
+            }
         }
     }
 }
