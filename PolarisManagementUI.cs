@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using nel;
+using Polaris.Localization;
 using UnityEngine;
 using XX;
 
@@ -14,17 +15,29 @@ namespace Polaris
     /// <see cref="PolarisModDetailPopup"/> 展示作者与简介。
     /// 面板本身比内容矮，靠 <c>use_scroll</c> 滚动查看。
     /// <para>
-    /// 启停改动不当场落盘：页面打开期间只记在 <see cref="pending"/> 里，关闭页面时若有改动
-    /// 就弹 <see cref="PolarisRestartPrompt"/> 确认，确认后才改名并关闭游戏（改名后的 dll 要
-    /// 下次启动 BepInEx 扫描插件目录时才会被发现，本次进程里怎么改都不会生效）。
+    /// 启停改动不当场落盘：页面打开期间只记在 <see cref="pending"/> 里，点底部"确定"时若有
+    /// 改动就弹 <see cref="PolarisRestartPrompt"/> 确认，确认后才改名并关闭游戏（改名后的 dll
+    /// 要下次启动 BepInEx 扫描插件目录时才会被发现，本次进程里怎么改都不会生效）。
+    /// </para>
+    /// <para>
+    /// 底部两个按钮的分工是刻意的、也和游戏别处的确定/取消一致：<b>"取消"永远无条件</b>——
+    /// 一按就丢掉本次全部改动并退回标题菜单，不再反问一句。会反问的只有"确定"，因为它真正
+    /// 要做的事（改 dll 文件名 + 关掉游戏）既动磁盘又打断游戏，那一步才值得拦一道。
+    /// 反过来做（取消时问"要保存吗"）会让玩家在最想干脆退出的时候还得多读一屏字。
     /// </para>
     /// </summary>
     internal static class PolarisManagementUI
     {
         const string ButtonName = "Polaris";
 
-        static readonly string CloseHint = $"{KeyHint.Cancel} 关闭";
-        static readonly string PromptHint = $"{KeyHint.Cancel} 放弃修改";
+        /// <summary>页面自身的操作提示行。每次用时现拼——玩家随时可能在标题画面换语言。</summary>
+        static string PageHint =>
+            $"{KeyHint.Submit} {ModManagerStrings.Text(ModManagerStrings.CmdSubmit)}"
+            + $"    {KeyHint.Cancel} {ModManagerStrings.Text(ModManagerStrings.CmdCancel)}";
+
+        /// <summary>确认窗弹着时的操作提示行：此刻取消键的含义是"退回列表"。</summary>
+        static string PromptHint =>
+            $"{KeyHint.Cancel} {ModManagerStrings.Text(ModManagerStrings.CmdBack)}";
 
         const float WindowW = 500f;
         const float WindowH = 320f; // 视口高度，比内容矮，靠滚动查看
@@ -71,14 +84,10 @@ namespace Polaris
         /// <summary>必须在 Plugin.Start() 最开始调用，赶在其它模组注册按钮之前占住"设置"后面的位置。</summary>
         internal static void RegisterButton()
         {
+            ModManagerStrings.Register();
+
             PolarisAPI.MainMenu.AllocateButtonState(ButtonName);
             PolarisAPI.MainMenu.SetWindowOpenChecker(ButtonName, () => isOpen);
-            PolarisAPI.MainMenu.SetCommandButton(ButtonName, submit: false, "关闭", _ =>
-            {
-                RequestClose();
-                return true;
-            });
-            PolarisAPI.MainMenu.SetOperationHint(ButtonName, CloseHint);
             PolarisAPI.MainMenu.Escaped += key =>
             {
                 if (key != MainMenuAPI.ResolveKey(ButtonName))
@@ -86,22 +95,55 @@ namespace Polaris
                     return;
                 }
 
-                // 确认窗弹着的时候 ESC 只作用于确认窗本身（等同于点"取消"），不越过它去关页面。
+                // 确认窗弹着的时候 ESC 只作用于确认窗本身（等同于点它自己的"取消"），
+                // 不越过它去关页面。
                 if (PolarisRestartPrompt.IsOpen)
                 {
-                    CancelRestartPrompt();
+                    DismissRestartPrompt();
                     return;
                 }
 
-                RequestClose();
+                // 取消键 == 底部的"取消"按钮：无条件放弃。
+                CancelAll();
             };
 
             PolarisAPI.MainMenu.AddButton(ButtonName, _ =>
             {
+                // 按钮文案与提示行在这里（而不是注册时）写入：它们是本地化文本，玩家在标题画面
+                // 换过语言之后必须跟着变，而注册只发生在启动时那一次。放在 EnterButtonState
+                // 之前是为了少一次重建——那时本按钮还不是"当前打开的按钮"，
+                // SetCommandButton 内部的 RefreshIfCurrent 是空操作。
+                ApplyCommandButtons();
                 PolarisAPI.MainMenu.EnterButtonState(ButtonName);
                 Open();
                 return true;
             }, insertIndex: 3);
+        }
+
+        /// <summary>
+        /// 按当前语言写入底部确定/取消两个按钮的文案与回调。
+        /// <para>
+        /// "确定"走 <see cref="RequestApply"/>（有改动时弹确认窗），"取消"走
+        /// <see cref="CancelAll"/>（无条件放弃）。
+        /// </para>
+        /// </summary>
+        static void ApplyCommandButtons()
+        {
+            PolarisAPI.MainMenu.SetCommandButton(
+                ButtonName, submit: true, ModManagerStrings.Text(ModManagerStrings.CmdSubmit), _ =>
+                {
+                    RequestApply();
+                    return true;
+                });
+
+            PolarisAPI.MainMenu.SetCommandButton(
+                ButtonName, submit: false, ModManagerStrings.Text(ModManagerStrings.CmdCancel), _ =>
+                {
+                    CancelAll();
+                    return true;
+                });
+
+            PolarisAPI.MainMenu.SetOperationHint(ButtonName, PageHint);
         }
 
         static void Open()
@@ -130,9 +172,10 @@ namespace Polaris
             pending.Clear();
             lastErrors.Clear();
 
-            // 上次是在确认窗里关掉页面的话，按钮条还停在"隐藏"的配置上；在这里而不是 Close()
-            // 里恢复，是为了避开"关闭前一帧把按钮条又亮出来"的闪烁。
-            SetPageChromeVisible(true);
+            // 上次是在确认窗里关掉页面的话，按钮条还停在"隐藏"的配置上。这里不必再恢复一次：
+            // 每次打开都会先走一遍 ApplyCommandButtons，SetCommandButton 本身就把两侧重新置为
+            // 可见（见 CommandButtonConfig 的构造）。在 Close() 里恢复反而会在关闭前一帧把按钮条
+            // 又亮出来，那正是当初把恢复挪到打开时做的原因。
 
             Rebuild();
             family.activate();
@@ -140,10 +183,10 @@ namespace Polaris
         }
 
         /// <summary>
-        /// 玩家请求关闭页面（点"关闭"按钮或按取消键）。有缓存改动时先弹确认窗问一句，
-        /// 没有改动就跟以前一样直接关。
+        /// 底部"确定"：有缓存改动就弹确认窗问一句（应用要改 dll 文件名并关掉游戏，值得拦一道），
+        /// 什么都没改过就直接关页面。
         /// </summary>
-        static void RequestClose()
+        static void RequestApply()
         {
             if (pending.Count == 0)
             {
@@ -152,6 +195,17 @@ namespace Polaris
             }
 
             ShowRestartPrompt();
+        }
+
+        /// <summary>
+        /// 底部"取消"（以及取消键）：无条件放弃本次全部改动并关页面，不反问。磁盘上什么都没
+        /// 动过——改动一直只记在 <see cref="pending"/> 里，丢掉即可。
+        /// </summary>
+        static void CancelAll()
+        {
+            pending.Clear();
+            lastErrors.Clear();
+            Close();
         }
 
         static void Close()
@@ -213,12 +267,9 @@ namespace Polaris
             SetPageChromeVisible(false);
 
             PolarisRestartPrompt.Show(
-                $"有 {pending.Count} 项模组启停修改尚未应用。\n" +
-                "这类修改要等下次启动时 BepInEx 重新扫描插件目录才会生效，本次游戏内无法热更。\n\n" +
-                "确定：保存修改并关闭游戏，之后请手动重新启动。\n" +
-                "取消：放弃本次全部修改并退回标题菜单。",
+                string.Format(ModManagerStrings.Text(ModManagerStrings.PromptMessage), pending.Count),
                 ConfirmRestartPrompt,
-                CancelRestartPrompt);
+                DismissRestartPrompt);
         }
 
         /// <summary>确认窗"确定"：把缓存的改动落到磁盘，成功就关页面并退出游戏。</summary>
@@ -236,13 +287,16 @@ namespace Polaris
             PolarisAPI.MainMenu.QuitGame();
         }
 
-        /// <summary>确认窗"取消"：放弃全部缓存改动并关闭页面（磁盘上什么都没动过）。</summary>
-        static void CancelRestartPrompt()
+        /// <summary>
+        /// 确认窗"取消"（以及它弹着时的取消键）：只收起确认窗、退回列表，缓存的改动原样留着。
+        /// <para>
+        /// 不在这里放弃改动：放弃是底部"取消"按钮的职责，而且是无条件的。玩家点"确定"看到
+        /// "要关掉游戏"之后改主意，多半是想回去再改两笔，不是想把刚才勾的全丢掉。
+        /// </para>
+        /// </summary>
+        static void DismissRestartPrompt()
         {
-            PolarisRestartPrompt.Hide();
-            pending.Clear();
-            lastErrors.Clear();
-            Close();
+            BackToList();
         }
 
         /// <summary>收起确认窗、把主列表和底部按钮条放回来。</summary>
@@ -258,12 +312,14 @@ namespace Polaris
 
         /// <summary>
         /// 切换页面自身那套"外壳"（底部确定/取消按钮条与操作提示行）的显隐。确认窗弹出期间要
-        /// 收起来：那条按钮条上写的是"关闭"，跟确认窗里的确定/取消并排出现只会让人不知道该点谁。
+        /// 收起来：页面这条按钮条上也是一对确定/取消，跟确认窗里的那对并排出现，玩家根本分不出
+        /// 该点哪个。
         /// </summary>
         static void SetPageChromeVisible(bool visible)
         {
+            PolarisAPI.MainMenu.SetCommandButtonVisible(ButtonName, submit: true, visible);
             PolarisAPI.MainMenu.SetCommandButtonVisible(ButtonName, submit: false, visible);
-            PolarisAPI.MainMenu.SetOperationHint(ButtonName, visible ? CloseHint : PromptHint);
+            PolarisAPI.MainMenu.SetOperationHint(ButtonName, visible ? PageHint : PromptHint);
         }
 
         /// <summary>
@@ -319,13 +375,13 @@ namespace Polaris
 
         static void BuildContent(UiBoxDesigner box, List<UserModRecord> mods)
         {
-            Title(box, "Polaris 模组管理");
+            Title(box, ModManagerStrings.Text(ModManagerStrings.Title));
             HrGap(box, 6f, 6f);
 
-            Section(box, "模组列表");
+            Section(box, ModManagerStrings.Text(ModManagerStrings.SectionMods));
             if (mods.Count == 0)
             {
-                Muted(box, "（未检测到）");
+                Muted(box, ModManagerStrings.Text(ModManagerStrings.Empty));
             }
             else
             {
@@ -339,7 +395,7 @@ namespace Polaris
                     {
                         name = record.DisplayName,
                         title = prefix + Headline(record.Info, record.DisplayName) + dirtyMark
-                                + (error != null ? "  (操作失败)" : ""),
+                                + (error != null ? ModManagerStrings.Text(ModManagerStrings.RowFailed) : ""),
                         w = box.use_w,
                         h = 26f,
                         fnClick = _ =>
@@ -360,7 +416,8 @@ namespace Polaris
 
             if (pending.Count > 0)
             {
-                Muted(box, $"*  有 {pending.Count} 项修改尚未应用，关闭本页时会询问是否立即重启生效。");
+                Muted(box, string.Format(
+                    ModManagerStrings.Text(ModManagerStrings.PendingNote), pending.Count));
             }
 
             HrGap(box, 6f, 6f);
@@ -369,7 +426,7 @@ namespace Polaris
             box.addButtonT<aBtnNel>(new DsnDataButton
             {
                 name = "refresh",
-                title = "刷新列表",
+                title = ModManagerStrings.Text(ModManagerStrings.Refresh),
                 w = 160f,
                 h = 28f,
                 fnClick = _ =>
@@ -380,7 +437,8 @@ namespace Polaris
                 // 也挂说明，否则鼠标从最后一个模组滑到这里时浮窗会僵在上一条上，看着像卡住了。
                 fnHover = button =>
                 {
-                    PolarisModDetailPopup.ShowText(button, "刷新列表\n重新扫描 plugins 目录，读取模组的启停状态。\n已勾选但尚未应用的修改会保留。");
+                    PolarisModDetailPopup.ShowText(
+                        button, ModManagerStrings.Text(ModManagerStrings.RefreshDesc));
                     return true;
                 }
             });

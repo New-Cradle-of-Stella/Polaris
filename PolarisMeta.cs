@@ -8,14 +8,10 @@ namespace Polaris
     internal static class PolarisMeta
     {
         /// <summary>
-        /// Polaris 自身错误报告的提交去处。
-        /// <para>
-        /// <b>这里仍是占位符</b>：换成真实地址（issue 页 / 群号 / 邮箱皆可）之后，
-        /// <see cref="PolarisModWarning"/> 的中日英三段正文与
-        /// <see cref="Diagnostics.ErrorReportWriter"/> 写出的报告结尾会同时生效，只改这一处。
-        /// </para>
+        /// Polaris 自身错误报告的提交去处。<see cref="PolarisModWarning"/> 的中日英三段正文与
+        /// <see cref="Diagnostics.ErrorReportWriter"/> 写出的报告结尾共用这一处。
         /// </summary>
-        internal const string ReportTarget = "【待填写 / TBA】";
+        internal const string ReportTarget = "https://github.com/New-Cradle-of-Stella/Polaris/issues";
 
         /// <summary>Polaris 项目主页。</summary>
         internal const string ProjectUrl = "https://github.com/AAAA9731";

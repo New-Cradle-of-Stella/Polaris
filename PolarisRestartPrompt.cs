@@ -1,5 +1,6 @@
 using System;
 using nel;
+using Polaris.Localization;
 using UnityEngine;
 using XX;
 
@@ -8,7 +9,8 @@ namespace Polaris
     /// <summary>
     /// 模组管理页的"需要重启"确认窗：一个与主面板同族、但独立摆在屏幕中央的
     /// <see cref="UiBoxDesigner"/>，正文说明缓存的启停修改必须重启才会生效，下方两个按钮
-    /// 分别对应"保存并关闭游戏"与"放弃修改"。
+    /// 分别对应"保存并关闭游戏"与"退回列表"。它只挡在"确定"这条路上——放弃改动是页面底部
+    /// "取消"按钮的事，那一步无条件、不经过本窗。
     /// <para>
     /// 弹出期间 <see cref="PolarisManagementUI"/> 会把主列表整个 deactivate 掉——这一族里的
     /// 按钮不存在"被上层窗口挡住就点不到"的说法，鼠标射线照样能打到列表上的启停按钮；
@@ -20,10 +22,17 @@ namespace Polaris
         const string DesignerName = "PolarisRestartPrompt";
 
         const float PromptW = 480f;
-        const float PromptH = 240f;
 
-        /// <summary>正文占用的高度：面板内高（PromptH - margin_in_tb * 2 = 180）减去按钮行与留白。</summary>
-        const float TextH = 110f;
+        /// <summary>
+        /// 窗口高度。按三种语言里<b>最长</b>的那一版正文定，而不是按中文定：正文块的高度是
+        /// <c>FillBlock</c> 按实测文本给的（<see cref="TextH"/> 只是下限），排不下时会把下面的
+        /// 按钮行顶出框外，而本窗 <c>use_scroll</c> 是关的，顶出去就再也点不到了。英文那版最长，
+        /// 约 8 行。
+        /// </summary>
+        const float PromptH = 300f;
+
+        /// <summary>正文占用的高度：面板内高（PromptH - margin_in_tb * 2 = 240）减去按钮行与留白。</summary>
+        const float TextH = 170f;
 
         const float ButtonW = 180f;
         const float ButtonH = 30f;
@@ -121,7 +130,7 @@ namespace Polaris
             designer.addButtonT<aBtnNel>(new DsnDataButton
             {
                 name = "restart_confirm",
-                title = "确定（关闭游戏）",
+                title = ModManagerStrings.Text(ModManagerStrings.PromptConfirm),
                 w = ButtonW,
                 h = ButtonH,
                 fnClick = _ =>
@@ -136,7 +145,7 @@ namespace Polaris
             designer.addButtonT<aBtnNel>(new DsnDataButton
             {
                 name = "restart_cancel",
-                title = "取消（放弃修改）",
+                title = ModManagerStrings.Text(ModManagerStrings.PromptCancel),
                 w = ButtonW,
                 h = ButtonH,
                 fnClick = _ =>

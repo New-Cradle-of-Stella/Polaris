@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using nel;
+using Polaris.Localization;
 using UnityEngine;
 using XX;
 
@@ -237,17 +238,23 @@ namespace Polaris
 
                 if (info.Author != null)
                 {
-                    text.Append('\n').Append("作者：").Append(Clip(info.Author, FieldMax));
+                    text.Append('\n')
+                        .Append(ModManagerStrings.Text(ModManagerStrings.DetailAuthor))
+                        .Append(Clip(info.Author, FieldMax));
                 }
 
                 if (info.Description != null)
                 {
-                    text.Append('\n').Append("简介：").Append(Clip(info.Description, DescriptionMax));
+                    text.Append('\n')
+                        .Append(ModManagerStrings.Text(ModManagerStrings.DetailDescription))
+                        .Append(Clip(info.Description, DescriptionMax));
                 }
 
                 if (info.Url != null)
                 {
-                    text.Append('\n').Append("链接：").Append(Clip(info.Url, FieldMax));
+                    text.Append('\n')
+                        .Append(ModManagerStrings.Text(ModManagerStrings.DetailUrl))
+                        .Append(Clip(info.Url, FieldMax));
                 }
             }
             else
@@ -259,20 +266,20 @@ namespace Polaris
             {
                 // 本页里改过、但还没落盘的状态。文案要说清"现在是什么"和"重启后会变成什么"，
                 // 别让玩家以为点一下就已经生效了。
-                text.Append('\n')
-                    .Append(record.Enabled ? "当前已启用，待禁用" : "当前已禁用，待启用")
-                    .Append("（关闭本页确认后重启生效）");
+                text.Append('\n').Append(ModManagerStrings.Text(record.Enabled
+                    ? ModManagerStrings.DetailPendingDisable
+                    : ModManagerStrings.DetailPendingEnable));
             }
             else if (!record.Enabled)
             {
                 // 没有待应用的改动时，磁盘现状就是本次启动时的状态，不必再提"重启后生效"。
-                text.Append('\n').Append("已禁用");
+                text.Append('\n').Append(ModManagerStrings.Text(ModManagerStrings.DetailDisabled));
             }
             else if (!hasModInfo)
             {
                 // 两种情况都会走到这里，文案要同时说清：模组根本没标特性；以及文件虽然是启用
                 // 状态、但本次启动时 BepInEx 并没有加载过它（比如是在游戏外面手动改名启用的）。
-                text.Append('\n').Append("未提供模组信息，或本次启动时未加载。");
+                text.Append('\n').Append(ModManagerStrings.Text(ModManagerStrings.DetailNoInfo));
             }
 
             if (hasModInfo)
@@ -282,7 +289,9 @@ namespace Polaris
 
             if (error != null)
             {
-                text.Append('\n').Append("操作失败：").Append(Clip(error, FieldMax));
+                text.Append('\n')
+                    .Append(ModManagerStrings.Text(ModManagerStrings.DetailFailed))
+                    .Append(Clip(error, FieldMax));
             }
 
             return text.ToString();

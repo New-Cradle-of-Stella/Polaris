@@ -28,6 +28,11 @@ namespace Polaris.Patch
             // 直接返回了。
             TitleOverlays.AdvanceFade(Time.deltaTime);
 
+            // 告知页显示期间压住原版的语言切换行 / 外链按钮 / 底部按键提示，见 TitleChrome。
+            // 必须放在 Postfix 里：原版 runIRD 自己每帧都会重写这几处的 alpha，只有跑在它
+            // 后面写下的值才是这一帧的最终值。
+            TitleChrome.Apply(__instance, TitleOverlays.IsShowing);
+
             MainMenuAPI mainMenu = PolarisAPI.MainMenu;
             if (mainMenu.CurrentOpenButton == null)
             {
