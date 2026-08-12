@@ -32,6 +32,16 @@
     <Compile Remove=".codex-work\**\*.cs" />
     <None Remove="outputs\**" />
     <None Remove=".codex-work\**" />
+
+    <!-- PolarisEvent 的编译器/测试是独立的 netstandard2.0 项目，物理上放在 Polaris.csproj 目录树下
+         （PolarisEvent-实现计划.md §9），但绝不能被这里的隐式 **/*.cs 通配一起卷进 Polaris.dll——
+         它们各自的 PackageReference（YamlDotNet、xunit）对 Polaris.csproj 不可见，混进来只会是一堆
+         CS0246。（构建集成 Polaris.Event.Build 已废弃并删除——.phxx 现在由 PolarisTools 的
+         PolarisEventGenerator 单文件生成器编译，不再需要独立的 MSBuild Task 项目。） -->
+    <Compile Remove="Polaris.Event.Compiler\**\*.cs" />
+    <Compile Remove="Polaris.Event.Compiler.Tests\**\*.cs" />
+    <None Remove="Polaris.Event.Compiler\**" />
+    <None Remove="Polaris.Event.Compiler.Tests\**" />
   </ItemGroup>
 
   <!--

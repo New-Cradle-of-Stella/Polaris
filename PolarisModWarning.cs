@@ -20,6 +20,8 @@ namespace Polaris
     /// <see cref="PolarisMeta.ModGuidelinesUrl"/>），其中明确要求"必须写明本框架为社区自制、
     /// 与官方无关，且用它做出的 MOD 由各自作者负责"，以及"必须写明使用 MOD 可能引发异常且
     /// 官方不提供支持"。删改这两段之前请先回去核对那一页的最新版本。
+    /// 该段末尾另加一句声明：Polaris 不会计划与其他模组框架兼容，强行兼容后果自负——
+    /// 这不是官方规则页要求的内容，纯粹是项目自身的立场声明，三种语言各自独立措辞。
     /// </para>
     /// <para>
     /// 一次只显示一种语言，不跟随游戏语言设置——默认英语，玩家可以点右下角那两个语言按钮
@@ -219,6 +221,7 @@ namespace Polaris
             "If Polaris itself produces an error report, please submit that to " + ReportTarget + ".",
             15f,
             "Polaris is a non-commercial, community-created framework. It is not an official product, and it carries no affiliation with, endorsement by, or support from NanameHacha. It is published with the game author's permission, on the condition that it follows the official mod-creation guidelines; that permission is not an endorsement. Mods built on Polaris are the sole responsibility of their own authors.\n" +
+            "Polaris has no plans, now or in the future, to be made compatible with any other mod framework. Forcing such compatibility is done entirely at your own risk.\n" +
             GuidelinesUrl,
             "OPEN THE GUIDELINES PAGE",
             "I UNDERSTAND", "English",
@@ -231,6 +234,7 @@ namespace Polaris
             "如果 Polaris 自己弹出了错误报告，请把它提交到 " + ReportTarget + "。",
             16f,
             "Polaris 是非商业的社区自制框架，并非官方产品，与 NanameHacha 没有任何隶属关系，也未获得其背书或技术支持。本框架是在遵守官方模组创作规则的前提下、经游戏作者许可公开发布的；许可不等于官方认可。使用 Polaris 制作的模组，责任完全由各自的模组作者承担。\n" +
+            "Polaris 今后不会有任何与其他模组框架兼容的计划。如果强行使其兼容，后果自负。\n" +
             GuidelinesUrl,
             "打开官方规则页",
             "我已了解", "中文",
@@ -243,6 +247,7 @@ namespace Polaris
             "Polaris 自体がエラーレポートを出力した場合は、" + ReportTarget + " へご提出ください。",
             15.5f,
             "Polaris は非営利のコミュニティ制作フレームワークであり、公式の製品ではありません。NanameHacha とは一切関係がなく、公認およびサポートも受けていません。公式のMOD作成規約を遵守することを条件に、ゲーム作者の許可を得て公開されています（許可は公認を意味するものではありません）。Polaris を用いて制作されたMODの責任は、それぞれのMOD作者にあります。\n" +
+            "Polaris は今後、他のMODフレームワークとの互換性を持たせる予定は一切ありません。無理に互換させた場合の結果はすべて自己責任となります。\n" +
             GuidelinesUrl,
             "規約ページを開く",
             "了解しました", "日本語",

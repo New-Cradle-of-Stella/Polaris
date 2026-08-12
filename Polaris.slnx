@@ -1,3 +1,5 @@
 <Solution>
   <Project Path="Polaris.csproj" />
+  <Project Path="Polaris.Event.Compiler\Polaris.Event.Compiler.csproj" />
+  <Project Path="Polaris.Event.Compiler.Tests\Polaris.Event.Compiler.Tests.csproj" />
 </Solution>

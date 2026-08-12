@@ -45,15 +45,29 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary><c>ItemStorage.tranferItems</c> 是 Storage 间转移的入口，单独发一条事件，
-    /// 避免被误报成一次无关联的增加 + 减少。</summary>
+    /// <summary>
+    /// <c>ItemStorage.tranferItems</c> 是 Storage 间转移的入口，单独发一条事件，
+    /// 避免被误报成一次无关联的增加 + 减少。转移方向是"从 <c>__instance</c> 到 <c>Dest</c>"；
+    /// <c>__result</c> 是实际转移的物品行数，为 0 表示什么都没动。
+    /// <para>
+    /// 形参名必须与游戏一致（<c>Dest</c>）：Harmony 是<b>按名字</b>把原方法的实参注进来的，
+    /// 名字对不上会在应用补丁时直接抛 "Parameter not found"，而不是安静地注入 null。
+    /// </para>
+    /// </summary>
     [HarmonyPatch(typeof(ItemStorage), nameof(ItemStorage.tranferItems))]
     [PolarisPatchFeature("ItemsTransferred")]
     internal static class Patch_ItemStorage_tranferItems_Callbacks
     {
         [HarmonyPostfix]
-        static void Postfix(ItemStorage __instance, ItemStorage St)
-            => GameCallbackPublishers.ItemsTransferred(__instance, St);
+        static void Postfix(ItemStorage __instance, ItemStorage Dest, int __result)
+        {
+            if (__result == 0)
+            {
+                return;
+            }
+
+            GameCallbackPublishers.ItemsTransferred(__instance, Dest);
+        }
     }
 
     /// <summary><c>NelItemManager.getItem</c> 是玩家"获得记录"增加的入口；<c>__result</c> 是实际

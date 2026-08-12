@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Polaris.Event.Compiler</AssemblyName>
+    <RootNamespace>Polaris.Event.Compiler</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <!-- 纯编译器：不引用 Unity/BepInEx/Visual Studio SDK，好让 Polaris（netstandard2.1 游戏运行时）
+         和 PolarisTools（net472 VSIX）都能直接引用同一份实现，见 PolarisEvent-实现计划.md §3.1。 -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 唯一的外部依赖：解析 polaris.events.yaml 别名文件。netstandard2.0 兼容，MIT 协议。 -->
+    <PackageReference Include="YamlDotNet" Version="13.7.1" />
+  </ItemGroup>
+
+</Project>
