@@ -165,7 +165,7 @@ namespace Polaris.Res
         /// <see cref="PxlsCharacterHandle"/>，订阅它的 <c>Ready</c>/<c>Faulted</c> 事件获知结果——
         /// 不存在"加载失败时的占位 PXLS 角色"这种东西，失败语义天然是异步的。
         /// <para>
-        /// 必须在 <see cref="Polaris.API.GameStateAPI.IsMtrxReady"/> 之后调用：PXLS 解析依赖 <c>MTRX.OMI</c>/
+        /// 必须在 <see cref="Polaris.API.GameSessionRuntime.IsReady"/> 之后调用：PXLS 解析依赖 <c>MTRX.OMI</c>/
         /// <c>OMeshImages</c> 这两个只在 <c>MTRX.init1()</c> 之后才存在的静态字典，太早调用会直接
         /// 抛 <see cref="InvalidOperationException"/>（用法错误，不受"严格模式"设置影响）。
         /// </para>
@@ -175,11 +175,11 @@ namespace Polaris.Res
             ResourceId id = new ResourceId(ModId, ResourceKind.Pxls, path);
             return ResourceCache.AcquireSync<PxlsCharacterHandle>(id, () =>
             {
-                if (!PolarisAPI.Game.IsMtrxReady)
+                if (!API.GameSessionRuntime.IsReady)
                 {
                     throw new InvalidOperationException(
                         $"[PolarisRes] {id} loaded too early: PXLS must be loaded after the game is ready. " +
-                        "Wrap the call in a PolarisAPI.Game.WhenReady(...) callback.");
+                        "Wrap the call in a API.GameSessionRuntime.WhenReady(...) callback.");
                 }
 
                 byte[] bytes = LoadBytes(id, out string absolutePath, out string mountRoot);
@@ -371,7 +371,7 @@ namespace Polaris.Res
 
             if (fieldType == typeof(PxlsCharacterHandle))
             {
-                // PXLS 解析依赖 MTRX.OMI/OMeshImages，只在 GameStateAPI.IsMtrxReady 之后才存在
+                // PXLS 解析依赖 MTRX.OMI/OMeshImages，只在 GameSessionRuntime.IsReady 之后才存在
                 // （见 Pxls(string, PxlsImportSettings) 的文档）。AutoBindScanner 在 BepInEx 的
                 // Start() 阶段（Plugin.Start 的子系统初始化里）就跑，此时游戏通常还没到那一步，
                 // 立即调用只会撞上 InvalidOperationException——外层 BindStaticFields(Type) 的
@@ -379,7 +379,7 @@ namespace Polaris.Res
                 // 没有任何重试。改成包进 WhenReady：已经就绪时会同步立即执行，效果和以前一样；
                 // 还没就绪则注册一次性回调，等游戏真正就绪那一帧再绑定，不再需要模组作者自己
                 // 对 [PolarisResource] 字段操心时序。
-                PolarisAPI.Game.WhenReady(() =>
+                API.GameSessionRuntime.WhenReady(() =>
                 {
                     try
                     {

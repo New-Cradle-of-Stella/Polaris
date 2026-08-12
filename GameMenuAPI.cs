@@ -26,38 +26,38 @@ namespace Polaris
         /// 稍后的 <c>NelM2DBase.runPost()</c> 中才真正激活，调用后立即读 <see cref="IsOpen"/>
         /// 可能仍是 <c>false</c>。
         /// </summary>
-        public GameActionResult Pause()
+        public PolarisActionResult Pause()
         {
             try
             {
                 NelM2DBase m2d = GameBinding.NelM2D;
                 if (m2d == null || m2d.GM == null || m2d.curMap == null || m2d.PlayerNoel == null)
                 {
-                    return GameActionResult.Fail(GameActionStatus.TargetUnavailable, "The game menu is not ready.");
+                    return PolarisActionResult.Fail(PolarisActionStatus.TargetUnavailable, "The game menu is not ready.");
                 }
 
                 if (m2d.GM.isActive() || m2d.menu_open_ == NelM2DBase.MENU_OPEN.OPEN)
                 {
-                    return GameActionResult.Ok();
+                    return PolarisActionResult.Ok();
                 }
 
                 if (!CanRequestNormalMenu(m2d))
                 {
-                    return GameActionResult.Fail(GameActionStatus.RejectedByState, "The current game state does not allow the ESC menu.");
+                    return PolarisActionResult.Fail(PolarisActionStatus.RejectedByState, "The current game state does not allow the ESC menu.");
                 }
 
                 m2d.menu_open = NelM2DBase.MENU_OPEN.OPEN;
                 if (m2d.menu_open_ != NelM2DBase.MENU_OPEN.OPEN)
                 {
-                    return GameActionResult.Fail(GameActionStatus.RejectedByState, "The game rejected the ESC menu request.");
+                    return PolarisActionResult.Fail(PolarisActionStatus.RejectedByState, "The game rejected the ESC menu request.");
                 }
 
-                return GameActionResult.Ok();
+                return PolarisActionResult.Ok();
             }
             catch (Exception ex)
             {
                 PolarisAPI.Errors.Report(ex, "GameMenu.Pause", typeof(GameMenuAPI).Assembly);
-                return GameActionResult.Fail(GameActionStatus.Failed, ex.Message);
+                return PolarisActionResult.Fail(PolarisActionStatus.Failed, ex.Message);
             }
         }
 
@@ -65,39 +65,39 @@ namespace Polaris
         /// 取消待处理的 ESC 菜单打开请求，或关闭已激活的原版 ESC 菜单（<c>UiGameMenu.deactivate(false)</c>，
         /// 完整原版收尾）。不会恢复事件、转场或其它系统各自拥有的暂停。
         /// </summary>
-        public GameActionResult Resume()
+        public PolarisActionResult Resume()
         {
             try
             {
                 NelM2DBase m2d = GameBinding.NelM2D;
                 if (m2d == null || m2d.GM == null)
                 {
-                    return GameActionResult.Fail(GameActionStatus.TargetUnavailable, "The game menu is not ready.");
+                    return PolarisActionResult.Fail(PolarisActionStatus.TargetUnavailable, "The game menu is not ready.");
                 }
 
                 if (!m2d.GM.isActive() && m2d.menu_open_ == NelM2DBase.MENU_OPEN.OPEN)
                 {
                     m2d.menu_open = NelM2DBase.MENU_OPEN.NONE;
-                    return GameActionResult.Ok();
+                    return PolarisActionResult.Ok();
                 }
 
                 if (!m2d.GM.isActive())
                 {
-                    return GameActionResult.Ok();
+                    return PolarisActionResult.Ok();
                 }
 
                 if (!CanCloseAsEscMenu(m2d.GM))
                 {
-                    return GameActionResult.Fail(GameActionStatus.RejectedByState, "The active menu is in a non-interruptible state.");
+                    return PolarisActionResult.Fail(PolarisActionStatus.RejectedByState, "The active menu is in a non-interruptible state.");
                 }
 
                 m2d.GM.deactivate(false);
-                return GameActionResult.Ok();
+                return PolarisActionResult.Ok();
             }
             catch (Exception ex)
             {
                 PolarisAPI.Errors.Report(ex, "GameMenu.Resume", typeof(GameMenuAPI).Assembly);
-                return GameActionResult.Fail(GameActionStatus.Failed, ex.Message);
+                return PolarisActionResult.Fail(PolarisActionStatus.Failed, ex.Message);
             }
         }
 
@@ -106,22 +106,22 @@ namespace Polaris
         /// 打开期间地图、角色、物理与世界绘制继续推进，菜单仍占用 UI 输入。这是进程级全局状态，
         /// 不区分调用方，也不持久化。
         /// </summary>
-        public GameActionResult SetWorldPause(bool enabled)
+        public PolarisActionResult SetWorldPause(bool enabled)
         {
             if (!GameMenuPauseRuntime.FeatureAvailable)
             {
-                return GameActionResult.Unsupported("ESC-menu world-pause control is unavailable in this game version.");
+                return PolarisActionResult.Unsupported("ESC-menu world-pause control is unavailable in this game version.");
             }
 
             try
             {
                 GameMenuPauseRuntime.SetPolicy(enabled);
-                return GameActionResult.Ok();
+                return PolarisActionResult.Ok();
             }
             catch (Exception ex)
             {
                 PolarisAPI.Errors.Report(ex, "GameMenu.SetWorldPause", typeof(GameMenuAPI).Assembly);
-                return GameActionResult.Fail(GameActionStatus.Failed, ex.Message);
+                return PolarisActionResult.Fail(PolarisActionStatus.Failed, ex.Message);
             }
         }
 

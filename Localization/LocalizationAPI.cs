@@ -189,7 +189,7 @@ namespace Polaris.Localization
             {
                 try
                 {
-                    return PolarisAPI.Game.CurrentLocale;
+                    return PolarisAPI.Game.Localization.CurrentLocale;
                 }
                 catch (Exception)
                 {

@@ -242,7 +242,7 @@ namespace Polaris.Diagnostics
             b.AppendLine($"Game version    : {Env(gameVersion, () => Application.version)}");
             b.AppendLine($"Unity version   : {Env(unityVersion, () => Application.unityVersion)}");
             b.AppendLine($"OS              : {Env(operatingSystem, () => SystemInfo.operatingSystem)}");
-            b.AppendLine($"Game language   : {Safe(() => PolarisAPI.Game.CurrentLocale)}");
+            b.AppendLine($"Game language   : {Safe(() => PolarisAPI.Game.Localization.CurrentLocale)}");
             b.AppendLine();
             b.AppendLine("Other logs:");
             b.AppendLine($"  Unity player log : {Env(playerLog, PlayerLogPath)}");

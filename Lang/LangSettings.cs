@@ -48,7 +48,7 @@ namespace Polaris.Lang
             {
                 switch (Language)
                 {
-                    // 这几个代码与 PolarisAPI.Game.CurrentLocale 给出的 family key 对齐；
+                    // 这几个代码与 PolarisAPI.Game.Localization.CurrentLocale 给出的 family key 对齐；
                     // 日文那一档写 "ja" 而不是游戏的默认 family key "_"，是因为 .plang 作者
                     // 填的是语言代码。PlangRuntime.Get 两边都认，见那里的候选顺序。
                     case ModTextLanguage.Japanese: return "ja";
@@ -59,7 +59,7 @@ namespace Polaris.Lang
 
                 try
                 {
-                    return PolarisAPI.Game.CurrentLocale;
+                    return PolarisAPI.Game.Localization.CurrentLocale;
                 }
                 catch (Exception e)
                 {

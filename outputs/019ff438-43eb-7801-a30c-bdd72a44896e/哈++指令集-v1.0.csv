@@ -1,0 +1,82 @@
+﻿ID,类别,中文名,哈++语法,参数,编译到哈语言,阻塞语义,状态,最低目标,校验规则,示例,备注
+h.version,编译器,语言版本,"h.version ""<semver>""",semver: 哈++规范版本,编译期消费，不输出,none,compiler,0.29j,文件首部唯一；必须为编译器支持版本,"h.version ""1.0""",锁定源语言语义
+h.target,编译器,目标版本,"h.target ""<gameVersion>""",gameVersion: 游戏版本,编译期消费，不输出,none,compiler,0.29j,文件或项目唯一；与项目目标一致,"h.target ""0.29j""",用于版本门控
+h.strict,编译器,严格模式,h.strict <bool>,bool: true/false,编译期消费，不输出,none,compiler,0.29j,布尔值；项目策略可覆盖,h.strict true,决定警告是否升级为错误
+h.import,编译器,导入模块,"h.import ""<path>""",path: .hxx 相对路径,编译期展开，不输出,none,compiler,0.29j,禁止循环导入；路径不得越出 include roots,"h.import ""common/dialog.hxx""",仅导入声明/宏，不改变运行时栈
+legacy.raw,兼容,原始哈语言,"legacy.raw ""<line>""",line: 单行原始指令,原样输出 line,由原指令决定,raw,0.29j,禁止换行/NUL；严格模式发出 HPP9001,"legacy.raw ""SMNCREATOR TARGET_SCRIPT demo""",长尾命令逃生舱
+data.let,数据,字符串赋值,let <name> = <value>,name: 变量名; value: 字符串/变量插值,name=value,none,stable,0.29j,变量名合法；保留前缀 __hpp_ 禁用,"let route = ""museum""",编译为旧字符串赋值
+data.calc,数据,数值赋值,calc <name> = <expr>,name: 变量名; expr: 数值表达式,name=~expr,none,stable,0.29j,表达式可解析；变量引用存在,calc retry = retry + 1,编译为旧数学赋值
+flow.if,流程,数值条件,if <expr> {,expr: 旧求值器兼容表达式,IF 'expr' {,none,stable,0.29j,括号成对；表达式非空,if retry < 3 {,结构化块
+flow.elif,流程,否则如果,elif <expr> {,expr: 条件表达式,ELSIF 'expr' {,none,stable,0.29j,必须跟在 if/elif 后,elif retry == 3 {,结构化块
+flow.ifstr,流程,字符串条件,ifstr <left> <op> <right> {,op: IS/ISNOT/ISIN/ISNOTIN/CONTAINS/NOTCONTAINS/STARTS/NOTSTARTS/ENDS/NOTENDS,IFSTR left op right {,none,stable,0.29j,运算符枚举；左右值必须存在,"ifstr ${choice} IS ""&&Cancel"" {",保留旧字符串比较语义
+flow.else,流程,否则,else {,无,ELSE {,none,stable,0.29j,必须跟在 if/elif/ifstr 后,else {,结构化块
+flow.end,流程,结束块,},无,},none,stable,0.29j,块栈不可为空,},由解析器生成/校验
+flow.label,流程,标签,flow.label name=<id>,name: 标签名,LABEL name,none,stable,0.29j,同读取器唯一；禁用 __hpp_ 前缀,flow.label name=RETRY,显式低级控制流
+flow.goto,流程,跳转,flow.goto label=<id>,label: 标签名,GOTO label,none,stable,0.29j,目标标签必须存在,flow.goto label=RETRY,显式低级控制流
+flow.return,流程,结束当前事件,flow.return,无,SEEK_END,none,stable,0.29j,无参数,flow.return,CHANGE_EVENT2 中等价于返回
+event.call,事件,插入事件,event.call id=<event> [args=[...]],id: 事件 ID; args: 可选参数列表,CHANGE_EVENT2 id args...,none,stable,0.29j,id 非空；资源索引存在时校验,event.call id=___city_farm/_rule args=[1],目标结束后回原事件
+event.replace,事件,替换事件,event.replace id=<event> [args=[...]],id: 事件 ID; args: 可选参数列表,CHANGE_EVENT id args...,none,stable,0.29j,id 非空；需显式确认不返回语义,event.replace id=200/ending,目标结束后回自由行动
+module.call,事件,调用模块,module.call id=<module> [args=[...]],id: 模块 ID; args: 位置参数列表,MODULE id args...,none,stable,0.29j,id 非空；参数按原位置输出,"module.call id=common/greeting args=[1,""L""]",等价于 @module
+time.wait,同步,等待帧,time.wait frames=<int>,frames: 非负整数,WAIT frames,frame,stable,0.29j,frames >= 0,time.wait frames=30,不把帧隐式换算为秒
+input.wait,同步,等待按键,input.wait [timeout=<int>],timeout: 可选最大等待帧,WAIT_BUTTON [timeout],input,stable,0.29j,timeout > 0；省略表示无限等待,input.wait timeout=180,按键或超时后继续
+move.wait,同步,等待移动,move.wait [timeout=<int>],timeout: 可选旧命令参数,WAIT_MOVE [timeout],move,stable,0.29j,timeout 若提供必须为正整数,move.wait,聚合 EvtMoveCheck
+task.wait,同步,等待功能,task.wait key=<waitKey>,waitKey: 已注册等待键,WAIT_FN waitKey,wait_fn,stable,0.29j,key 非空；能力表存在时校验,task.wait key=MAP_TRANSFER,由 IEventWaitListener 释放
+timeline.after,时间线,延迟单条指令,timeline.after frames=<int> do=<command>,frames: 延迟帧; command: 一条可降级指令,TL frames <compiled command>,none,stable,0.29j,do 必须恰好降级为一条非块指令,"timeline.after frames=15 do=""audio.sfx id=cloth_off""",v1.0 不接受多语句块
+timeline.flush,时间线,立即执行时间线,timeline.flush,无,DOTL,none,stable,0.29j,无参数,timeline.flush,执行此前 TL
+timeline.clear,时间线,清空时间线,timeline.clear,无,CLEARTL,none,stable,0.29j,无参数,timeline.clear,放弃此前 TL
+message.defer,时间线,消息后执行单条指令,message.defer do=<command>,command: 一条可降级指令,MTL <compiled command>,message,stable,0.29j,do 必须恰好降级为一条非块指令,"message.defer do=""visual.hide target=n""",等待下一条消息显示完成
+message.flush,时间线,立即执行消息队列,message.flush,无,DOMTL,none,stable,0.29j,无参数,message.flush,执行此前 MTL
+message.clear,时间线,清空消息队列,message.clear,无,CLEARMTL,none,stable,0.29j,无参数,message.clear,放弃此前 MTL
+dialog.say,对话,显示对话,dialog.say id=<textId> [record=<recordId>],textId: 对话 ID/变量; record: 可选 R[...],MSG id [record],message,stable,0.29j,id 非空；record 形态合法,dialog.say id=n_01,允许跨事件 ID 与变量
+dialog.prefix,对话,设置前缀,dialog.prefix actor=<id> text=<prefix>,actor: 角色标识; prefix: 文本前缀,MSG_PREFIX actor 'prefix',none,stable,0.29j,actor 非空；正确转义引号,"dialog.prefix actor=n text=""<shake>""",不进入对话记录
+dialog.actor,对话,设置说话人位置,dialog.actor actor=<id> position=<pos>,actor: 角色标识; pos: 位置预设,TALKER actor position,none,stable,0.29j,两参数必填,dialog.actor actor=n position=L,首次使用会显示立绘槽位
+dialog.actor_alias,对话,绑定姓名与音效,dialog.actor_alias actor=<id> [name=<tx>] [voice=<sound>],actor: 角色; name: 姓名词条; voice: 对话音效,TALKER_REPLACE actor [name] [voice],none,stable,0.29j,actor 必填；空参数用于恢复默认,dialog.actor_alias actor=a name=Mob voice=talk_mob_m2,保留恢复默认能力
+dialog.box,对话,设置对话框,dialog.box actor=<id> position=<pos> [from=<dir>] [style=<style>],style: DEFAULT/TT/WIDE/WIDE_TT/MONOLOGUE/ONELINE/BOOK,HKDS actor position from style,none,stable,0.29j,style 枚举；actor/position 必填,dialog.box actor=n position=L from=LT style=WIDE,命名参数避免位置混淆
+dialog.setup,对话,组合设置说话人,dialog.setup actor=<id> position=<pos> pose=<asset> [from=<dir>] [style=<style>],actor/position/pose 必填,TALKER; PIC; HKDS,none,stable,0.29j,展开顺序固定；每个子指令分别校验,"dialog.setup actor=n position=L pose=""a_1/a22"" from=LT style=WIDE",一对多组合指令
+board.show,文本板,显示书信/告示牌,board.show id=<textId> [effect=<int>],textId: 文本 ID; effect: 常见 2/3/4,TX_BOARD id [effect],message,stable,0.29j,id 必填；effect 建议枚举 2/3/4,board.show id=*notice_01 effect=3,保留旧文本资源规则
+board.hide,文本板,隐藏文本板,board.hide,无,TX_BOARD_HIDE,none,stable,0.29j,无参数,board.hide,0.29j 已确认
+board.lock,文本板,锁定文本板,board.lock,无,TX_BOARD_LOCK,none,stable,0.29j,无参数,board.lock,0.29j 已确认
+visual.pose,画面,设置立绘/图片,visual.pose target=<id> asset=<asset> [args=[...]],target: 角色/图层; asset: 差分或图片; args: 原扩展参数,PIC target asset args...,none,stable,0.29j,target/asset 必填；资源索引可选校验,"visual.pose target=n asset=""a_1/a22__F1""",PIC 长尾参数保留 args
+visual.emote,画面,添加表情符号,visual.emote target=<id> effect=<emote>,target: 角色; effect: 表情，可用 | 组合,PIC_MP target effect,none,stable,0.29j,effect 非空；枚举表存在时校验,visual.emote target=n effect=SWT,一次性/持续性由原效果决定
+visual.move,画面,移动到终点,visual.move target=<id> x=<num> y=<num> frames=<int> [curve=<curve>],curve 默认 ZLINE,PIC_MOVE target x y frames curve,none,stable,0.29j,frames >= 0；curve 枚举,visual.move target=n x=120 y=0 frames=30 curve=ZLINE,坐标保持旧语义
+visual.move_from,画面,从起点移动,"visual.move_from target=<id> from=[x1,y1] to=[x2,y2] frames=<int> [curve=<curve>]",from/to: 二元坐标,PIC_MOVE2 target x1 y1 x2 y2 frames curve,none,stable,0.29j,坐标数组长度为 2；frames >= 0,"visual.move_from target=#9 from=[0,0] to=[120,0] frames=30",支持旧 D+n/D-n 字面量
+visual.shake,画面,抖动图片,visual.shake target=<id> frames=<int> kind=<shake>,kind: 抖动类型; NONE 停止,PIC_MOVEA target frames kind,none,stable,0.29j,frames >= 0；kind 枚举可选,visual.shake target=n frames=15 kind=SCARY,统一 PIC_MOVEA/PIC_MVA
+visual.hide,画面,隐藏单个图片,visual.hide target=<id> [immediate=<bool>],immediate: 原地立即消失,PIC_HIDE target 0|1,none,stable,0.29j,target 必填,visual.hide target=n immediate=true,false/省略为平移或淡出
+visual.hide_all,画面,隐藏一类图片,visual.hide_all [layers=<mask>] [immediate=<bool>],layers: # T & W % 组合或空,PIC_HIDE_ALL layers 0|1,none,stable,0.29j,layers 仅允许层掩码字符,"visual.hide_all layers=""#T""",空 layers 表示全部
+visual.fill,画面,纯色填充,visual.fill layer=<id> color=<color>,layer: 图层; color: 命名/十六进制色,PIC_FILL layer color,none,stable,0.29j,颜色格式合法,visual.fill layer=#9 color=DARK,常与 fade 组合
+visual.fade_in,画面,渐入,visual.fade_in layer=<id> frames=<int>,layer: 图层; frames: 帧数,PIC_FADEIN layer frames,none,stable,0.29j,frames >= 0,visual.fade_in layer=#9 frames=50,统一 PIC_FI 别名
+visual.fade_out,画面,渐出,visual.fade_out layer=<id> frames=<int>,layer: 图层; frames: 帧数,PIC_FADEOUT layer frames,none,stable,0.29j,frames >= 0,visual.fade_out layer=#9 frames=50,统一 PIC_FO 别名
+visual.flash,画面,画面闪烁,visual.flash layer=<id> delay=<int> hold=<int> fade=<int> color=<color>,三个时间均为帧,PIC_FLASH layer delay hold fade color,none,stable,0.29j,时间均 >= 0；颜色合法,visual.flash layer=#4 delay=15 hold=1 fade=40 color=#cccccc,参数命名消除 x/y/z 歧义
+visual.effect,画面,后处理效果,visual.effect id=<effect> frames=<int>,frames=-1 表示移除,PE id frames,none,stable,0.29j,frames >= -1；效果 ID 非空,visual.effect id=ZOOM2 frames=60,保持 PE 的移除语义
+visual.transition,画面,组合纯色转场,visual.transition layer=<id> color=<color> mode=<in|out> frames=<int>,mode: in/out,PIC_FILL; PIC_FADEIN 或 PIC_FADEOUT,none,stable,0.29j,mode 枚举；展开顺序固定,visual.transition layer=#9 color=DARK mode=in frames=50,一对多组合指令
+audio.preload_bgm,音频,预加载音乐,audio.preload_bgm id=<bgm> [mode=<mode>],bgm: BGM ID; mode: 可选模式,LOAD_BGM id [mode],none,stable,0.29j,id 非空；资源索引可选校验,audio.preload_bgm id=BGM_forest mode=Normal,仅预加载，不承诺播放
+audio.stop_bgm,音频,暂停音乐,audio.stop_bgm [frames=<int>],frames: 淡出帧，默认由引擎决定,STOP_BGM [frames],none,stable,0.29j,frames >= 0,audio.stop_bgm frames=150,保留暂停语义
+audio.resume_bgm,音频,恢复音乐,audio.resume_bgm [frames=<int>],frames: 淡入帧,START_BGM [frames],none,stable,0.29j,frames >= 0,audio.resume_bgm frames=60,恢复已暂停音乐
+audio.sfx,音频,播放音效,audio.sfx id=<sound> [args=[...]],sound: 音效 ID,SND id args...,none,stable,0.29j,id 非空；资源索引可选校验,audio.sfx id=cloth_off,原指令允许少量扩展参数
+choice.reset,选择,清空动态选项,choice.reset,无,SELECTARRAY_CLEAR,none,stable,0.29j,无参数,choice.reset,动态选择前置步骤
+choice.option,选择,添加动态选项,choice.option key=<key> text=<tx> [flag=<flag>] [selected=<bool>],flag: 空/C/S；selected: 是否选过,SELECTARRAY key text flag 0|1,none,stable,0.29j,flag 枚举；key/text 必填,choice.option key=cancel text=&&Cancel flag=C,C=取消；S=不可选
+choice.focus,选择,默认焦点,choice.focus index=<int>,index: 选项序号,SELECT_FOCUS index,none,stable,0.29j,index >= 0,choice.focus index=0,受添加顺序影响
+choice.position,选择,选择器位置,choice.position preset=<pos>,pos: 屏幕位置预设,SELECT_POS preset,none,stable,0.29j,preset 非空,choice.position preset=C,0.29j 方法体已确认
+choice.columns,选择,选择器列数,choice.columns count=<int>,count: 列数,SELECT_CLMS count,none,stable,0.29j,count > 0,choice.columns count=2,0.29j 方法体已确认
+choice.show,选择,显示固定选择,choice.show count=<int> [result=<var>],count: 固定选项数; result: 接收变量,SELECT count [result],input,stable,0.29j,count > 0；result 为变量名,choice.show count=3 result=_choice,保留原 SELECT 行为
+choice.menu,选择,组合动态选择,choice.menu result=<var> { option... },result: 结果变量；块内只允许 choice.option/布局指令,SELECTARRAY_CLEAR; SELECTARRAY...; SELECT ...,input,experimental,0.29j,必须通过真实脚本回归确认最终触发形态,choice.menu result=_choice { ... },组合形态在 MVP 可先禁用
+state.bool,游戏状态,设置布尔开关,state.bool key=<id> value=<bool>,key: GFB ID,GFB_SET key 0|1,none,stable,0.29j,key 非空,state.bool key=MOB0 value=true,统一 SET/PUT 别名
+state.number,游戏状态,设置数值变量,state.number key=<id> value=<number>,key: GFC ID,GFC_SET key value,none,stable,0.29j,key 非空；value 为数值表达式或数值,state.number key=MOB_COUNT value=3,统一 SET/PUT 别名
+quest.progress,游戏状态,推进任务,quest.progress id=<quest> step=<int> [args=[...]],quest: 任务 ID; step: 进度; args: 业务参数,QUEST_PROGRESS id step args...,none,experimental,0.29j,id/step 必填；业务参数需按任务验证,quest.progress id=p103_walross step=3 args=[C],长尾参数保持显式
+save.auto,游戏状态,自动存档,save.auto,无,AUTOSAVE,none,stable,0.29j,无参数,save.auto,统一 AUTO_SAVE/AUTOSAVE
+ui.alert,UI,显示警告,ui.alert text=<tx> [style=<style>],text: 词条 ID；style: ALERT_*,UIALERT text style,none,stable,0.29j,text 不得以 && 开头；style 可枚举,ui.alert text=inventory_full style=ALERT_FATAL,左下角警告
+shop.open,UI,打开商店,shop.open id=<shop> [position=<pos>],shop: 店铺 ID; pos: CL/CCL/C/CCR/CR 等,ITEMSTORE id position,wait_fn,stable,0.29j,id 必填；position 枚举可选,shop.open id=city_shop position=C,打开 UI 并等待关闭
+shop.reload,UI,刷新商店基础数据,shop.reload id=<shop>,shop: 店铺 ID,ITEMSTORE_RELOAD_BASIC id,none,stable,0.29j,id 必填,shop.reload id=city_shop,只标记重载，不打开 UI
+tutorial.show,UI,显示教程卡片,tutorial.show [image=<asset>] text=<tx> [time=<int>],image 可空；text: 词条/按键提示,TUTO_CAP image text time,none,stable,0.29j,text 必填；time >= 0,tutorial.show image=tuto_dash text=&&Tuto_dash time=180,0.29j 参数语义已确认
+tutorial.movie,UI,播放教程视频,tutorial.movie id=<movie> [a=<int>] [b=<int>],movie: Tuto_mp4 下资源键,TUTO_CAP_MOVIE id a b,none,stable,0.29j,id 必填；a/b 为整数,tutorial.movie id=water_tuto a=0 b=1,资源路径由运行时拼接
+world.weather,世界,设置天气,world.weather [id=<weather>],weather: wind/thunder/mist/mist_dense/plague/drought 等,WEATHER [id],none,stable,0.29j,枚举可扩展；省略时保留引擎随机逻辑,world.weather id=mist_dense,不填按危险度随机
+world.reload_map,世界,重载地图素材,world.reload_map,无,REMAKE_MAP,none,stable,0.29j,无参数；上下文需存在地图,world.reload_map,重新加载当前地图 pxls；不额外推断等待
+world.prepare_map,世界,初始化地图材质,world.prepare_map id=<map> level=<int>,map: 地图 ID; level: 初始化级别,INIT_MAP_MATERIAL id level,wait_fn,stable,0.29j,level >= 0；level>=3 有额外 flush 语义,world.prepare_map id=city_farm level=3,不要把 level 当纯加载强度
+world.prepare_texture,世界,预备存档纹理,world.prepare_texture id=<key> [wait=<bool>],key: 纹理键,PREPARE_SV_TEXTURE key [0|1],wait_fn,stable,0.29j,key 必填,world.prepare_texture id=noel_pose wait=true,预扫描与执行阶段均有行为
+player.outfit,玩家,更换装扮,player.outfit kind=<outfit>,outfit: NORMAL/BABYDOLL/DOJO,PR_OUTFIT kind,none,stable,0.29j,装扮枚举；上下文需玩家焦点,player.outfit kind=DOJO,旧资料要求在对应焦点后使用
+player.cure,玩家,恢复状态,player.cure hp=<bool> mp=<bool> status=<bool> egg=<bool> clothes=<bool> amount=<int>,五个布尔项加 amount,PR_CURE 0|1 0|1 0|1 0|1 0|1 amount,none,stable,0.29j,全部参数显式；amount 范围由项目策略校验,player.cure hp=true mp=true status=true egg=false clothes=true amount=1,命名参数解决六位置参数歧义
+player.voice,玩家,播放玩家语音,player.voice id=<voice>,voice: 语音 ID,PR_VOICE id,none,stable,0.29j,id 非空；资源索引可选校验,player.voice id=breath_sleep,原语音枚举可生成补全
+player.key,玩家,模拟输入,player.key key=<key> down=<bool>,key: 输入名; down: 按下/松开,PR_KEY_SIMULATE key [0 when false],none,stable,0.29j,key 枚举；down 必填,player.key key=MAGIC down=false,事件结束前应释放模拟按键
+player.magic_wait,玩家,等待施放魔法,player.magic_wait,无,WAIT_PR_EXPLODE_MAGIC,wait_fn,stable,0.29j,上下文需允许事件处理按键,player.magic_wait,常与 ALLOW_EVENTHANDLE_KEY 配合
+player.qte,玩家,启动 QTE,player.qte kind=<kind> count=<int> [flags=<flags>],kind: REP/HOLD/SEQUENCE/PENDULUM 等,PR_GACHA kind count flags,wait_fn,stable,0.29j,kind 枚举；count > 0,player.qte kind=HOLD count=3 flags=F,阻塞到 QTE 结束
+haptics.play,输入,手柄震动,haptics.play patterns=[<pattern>...],patterns: 一个或多个 NEL.PadVib 预设,PVIB pattern...,none,stable,0.29j,至少一个 pattern；能力表可选校验,"haptics.play patterns=[STRONG,SHORT]",逐参数触发震动预设

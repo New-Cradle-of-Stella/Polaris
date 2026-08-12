@@ -589,7 +589,7 @@ namespace Polaris
             });
         }
 
-        /// <summary>英语语言族的 key，见 <c>GameStateAPI.CurrentLocale</c> 文档里列出的例子。</summary>
+        /// <summary>英语语言族的 key，见 <c>PolarisAPI.Game.Localization.CurrentLocale</c> 文档里列出的例子。</summary>
         const string EnglishFamily = "en";
 
         /// <summary>简体中文语言族的 key，见 <c>localization/___family_zh-cn.txt</c> 首行。</summary>

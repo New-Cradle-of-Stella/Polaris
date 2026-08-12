@@ -6,7 +6,7 @@ namespace Polaris.API
 {
     /// <summary>
     /// 本层<b>唯一</b>接触游戏内部结构的地方：从游戏里取出玩家、当前地图、背包、按键对象这四样
-    /// 根引用，别的文件一律通过这里拿。理由和 <see cref="GameStateAPI"/> 顶上写的一样——
+    /// 根引用，别的文件一律通过这里拿。理由和 <see cref="GameSessionRuntime"/> 顶上写的一样——
     /// 换游戏版本时要改的假设集中在一处，而不是散在十来个门面里各写一遍
     /// <c>M2DBase.Instance as NelM2DBase</c>。
     /// <para>
@@ -18,7 +18,7 @@ namespace Polaris.API
     {
         /// <summary>
         /// 地图代数。每次 <see cref="CurrentMap"/> 换成另一个实例就 +1，用来让上一张图里发出去的
-        /// <see cref="CharacterHandle"/> 整体失效——游戏的 mover 是对象池复用的，
+        /// <see cref="GameCharacter"/> 包装器整体失效——游戏的 mover 是对象池复用的，
         /// 只比对引用相等会让"同一个池对象换了个角色"被误认成同一个目标。
         /// </summary>
         internal static int MapGeneration { get; private set; }
@@ -92,6 +92,76 @@ namespace Polaris.API
             }
         }
 
+        /// <summary>物品管理器：四个存储容器和掉落物都挂在它下面。</summary>
+        internal static NelItemManager ItemManager
+        {
+            get
+            {
+                try
+                {
+                    return NelM2D?.IMNG;
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+        }
+
+        /// <summary>贵重品存储。</summary>
+        internal static ItemStorage PreciousStorage => Storage(static m => m.StPrecious);
+
+        /// <summary>强化品存储。</summary>
+        internal static ItemStorage EnhancerStorage => Storage(static m => m.StEnhancer);
+
+        /// <summary>住宅仓库。</summary>
+        internal static ItemStorage HouseStorage => Storage(static m => m.StHouseInventory);
+
+        static ItemStorage Storage(Func<NelItemManager, ItemStorage> pick)
+        {
+            try
+            {
+                NelItemManager manager = ItemManager;
+                return manager == null ? null : pick(manager);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>任务追踪器。</summary>
+        internal static QuestTracker Quests
+        {
+            get
+            {
+                try
+                {
+                    return NelM2D?.QUEST;
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+        }
+
+        /// <summary>当前的游戏内菜单对象；菜单没建好时返回 <c>null</c>。</summary>
+        internal static nel.gm.UiGameMenu Menu
+        {
+            get
+            {
+                try
+                {
+                    return NelM2D?.GM;
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+        }
+
         /// <summary>日夜/天气/危险度控制器。</summary>
         internal static NightController Night
         {
@@ -110,7 +180,7 @@ namespace Polaris.API
 
         /// <summary>
         /// 当前生效的按键映射对象。游戏把每个动作的输入状态记成一个 float
-        /// （见 <see cref="InputGameAPI"/> 顶上对 mv 值语义的说明），全都挂在这个对象上。
+        /// （见 <see cref="InputBinding"/> 顶上对 mv 值语义的说明），全都挂在这个对象上。
         /// </summary>
         internal static XX.KEY KeyAssign
         {
@@ -128,7 +198,7 @@ namespace Polaris.API
         }
 
         /// <summary>
-        /// 由 <see cref="GameStateAPI.Pump"/> 每帧调用：只负责推进地图代数。
+        /// 由 <see cref="GameSessionRuntime.Pump"/> 每帧调用：只负责推进地图代数。
         /// 放在 Polaris 自己的泵里而不是给游戏打补丁，是因为"地图换了"这件事读一个引用就能知道，
         /// 不值得为它维护一个跟着游戏版本走的 Harmony 补丁。
         /// </summary>

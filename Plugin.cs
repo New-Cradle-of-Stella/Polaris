@@ -4,7 +4,6 @@ using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.Mono;
 using HarmonyLib;
-using UnityEngine.SceneManagement;
 
 namespace Polaris
 {
@@ -54,23 +53,8 @@ namespace Polaris
             harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
             PatchAllIndividually();
 
-            // Unity 自己的场景生命周期不需要 Harmony：SceneManager 本来就有事件。订阅一次留到
-            // 进程结束，不需要反订阅。
-            SceneManager.sceneLoaded += OnUnitySceneLoaded;
-            SceneManager.sceneUnloaded += OnUnitySceneUnloaded;
-            SceneManager.activeSceneChanged += OnUnityActiveSceneChanged;
-
             Logger.LogMessage(Logo);
         }
-
-        static void OnUnitySceneLoaded(Scene scene, LoadSceneMode mode)
-            => API.LifecycleCallbacks.PublishSceneLoaded(scene.name, scene.buildIndex, mode == LoadSceneMode.Additive);
-
-        static void OnUnitySceneUnloaded(Scene scene)
-            => API.LifecycleCallbacks.PublishSceneUnloaded(scene.name, scene.buildIndex);
-
-        static void OnUnityActiveSceneChanged(Scene previous, Scene current)
-            => API.LifecycleCallbacks.PublishActiveSceneChanged(previous.name, current.name);
 
         /// <summary>
         /// 上一局没有正常结束时，把结论摊到控制台、写进本局报告、并给标题画面的告知页上膛。
@@ -183,7 +167,7 @@ namespace Polaris
 
         /// <summary>
         /// Polaris 自己的每帧泵。驱动 MTRX 就绪门控的等待队列
-        /// （见 <see cref="API.GameStateAPI.WhenReady"/>）、语言变更探测、地图代数推进，
+        /// （见 <see cref="API.GameSessionRuntime.WhenReady"/>）、语言变更探测、地图代数推进，
         /// 以及能力层的每帧回调——这些事所有下游模组都要用，放在这里比让每个模组各建一个
         /// MonoBehaviour 轮询划算。
         /// </summary>
@@ -194,7 +178,7 @@ namespace Polaris
             // 隔了多久"，把心跳放在回调之后会让卡住的那一帧连带把上一帧也算进停摆时长里。
             Diagnostics.MainThreadBeat.Beat(UnityEngine.Time.frameCount);
 
-            PolarisAPI.Game.Pump();
+            API.GameSessionRuntime.Pump();
             PolarisAPI.GameMenu.Pump();
         }
 
@@ -204,7 +188,7 @@ namespace Polaris
         /// </summary>
         private void LateUpdate()
         {
-            PolarisAPI.Game.PumpLate();
+            API.GameSessionRuntime.PumpLate();
         }
 
         /// <summary>
@@ -215,7 +199,6 @@ namespace Polaris
         private void OnApplicationFocus(bool hasFocus)
         {
             Diagnostics.Watchdog.SetPaused(!hasFocus);
-            PolarisAPI.Game.Loop.RaiseFocusChanged(hasFocus);
         }
 
         /// <summary>
@@ -225,15 +208,8 @@ namespace Polaris
         private void OnApplicationPause(bool isPaused)
         {
             Diagnostics.Watchdog.SetPaused(isPaused);
-            API.LifecycleCallbacks.PublishApplicationPauseChanged(isPaused);
         }
 
-        /// <summary>物理步进；只驱动新版 <c>Callbacks.Loop.FixedUpdating</c>，不进普通队列——
-        /// 队列语义（跨领域因果顺序）对物理步进没有意义，同步直发即可。</summary>
-        private void FixedUpdate()
-        {
-            API.LoopCallbacks.RaiseFixedUpdating();
-        }
 
         /// <summary>
         /// 进程退出前的收尾：把本局的错误情况落一份"上一局摘要"，供下次启动时标题画面的
@@ -243,10 +219,6 @@ namespace Polaris
         /// </summary>
         private void OnApplicationQuit()
         {
-            // 先通知能力层的订阅者：这是它们做快速收尾的唯一时机，排在看门狗停掉之前，
-            // 万一某个订阅者在这里卡住，那还应该被当成卡死记下来。
-            PolarisAPI.Game.Loop.RaiseStopping();
-
             // 只清零本地标志，不调用 PauseMem/ResumeMem：进程都要退出了，没有必要主动恢复世界。
             API.GameMenuPauseRuntime.Reset();
 

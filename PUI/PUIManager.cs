@@ -108,13 +108,13 @@ namespace Polaris.PUI
 
             // 玩家中途切语言时，已经构建过的 PUI 得重新取一遍词（&key 是在 BuildUI 里求值的），
             // 详见 PUIRuntime.RefreshAllForLocaleChange。
-            PolarisAPI.Game.LocaleChanged += OnLocaleChanged;
+            API.GameSessionRuntime.LocaleChanged += OnLocaleChanged;
 
             Plugin.Logger.LogMessage(
                 $"[PolarisUI] Registered {puiTypes.Count} PUIs and {graphCatalog.Count} PUI state machine graphs.");
         }
 
-        private static void OnLocaleChanged(string locale)
+        private static void OnLocaleChanged(string previous, string locale)
         {
             int affected = PUIRuntime.RefreshAllForLocaleChange();
             if (affected > 0)

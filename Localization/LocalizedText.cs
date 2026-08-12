@@ -54,7 +54,7 @@ namespace Polaris.Localization
         /// 按语言代码取文案：精确匹配 → 按 <c>-</c> 退一级（<c>"zh-cn"</c> 退到 <c>"zh"</c>）
         /// → 游戏默认语言 <c>"_"</c> 视同日文再试一次 → <see cref="Neutral"/>。
         /// <para>
-        /// 那个 <c>"_"</c> 是游戏自己的默认 family key（见 <c>GameStateAPI.CurrentLocale</c>），
+        /// 那个 <c>"_"</c> 是游戏自己的默认 family key（见 <c>PolarisAPI.Game.Localization.CurrentLocale</c>），
         /// 语义上就是日文；不在这里翻译一次的话，玩日文版的玩家会拿到英文兜底——而这是
         /// 绝大多数玩家的默认设置。
         /// </para>

@@ -11,7 +11,7 @@ namespace Polaris
     }
 
     /// <summary>
-    /// 把 <see cref="PolarisAPI.Game.CurrentLocale"/> 归到内置文案的三种语言之一。
+    /// 把 <see cref="PolarisAPI.Game.Localization.CurrentLocale"/> 归到内置文案的三种语言之一。
     /// <para>
     /// 这几页告知一律内置 zh/ja/en 三份文案、未识别的语言退回英文，不走 <c>.plang</c>：
     /// 它们是 Polaris 自己的界面，而且<b>致命错误页恰恰要在"某个模组的 <c>.plang</c> 撞了
@@ -51,7 +51,7 @@ namespace Polaris
         {
             try
             {
-                return PolarisAPI.Game.CurrentLocale;
+                return PolarisAPI.Game.Localization.CurrentLocale;
             }
             catch (Exception)
             {

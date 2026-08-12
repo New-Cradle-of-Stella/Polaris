@@ -32,7 +32,7 @@ namespace Polaris.Res
         public static bool TryGet(string modId, out ModResources resources) => registry.TryGetValue(modId, out resources);
 
         // 「游戏是否就绪」「等就绪后执行」不在这里重复暴露：那是 Polaris 的游戏兼容层
-        // 职责，用 PolarisAPI.Game.IsMtrxReady / PolarisAPI.Game.WhenReady(...)。
+        // 职责，用 Polaris.API.GameSessionRuntime.IsReady / WhenReady(...)。
         // 门面不转发上游能力，见 CLAUDE.md 的门面契约第 3 条。
     }
 }

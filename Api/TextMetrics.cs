@@ -3,7 +3,7 @@ using XX;
 namespace Polaris.API
 {
     /// <summary>
-    /// 文本块的实测尺寸。收在 <c>Polaris.API</c> 下的理由见 <see cref="GameStateAPI"/>：
+    /// 文本块的实测尺寸。收在 <c>Polaris.API</c> 下的理由见 <see cref="GameBinding"/>：
     /// 这里要碰 <c>FillBlock</c> 的私有字段 <c>Tm</c>，那是只有 Publicizer 才触达得到的
     /// 游戏内部结构，整个系列只在这一处做。
     /// </summary>

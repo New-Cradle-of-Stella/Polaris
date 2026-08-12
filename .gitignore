@@ -367,3 +367,5 @@ Directory.Build.props.user
 
 # Claude Code 的本机工具授权列表：全是这台机器上的绝对路径，对别人没有意义
 .claude/
+
+.codex-work/
