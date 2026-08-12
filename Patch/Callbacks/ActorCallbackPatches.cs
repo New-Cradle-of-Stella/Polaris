@@ -6,11 +6,7 @@ using Polaris.API;
 
 namespace Polaris.Patch
 {
-    /// <summary>
-    /// <c>M2Attackable.applyHpDamage</c> 是 PR 和 NelEnemy 共用的低层 HP 伤害入口——两者都没有覆写
-    /// 这个 3 参数重载（NelEnemy 自己的 4 参数版本内部转发到这一个），所以只需要在这一处打补丁
-    /// 就能覆盖双方。<c>__result</c> 就是实际扣掉的血量。
-    /// </summary>
+    /// <summary>PR 和 NelEnemy 共用的底层 HP 伤害入口，打一处即可覆盖双方；<c>__result</c> 是实际扣血量。</summary>
     [HarmonyPatch(typeof(M2Attackable), nameof(M2Attackable.applyHpDamage), new[] { typeof(int), typeof(bool), typeof(AttackInfo) })]
     [PolarisPatchFeature("HpDamageApplied")]
     internal static class Patch_M2Attackable_applyHpDamage_Callbacks
@@ -27,8 +23,7 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary>镜像 HP 版本：PR 和 NelEnemy 的 <c>applyMpDamage</c> 覆写链最终都调用
-    /// <c>base.applyMpDamage</c>，只需要打这一处。</summary>
+    /// <summary>镜像 HP 版本，MP 伤害入口。</summary>
     [HarmonyPatch(typeof(M2Attackable), nameof(M2Attackable.applyMpDamage), new[] { typeof(int), typeof(bool), typeof(AttackInfo) })]
     [PolarisPatchFeature("MpDamageApplied")]
     internal static class Patch_M2Attackable_applyMpDamage_Callbacks
@@ -45,10 +40,7 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary>
-    /// <c>M2Attackable.cureHp(int)</c> 是唯一真正改 <c>hp</c> 字段的地方；PR/NelEnemy 各自的
-    /// <c>cureHp</c> 覆写都经过若干层最终调用 <c>base.cureHp(val)</c>，打这一处即可覆盖两边。
-    /// </summary>
+    /// <summary>唯一真正改 <c>hp</c> 字段的地方，打这一处即可覆盖 PR 和 NelEnemy 两边。</summary>
     [HarmonyPatch(typeof(M2Attackable), nameof(M2Attackable.cureHp), new[] { typeof(int) })]
     [PolarisPatchFeature("RecoveryApplied")]
     internal static class Patch_M2Attackable_cureHp_Callbacks
@@ -86,11 +78,7 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary>
-    /// <c>M2Ser.Add</c> 一个方法同时处理"这个状态异常本来没有"（新增）和"已经有，刷新持续时间/层级"
-    /// （刷新）两种情况，内部用 <c>Find(ser)</c> 是否为 null 分支。Prefix 提前做同一次查找，
-    /// Postfix 据此决定发哪一种事件——不需要跟着它内部的分支逻辑走。
-    /// </summary>
+    /// <summary><c>M2Ser.Add</c> 同时处理新增和刷新状态异常两种情况；Prefix 先查找是否已存在，Postfix 据此判断发哪种事件。</summary>
     [HarmonyPatch(typeof(M2Ser), nameof(M2Ser.Add))]
     [PolarisPatchFeature("StatusAdded")]
     [PolarisPatchFeature("StatusRefreshed")]
@@ -114,8 +102,7 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary><c>M2Ser.removeBit</c> 无条件清位，不管之前是不是已经清过——只在真正发生
-    /// "从有到无"这次翻转时才算一次状态移除。</summary>
+    /// <summary><c>M2Ser.removeBit</c> 无条件清位，只在真正发生"从有到无"翻转时才算一次状态移除。</summary>
     [HarmonyPatch(typeof(M2Ser), nameof(M2Ser.removeBit))]
     [PolarisPatchFeature("StatusRemoved")]
     internal static class Patch_M2Ser_removeBit_Callbacks
@@ -156,15 +143,7 @@ namespace Polaris.Patch
         static void Postfix(PR __instance, float v0) => GameCallbackPublishers.Knockback(__instance, v0);
     }
 
-    /// <summary>
-    /// <c>PR.applyDamage(NelAttackInfo, ref HITTYPE, bool)</c> 是玩家一次语义攻击的顶层入口
-    /// （内部转发给 <c>DMG.applyDamage</c>）。用 hp/mp 前后差算实际伤害，而不是信任 <c>__result</c>
-    /// 的语义——没有核对过 <c>DMG.applyDamage</c> 内部对返回值的约定，字段差值才是地面真相。
-    /// <para>
-    /// 目标方法带 <c>ref</c> 参数，<c>MakeByRefType()</c> 不是特性实参允许的常量表达式，
-    /// 所以用 <c>TargetMethod</c> 让 Harmony 在运行时解析目标。
-    /// </para>
-    /// </summary>
+    /// <summary>玩家攻击的顶层入口；用 hp/mp 前后差算实际伤害而非信任 <c>__result</c>。目标方法带 <c>ref</c> 参数，用 <c>TargetMethod</c> 在运行时解析。</summary>
     [HarmonyPatch]
     [PolarisPatchFeature("DamageApplied")]
     internal static class Patch_PR_applyDamage_Callbacks

@@ -14,11 +14,7 @@ namespace Polaris.Diagnostics
     {
         // ================== 入口 ==================
 
-        /// <summary>
-        /// 分析一个真实的异常对象。<paramref name="explicitCulprit"/> 由调用方点名——
-        /// Polaris 自己那些 catch 点本来就知道是谁的错（正在初始化的是哪个模块、
-        /// 正在调用的是谁的回调），这条路完全不必走堆栈推断，又快又准。
-        /// </summary>
+        /// <summary>分析一个真实异常；<paramref name="explicitCulprit"/> 由调用方点名时跳过堆栈推断。</summary>
         internal static ErrorIncident Analyze(Exception exception, string context, Assembly explicitCulprit)
         {
             Exception root = Unwrap(exception);
@@ -26,7 +22,7 @@ namespace Polaris.Diagnostics
             List<ErrorFrame> frames = StackAttribution.FromException(root);
             if (frames.Count == 0 && !ReferenceEquals(root, exception))
             {
-                // 内层异常没带上堆栈（重新抛出、或者是构造出来没抛过的），退回外层的。
+                // 内层异常没带堆栈，退回外层的。
                 frames = StackAttribution.FromException(exception);
             }
 
@@ -43,10 +39,7 @@ namespace Polaris.Diagnostics
                 explicitCulprit);
         }
 
-        /// <summary>
-        /// 分析只有文本的错误（<c>Application.logMessageReceived</c> 给的就是这个）。
-        /// <paramref name="condition"/> 形如 <c>NullReferenceException: Object reference not set…</c>。
-        /// </summary>
+        /// <summary>分析只有文本的错误；<paramref name="condition"/> 形如 <c>NullReferenceException: ...</c>。</summary>
         internal static ErrorIncident Analyze(string condition, string stackTraceText, string context)
         {
             SplitCondition(condition, out string typeName, out string message);
@@ -102,17 +95,8 @@ namespace Polaris.Diagnostics
         // ================== 定责 ==================
 
         /// <summary>
-        /// 定责规则，从内向外走：
-        /// <list type="number">
-        /// <item>调用方点了名 → 直接采信。</item>
-        /// <item>跳过运行库帧——<c>ArgumentNullException</c> 的抛出点在 mscorlib 里，
-        /// 但责任显然不在 BCL。</item>
-        /// <item>第一个属于模组 / Polaris 的帧 = 主责。<b>模组调用原版代码、原版因为参数不合法
-        /// 而抛，责任仍在模组</b>，所以是"第一个可定责的帧"而不是"最内层的帧"。</item>
-        /// <item>一路没有模组帧，就看沿途原版方法的补丁嫌疑人（transpiler 不留帧，这条是
-        /// 它唯一的出路）。</item>
-        /// <item>嫌疑人也没有 → 原版游戏。</item>
-        /// </list>
+        /// 定责规则，由内向外：点名的直接采信 → 跳过运行库帧 → 第一个可定责（模组/Polaris）的帧 →
+        /// 无模组帧则看补丁嫌疑人（覆盖 transpiler 不留帧的情况） → 否则归原版/框架/未知。
         /// </summary>
         static ErrorVerdict Blame(
             IReadOnlyList<ErrorFrame> frames, List<ErrorSuspect> suspects, Assembly explicitCulprit)
@@ -158,8 +142,7 @@ namespace Polaris.Diagnostics
                 verdict.Culprit = only.Owner;
                 verdict.Kind = only.Owner.Kind;
 
-                // IL 改写意味着它的代码就在那个方法体里，所以证据比"打了个 postfix 但没留下帧"
-                // 强一档。后者更可能是补丁跑完就返回了、真正出事的是原版自己。
+                // IL 改写证据强于普通 postfix 补丁（后者更可能只是原版自己出的问题）。
                 verdict.Confidence = ilRewrite ? ErrorConfidence.Medium : ErrorConfidence.Low;
                 verdict.Reason = $"None of its frames are in the stack, but it {only.Reason}.";
                 return verdict;
@@ -199,15 +182,12 @@ namespace Polaris.Diagnostics
 
         // ================== 异常链 ==================
 
-        /// <summary>
-        /// 剥掉只起转发作用的外壳异常，定责要看最里面那个真正出事的。
-        /// <c>TargetInvocationException</c> 的剥法在 <c>SettingsAttributeScanner</c> 里早有先例。
-        /// </summary>
+        /// <summary>剥掉转发外壳异常，定责要看最内层真正出事的那个。</summary>
         static Exception Unwrap(Exception exception)
         {
             Exception current = exception;
 
-            // 有环的异常链是构造得出来的，加个上限免得在错误处理里死循环。
+            // 加上限防止构造出来的环形异常链导致死循环。
             for (int depth = 0; depth < 16 && current != null; depth++)
             {
                 switch (current)
@@ -229,10 +209,7 @@ namespace Polaris.Diagnostics
             return current ?? exception;
         }
 
-        /// <summary>
-        /// 完整异常链的文本。定责只看最内层，但展示要给全：
-        /// <c>TypeInitializationException</c> 这类外壳本身就带着"是哪个静态构造函数炸了"的信息。
-        /// </summary>
+        /// <summary>完整异常链的文本，展示用（定责只看最内层，但外壳异常本身也带信息）。</summary>
         static string DescribeChain(Exception exception)
         {
             var builder = new StringBuilder();
@@ -283,8 +260,7 @@ namespace Polaris.Diagnostics
 
             string head = condition.Substring(0, separator);
 
-            // 只有看起来真像个异常类型名才拆：普通的 Debug.LogError("加载失败: xxx") 也带冒号，
-            // 拆错了会把"加载失败"当成异常类型，指纹跟着一起错。
+            // 只拆看起来真像异常类型名的，避免把普通 LogError 文本误当类型名。
             if (head.EndsWith("Exception", StringComparison.Ordinal)
                 || head.EndsWith("Error", StringComparison.Ordinal))
             {

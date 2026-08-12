@@ -9,13 +9,7 @@ using UnityEngine;
 
 namespace Polaris.PUI.HotReload
 {
-    /// <summary>
-    /// 游戏进程侧的热重载命名管道服务端。只有 <see cref="PUIManager.Init"/> 发现至少一个
-    /// 程序集标了 <see cref="PUIHotFixEnabledAttribute"/> 时才会 <see cref="Start"/>；
-    /// 纯 release 场景（没有任何插件开启热重载）不会创建这个线程，没有任何额外开销。
-    /// 管道名字、二进制帧格式要跟 PolarisSourceCodeGenerator 项目里的 PuiHotReloadClient/
-    /// PuiWireWriter 保持一致。
-    /// </summary>
+    /// <summary>游戏进程侧的热重载命名管道服务端；只在有插件标了 <see cref="PUIHotFixEnabledAttribute"/> 时才启动。</summary>
     internal static class PuiHotReloadServer
     {
         /// <summary>跟 PolarisSourceCodeGenerator.PUI.PuiVisualEditor.HotReload.PuiHotReloadClient.PipeName 保持一致。</summary>
@@ -42,11 +36,7 @@ namespace Polaris.PUI.HotReload
             thread.Start();
         }
 
-        /// <summary>
-        /// 由 <see cref="PuiHotReloadPump"/> 在 OnApplicationQuit 时调用。<see cref="NamedPipeServerStream.WaitForConnection"/>
-        /// 没有超时/取消参数，唯一能把它从阻塞里唤醒的办法是真的建立一次连接；否则这个后台线程会
-        /// 一直卡在里面，导致 Mono 在关闭时等不到它退出，整个游戏进程挂起不退出。
-        /// </summary>
+        /// <summary>由 <see cref="PuiHotReloadPump"/> 在退出时调用；用一次假连接顶开阻塞中的 <see cref="NamedPipeServerStream.WaitForConnection"/>，让后台线程能退出。</summary>
         public static void Stop()
         {
             if (thread == null)

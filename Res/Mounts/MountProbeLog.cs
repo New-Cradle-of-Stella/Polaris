@@ -3,11 +3,7 @@ using System.Text;
 
 namespace Polaris.Res.Mounts
 {
-    /// <summary>
-    /// 记录一次解析尝试探测过的每一个候选，找不到时用来生成人类可读的诊断信息。
-    /// 这是本库里最有价值的一条诊断输出——找不到资源时列出全部尝试过的挂载点和扩展名，
-    /// 而不是一句语焉不详的 "not found"。
-    /// </summary>
+    /// <summary>记录一次解析尝试探测过的每个候选，找不到时用来生成列出全部尝试过的挂载点/扩展名的诊断信息。</summary>
     internal sealed class MountProbeLog
     {
         private sealed class MountAttempt
@@ -50,7 +46,7 @@ namespace Polaris.Res.Mounts
 
             if (attempts.Count == 0)
             {
-                // 最常见的原因是调用顺序反了：在 Mount()/MountDefault() 之前就发起了取用。
+                // 常见原因：在 Mount()/MountDefault() 之前就发起了取用。
                 sb.AppendLine("  This mod has not registered any mount points yet -- was a fetch method called before Mount()/MountDefault()?");
                 return sb.ToString();
             }

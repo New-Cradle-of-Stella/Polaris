@@ -8,10 +8,7 @@ namespace Polaris.Res
     {
         private static readonly Dictionary<string, ModResources> registry = new Dictionary<string, ModResources>();
 
-        /// <summary>
-        /// 取得（或创建）某模组的资源句柄。同一个 <paramref name="modId"/> 永远返回同一实例——
-        /// 这不只是为了方便，PXLS 的全局 title 命名空间（M5）依赖这个单例性质来避免撞车。
-        /// </summary>
+        /// <summary>取得（或创建）某模组的资源句柄；同一个 <paramref name="modId"/> 永远返回同一实例，PXLS 的全局 title 命名空间依赖这个单例性质避免撞车。</summary>
         public static ModResources For(string modId)
         {
             if (string.IsNullOrEmpty(modId))

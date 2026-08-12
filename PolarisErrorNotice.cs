@@ -9,22 +9,7 @@ using XX;
 
 namespace Polaris
 {
-    /// <summary>
-    /// 标题画面的"上一局错误情况"告知页。
-    /// <para>
-    /// 错误几乎都发生在离开标题画面之后——崩溃、模组冲突、NullReferenceException 全部发生在
-    /// 游戏进行中，标题本身很少出错——所以这一页展示的不是"现在"，而是"上一局"：
-    /// 进程退出前（<see cref="Plugin"/> 的 <c>OnApplicationQuit</c>）把本局归档的错误摘要
-    /// （<see cref="ErrorRegistry.Incidents"/>）写进 <see cref="PolarisNoticeStore"/>，
-    /// 下次启动时在这里读出来显示；玩家按确认即清空，不确认就一直显示到确认为止。
-    /// </para>
-    /// <para>
-    /// 建页方式、闸门写法、淡入动画都照抄 <see cref="PolarisModWarning"/>；与它共用
-    /// <see cref="TitleOverlays"/> 这套注册表——本页存在的意义之一就是不必再为"多一页告知"
-    /// 去改两个 Harmony 补丁。语言跟随玩家当前选择（不像警示页那样三语同屏）：
-    /// 这里内置 zh/ja/en 三份文案、未知语言退回英文，理由见 <see cref="NoticeLocale"/>。
-    /// </para>
-    /// </summary>
+    /// <summary>标题画面的"上一局错误情况"告知页；展示的是上一局归档的错误摘要，不是当前。玩家按确认即清空，否则一直显示。</summary>
     internal static class PolarisErrorNotice
     {
         internal static readonly ITitleOverlay Overlay = new OverlayAdapter();
@@ -54,10 +39,7 @@ namespace Polaris
         /// <summary>本次进程内建页失败过，不再重试。</summary>
         static bool buildFailed;
 
-        /// <summary>
-        /// 进程退出前调用：把本局归档的错误摘要写进配置，供下次启动的告知页读取。
-        /// 本局没有任何模组相关错误时清空——告知页展示的必须永远是"上一局"，不能是"上上局"。
-        /// </summary>
+        /// <summary>进程退出前调用：把本局归档的错误摘要写进配置，供下次启动读取；无错误时清空，避免展示"上上局"的旧数据。</summary>
         internal static void PersistPending()
         {
             if (!ResolveEntries())
@@ -79,16 +61,7 @@ namespace Polaris
             PolarisNoticeStore.File?.Save();
         }
 
-        /// <summary>
-        /// 进程启动时调用：上一局没有正常结束时，把 <see cref="SessionSentinel"/> 读出来的结局
-        /// 接进告知页要用的待读状态，效果等同于"替上一局补一次它没机会做的
-        /// <see cref="PersistPending"/>"。
-        /// <para>
-        /// 上一局正常退出（或这是第一次运行）时 <paramref name="last"/> 为 null，什么都不做——
-        /// 那种情况下 <see cref="PersistPending"/> 已经在上一局的 <c>OnApplicationQuit</c> 里
-        /// 把该写的都写了，这里再写一遍只会用一份过时的空快照把它覆盖掉。
-        /// </para>
-        /// </summary>
+        /// <summary>进程启动时调用：上一局非正常结束时补一次它没机会做的 <see cref="PersistPending"/>；正常退出或首次运行时 <paramref name="last"/> 为 null，什么都不做。</summary>
         internal static void AdoptLastSession(LastSessionInfo last)
         {
             if (last == null || last.Kind != SessionEndKind.Hung && last.Kind != SessionEndKind.NotClosed)
@@ -101,8 +74,7 @@ namespace Polaris
                 return;
             }
 
-            // 卡死/未正常退出这件事本身放在第一行——哪怕上一局一条模组错误都没归档过
-            // （纯粹卡死，或者异常发生在能捕获它之前），玩家也得先看到这一条。
+            // 卡死/未正常退出本身放第一行，即使上一局没归档任何模组错误也要先看到这一条。
             var lines = new List<string>(MaxPersistedLines) { last.OneLine() };
             int more = last.MoreErrorKinds;
 
@@ -139,8 +111,7 @@ namespace Polaris
                     return false;
                 }
 
-                // 玩家关掉的是"弹这一页"，不是"记录错误"：待读状态照旧留在配置里
-                // （报告文件也照常写），重新打开之后上一局的摘要还在，不会被这次关闭吞掉。
+                // 玩家关掉的是"弹这一页"，不是"记录错误"：待读状态仍留在配置里，不会被这次关闭吞掉。
                 if (!Settings.PolarisSettings.ShowErrorNotice)
                 {
                     return false;
@@ -203,19 +174,7 @@ namespace Polaris
         const float ButtonRowH = 56f;
         const float HintH = 32f;
 
-        /// <summary>
-        /// 确认按钮上方的空行高度。
-        /// <para>
-        /// 需要它是因为两件事凑在一起：<c>Designer.Smallest()</c> 把 <c>item_margin_y_px</c> 归零，
-        /// 行与行之间没有任何间距；而 <c>addButtonT</c> 建完皮肤后会用
-        /// <c>val.h = skin.sheight</c> 覆盖掉这里传进去的 <see cref="ButtonH"/>——aBtnNel 的
-        /// 菱形装饰比标称高度高出一截。两者相加，按钮就顶到了上一行文字上。
-        /// </para>
-        /// <para>
-        /// 不改 <c>item_margin_y_px</c> 是因为它是整页共用的单值（理由同
-        /// <see cref="PolarisModWarning"/> 里那段注释），调大它会把每一条摘要都撑开。
-        /// </para>
-        /// </summary>
+        /// <summary>确认按钮上方的空行高度；行间无间距 + 按钮实际高度大于标称值，需要这个间隔防止按钮顶到上一行文字。</summary>
         const float ButtonGapH = 24f;
 
         const float ButtonW = 260f;
@@ -227,10 +186,7 @@ namespace Polaris
         const float PathSize = 12f;
         const float HintSize = 13f;
 
-        /// <summary>
-        /// 整页在标题场景里的 z，取值与 <see cref="PolarisModWarning"/> 相同——两页
-        /// 从不同框出现（<see cref="TitleOverlays"/> 保证同一时刻只有一页在拦），不会叠。
-        /// </summary>
+        /// <summary>整页在标题场景里的 z，与 <see cref="PolarisModWarning"/> 相同；<see cref="TitleOverlays"/> 保证不会叠。</summary>
         const float OverlayZ = -3f;
 
         const uint BackdropColor = 0xF0000000u;
@@ -454,11 +410,7 @@ namespace Polaris
             designer.Br();
         }
 
-        /// <summary>
-        /// 占位空行。空文本的 <c>FillBlock</c> 照样按 <c>heightPixel</c> 占位
-        /// （<c>get_sheight_px</c> 取的是"文字高"与它的较大者），底色默认全透明，
-        /// 所以这就是一行看不见的间距。
-        /// </summary>
+        /// <summary>占位空行：空文本仍按 heightPixel 占位，底色透明，等效一行看不见的间距。</summary>
         static void AddSpacer(float height)
         {
             designer.addP(new DsnDataP("", false)
@@ -503,7 +455,7 @@ namespace Polaris
             }
             catch (Exception e)
             {
-                // 落不了盘只影响"下次还弹一次"，不影响本局。
+                // 落不了盘只影响下次是否还弹一次，不影响本局。
                 Plugin.Logger.LogWarning($"[Polaris] Could not write the acknowledged state of the error notice page to config: {e.Message}");
             }
         }

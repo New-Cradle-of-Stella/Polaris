@@ -7,8 +7,7 @@ namespace Polaris.API
     {
         public GameCallbackOptions(int priority = 0, bool once = false, string debugName = null)
         {
-            // 夹紧而不是抛：优先级是个相对量，写大了只说明调用方想"尽量靠前/靠后"，
-            // 为此让注册失败没有意义。
+            // 越界夹紧而非抛异常：优先级是相对量，没必要因为写大了就注册失败。
             Priority = priority < -1000 ? -1000 : priority > 1000 ? 1000 : priority;
             Once = once;
             DebugName = debugName;

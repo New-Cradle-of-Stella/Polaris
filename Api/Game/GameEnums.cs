@@ -1,23 +1,13 @@
 namespace Polaris.API
 {
-    /// <summary>
-    /// 角色朝向。游戏内部用一个 <c>is_right</c> 布尔表示，这里给它一个有名字的类型：
-    /// 布尔参数在调用点看不出含义（<c>SetFacing(true)</c> 到底是左还是右），
-    /// 而朝向是会出现在内容定义里的概念。
-    /// </summary>
+    /// <summary>角色朝向。游戏内部用布尔 <c>is_right</c> 表示，这里改用具名类型以避免调用点含义不明。</summary>
     public enum GameFacing
     {
         Left = 0,
         Right = 1,
     }
 
-    /// <summary>
-    /// 天气种类。与游戏的 <c>WeatherItem.WEATHER</c> 一一对应，但独立定义：
-    /// 天气 key 会被写进内容定义，不应该跟着游戏枚举的增删一起漂。
-    /// <para>
-    /// 旧 LuaAiC 把它拼成 <c>Wether</c>，本层一律用正确拼写 <c>Weather</c>。
-    /// </para>
-    /// </summary>
+    /// <summary>天气种类，与游戏的 <c>WeatherItem.WEATHER</c> 一一对应但独立定义，避免跟随游戏枚举变动漂移。</summary>
     public enum GameWeather
     {
         Normal = 0,
@@ -30,16 +20,8 @@ namespace Polaris.API
     }
 
     /// <summary>
-    /// 游戏动作。名字对应游戏内部按键映射对象上的动作槽，含义以玩家的键位设置为准。
-    /// <para>
-    /// 这里只有<b>动作</b>，没有 Windows 虚拟键码：按动作查天然跟着玩家自己的改键设置走，
-    /// 键盘和手柄也是同一份代码。
-    /// </para>
-    /// <para>
-    /// <c>ButtonZ</c>–<c>ButtonD</c> 这几个保留了游戏内部的字母命名而不是猜一个玩法含义
-    /// （"攻击""魔法"……）：这些槽在不同场景下承载的动作并不固定，起一个看起来很确定的名字
-    /// 反而会让调用方写出在别的场景里不成立的假设。
-    /// </para>
+    /// 游戏动作，对应内部按键映射的动作槽而非虚拟键码，天然跟随玩家改键设置。
+    /// <c>ButtonZ</c>–<c>ButtonD</c> 保留游戏内部字母命名，因为其含义随场景变化，不适合起具体名字。
     /// </summary>
     public enum GameInputAction
     {
@@ -75,13 +57,8 @@ namespace Polaris.API
     }
 
     /// <summary>
-    /// 玩家状态机的状态。数值与游戏的 <c>PR.STATE</c> 一致——玩家状态是会被存档和事件脚本
-    /// 引用的量，重新编号会让"同一个状态"在 Polaris 和游戏里对不上，出问题时极难定位。
-    /// <para>
-    /// 本枚举<b>不是</b>穷尽的：游戏可能在新版本里加入这里没有的状态值。
-    /// <see cref="GamePlayer.State"/> 遇到未知值时会原样返回该数值，
-    /// 调用方应当把它当作"未知状态"处理，而不是假设一定能匹配到某个具名成员。
-    /// </para>
+    /// 玩家状态机的状态，数值与游戏的 <c>PR.STATE</c> 一致（不可重新编号）。
+    /// 本枚举<b>不是</b>穷尽的，<see cref="GamePlayer.State"/> 遇到未知值会原样返回该数值。
     /// </summary>
     public enum GamePlayerState
     {
@@ -168,12 +145,8 @@ namespace Polaris.API
     }
 
     /// <summary>
-    /// 敌人种类编号。数值与游戏的 <c>nel.ENEMYID</c> 一致。
-    /// <para>
-    /// 高位 <c>0x80000000</c> 是游戏用来标记"处于狂暴（overdrive）形态"的附加位，
-    /// 不是一个独立的敌人种类；<see cref="GameEnemy.EnemyId"/> 会先把它剥掉再返回，
-    /// 需要判断狂暴状态请看 <see cref="GameEnemy.State"/>。
-    /// </para>
+    /// 敌人种类编号，数值与游戏的 <c>nel.ENEMYID</c> 一致。高位 <c>0x80000000</c> 是狂暴形态附加位
+    /// （非独立种类），<see cref="GameEnemy.EnemyId"/> 会剥掉它，狂暴状态请看 <see cref="GameEnemy.State"/>。
     /// </summary>
     public enum GameEnemyId
     {
@@ -232,12 +205,7 @@ namespace Polaris.API
         BossSpider = 524544,
     }
 
-    /// <summary>
-    /// 物品分类。<b>位标志</b>，一个物品可以同时属于多个分类；数值与游戏的
-    /// <c>NelItem.CATEG</c> 一致。判断单项属性优先用 <see cref="GameItem"/> 上的
-    /// <c>IsFood</c>/<c>IsTool</c> 之类的属性，它们读的是游戏自己的判定，
-    /// 比在这里做位运算更贴近原版语义。
-    /// </summary>
+    /// <summary>物品分类（位标志，数值与 <c>NelItem.CATEG</c> 一致）；判断单项属性优先用 <see cref="GameItem"/> 上的 <c>IsFood</c>/<c>IsTool</c> 等属性。</summary>
     [System.Flags]
     public enum GameItemCategory
     {

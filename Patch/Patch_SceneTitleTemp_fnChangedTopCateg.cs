@@ -24,16 +24,14 @@ namespace Polaris.Patch
             aBtn btn = _B.Get(cur_value);
             if (mainMenu.TryGetCallback(btn.title, out FnBtnBindings callback))
             {
-                // 这是 Postfix：异常不接住会直接从这个 Harmony 补丁飞出去，扰乱游戏自己
-                // fnChangedTopCateg 调用点之后的处理（比如同一次点击里其它按钮状态的收尾）。
-                // 一个 Mod 的按钮回调写坏，不该影响主菜单其余按钮的正常响应。
+                // 捕获异常防止一个坏的按钮回调影响主菜单其余按钮的正常响应。
                 try
                 {
                     callback(btn);
                 }
                 catch (Exception ex)
                 {
-                    // 责任人就是这个回调委托本身所在的程序集，不必走堆栈推断。
+                    // 责任程序集直接取自回调委托本身，不必走堆栈推断。
                     PolarisAPI.Errors.Report(ex, $"the callback of main menu button \"{btn.title}\"", callback.Method?.DeclaringType?.Assembly);
                     Plugin.Logger.LogError($"[Polaris] The callback of main menu button \"{btn.title}\" threw an exception; ignored.");
                 }

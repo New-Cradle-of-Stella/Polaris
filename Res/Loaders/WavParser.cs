@@ -25,11 +25,7 @@ namespace Polaris.Res.Loaders
         internal int SampleRate { get; }
     }
 
-    /// <summary>
-    /// 手写 RIFF/WAVE 解析：只认 PCM 整数（8/16/24/32 位）与 IEEE float32，按 little-endian
-    /// 读取——这是 WAV 规范本身的字节序，和 PixelLiner PXLS 格式的大端约定无关。风格上和
-    /// <see cref="TextureLoader"/> 一样，不引入第三方依赖。
-    /// </summary>
+    /// <summary>手写 RIFF/WAVE 解析（little-endian），只支持 PCM 整数（8/16/24/32 位）与 IEEE float32，不引入第三方依赖。</summary>
     internal static class WavParser
     {
         internal static WavData Parse(byte[] bytes, ResourceId id)
@@ -91,8 +87,7 @@ namespace Polaris.Res.Loaders
                 throw new ResourceLoadException(id, "wav is missing the data chunk.");
             }
 
-            // audioFormat: 1 = PCM 整数，3 = IEEE float32。其它编码（ADPCM、WAVE_FORMAT_EXTENSIBLE 等）
-            // 直接报错，不去猜测——错误的猜测会生成听感损坏但"能跑"的音频，比直接报错更难排查。
+            // audioFormat: 1 = PCM 整数，3 = IEEE float32；其它编码直接报错，不去猜测。
             if (audioFormat != 1 && audioFormat != 3)
             {
                 throw new ResourceLoadException(

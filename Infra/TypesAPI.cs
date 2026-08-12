@@ -6,18 +6,8 @@ using System.Reflection;
 namespace Polaris.Infra
 {
     /// <summary>
-    /// 全库唯一的类型扫描器，从 <see cref="PolarisAPI.Types"/> 取。
-    /// <para>
-    /// 之前设置项扫描、资源的自动发现与字段绑定、PUI/图发现各自带了一份
-    /// "遍历程序集 + 兜 <see cref="ReflectionTypeLoadException"/>"的实现，
-    /// 每加一个扫描器就多一份要跟着维护的反射样板。收在这里之后只剩一处兜底逻辑，
-    /// 每个程序集的类型表也只解析一次（见 <see cref="Of"/> 的缓存）。
-    /// </para>
-    /// <para>
-    /// <b>作用域优先选 <see cref="InPlugins"/></b>：它只看 BepInEx 真正加载了的插件程序集。
-    /// <see cref="InAppDomain"/> 会把游戏本体那几个大程序集（Assembly-CSharp 有 5MB）也翻一遍，
-    /// 只有当要找的类型可能位于"不是 BepInEx 插件的附属程序集"里时才值得付这个代价。
-    /// </para>
+    /// 全库唯一的类型扫描器，从 <see cref="PolarisAPI.Types"/> 取，统一了各处"遍历程序集 + 兜 <see cref="ReflectionTypeLoadException"/>"的样板并按程序集缓存结果。
+    /// 作用域优先选 <see cref="InPlugins"/>；<see cref="InAppDomain"/> 会连游戏本体的大程序集一起翻，更慢。
     /// </summary>
     public sealed class TypesAPI
     {
@@ -26,10 +16,7 @@ namespace Polaris.Infra
         // 程序集一旦加载，它的类型表就不会再变，缓存不存在失效问题。
         readonly Dictionary<Assembly, Type[]> cache = [];
 
-        /// <summary>
-        /// 取一个程序集里所有能加载的类型。加载不了的类型（引用了没装的可选依赖很常见）
-        /// 会被剔除而不是让整次扫描失败；结果按程序集缓存。
-        /// </summary>
+        /// <summary>取一个程序集里所有能加载的类型；加载不了的类型（常因缺可选依赖）被剔除而不让整次扫描失败，结果按程序集缓存。</summary>
         public IReadOnlyList<Type> Of(Assembly assembly)
         {
             if (assembly == null)
@@ -93,11 +80,7 @@ namespace Polaris.Infra
         public IEnumerable<(Type Type, TAttr Attribute)> InAppDomainWith<TAttr>() where TAttr : Attribute
             => WithAttribute<TAttr>(InAppDomain());
 
-        /// <summary>
-        /// 在给定类型集合里挑出标了 <typeparamref name="TAttr"/> 的。读特性本身也可能抛
-        /// （特性的构造函数在别的程序集里且加载失败），逐个吞掉并继续，不让一个坏类型
-        /// 掀掉整次扫描。
-        /// </summary>
+        /// <summary>在给定类型集合里挑出标了 <typeparamref name="TAttr"/> 的；读特性本身也可能抛，逐个吞掉并继续，不让一个坏类型掀掉整次扫描。</summary>
         public IEnumerable<(Type Type, TAttr Attribute)> WithAttribute<TAttr>(IEnumerable<Type> types)
             where TAttr : Attribute
         {

@@ -4,18 +4,11 @@ using System.Collections.Generic;
 namespace Polaris.PUI
 {
     /// <summary>
-    /// 一份 <see cref="PUIGraphDefinition"/> 的运行时实例：按图结构自行维护"当前所在节点"，
-    /// 直接由 <see cref="PUIGraphDefinition.CreateSolution"/> 创建，或手写代码用
-    /// <c>PUIGraphDefinition.CreateBuilder(...).Build().CreateSolution()</c> 创建。
-    /// 多个实例（哪怕来自同一份 Definition）彼此完全独立：各自的节点对应各自的 PUI 副本，
-    /// 各自的 <see cref="CurrentNodeKey"/> 互不影响。
+    /// <see cref="PUIGraphDefinition"/> 的运行时实例，自行维护当前所在节点；不同实例彼此完全独立。
     /// </summary>
     public sealed class PUISolution
     {
-        /// <summary>
-        /// "取消/ESC"触发的保留 key，必须与生成器侧
-        /// PolarisTools.PUI.PuiVisualEditor.PuiStateTransition.CancelTriggerKey 字面一致。
-        /// </summary>
+        /// <summary>"取消/ESC"触发的保留 key，须与生成器侧字面一致。</summary>
         public const string CancelTriggerKey = "@Cancel";
 
         private sealed class Node
@@ -37,11 +30,7 @@ namespace Polaris.PUI
         public string Name { get; }
         public PUIGraphDefinition Definition { get; }
 
-        /// <summary>
-        /// 本解决方案自己的"当前所在节点" key——这是此前 PUIStateMachine 完全不存在的状态。
-        /// 只在 <see cref="Start"/>/<see cref="Enter"/>/阻塞式跳转时移动；非阻塞跳转打开的浮层
-        /// 不会移动它。<see cref="Start"/>/<see cref="Enter"/> 之前，以及 <see cref="Stop"/> 之后为 null。
-        /// </summary>
+        /// <summary>当前所在节点的 key；仅在 Start/Enter/阻塞式跳转时移动，非阻塞浮层不影响它。</summary>
         public string CurrentNodeKey { get; private set; }
 
         public PUIRuntime Current { get; private set; }
@@ -116,8 +105,7 @@ namespace Polaris.PUI
             MakeCurrent(target);
         }
 
-        /// <summary>走一条边：sourceNodeKey 上名为 triggerKey 的连接点。找不到边时安全返回 false，
-        /// 语义与今天"没在任何已加载的图里配置就什么都不做"一致。</summary>
+        /// <summary>走一条边；找不到匹配的边时安全返回 false，什么都不做。</summary>
         public bool Fire(string sourceNodeKey, string triggerKey)
         {
             if (string.IsNullOrEmpty(sourceNodeKey) || string.IsNullOrEmpty(triggerKey))
@@ -145,7 +133,7 @@ namespace Polaris.PUI
 
             if (edge.Blocking)
             {
-                // 阻塞跳转从「边的来源节点」离开——它不一定是当前节点（非阻塞浮层也能触发阻塞边）。
+                // 阻塞跳转从边的来源节点离开，它不一定是当前节点。
                 Leave(source.Runtime);
                 MakeCurrent(target);
             }
@@ -189,8 +177,7 @@ namespace Polaris.PUI
             }
         }
 
-        /// <summary>Stop() 并从每个节点解绑；不销毁任何节点的窗口（节点的 PUIRuntime 是本图专属
-        /// 创建的，若还需要销毁请对 TryGetNode 拿到的 PUIRuntime 单独调用 Destroy()）。</summary>
+        /// <summary>Stop() 并从每个节点解绑；不销毁任何节点的窗口。</summary>
         public void Dispose()
         {
             Stop();

@@ -5,19 +5,11 @@ using XX;
 namespace Polaris.API
 {
     /// <summary>
-    /// 音效播放实例的所有权中心：创建 CRI 播放器、回收播完的播放器、发布
-    /// <see cref="GameStaticCallbackKind.SoundPlayed"/>。
-    /// <para>
-    /// 必须有人负责回收：每一次播放都会留下一个持有 CRI 播放器实例的对象，
-    /// 一局游戏下来能攒出成千上万个。
-    /// </para>
+    /// 音效播放实例的所有权中心：创建/回收 CRI 播放器并发布 <see cref="GameStaticCallbackKind.SoundPlayed"/>。
     /// </summary>
     internal static class GameAudioRuntime
     {
-        /// <summary>
-        /// 同时在播的音效上限。到顶之后新的播放请求会被拒绝，而不是挤掉正在响的——
-        /// 静默顶掉别人的声音比少响一声更难查。
-        /// </summary>
+        /// <summary>同时在播的音效上限；到顶后新请求被拒绝而不是挤掉正在响的。</summary>
         const int MaxConcurrentSounds = 32;
 
         static readonly List<GameAudioPlayback> live = new(8);
@@ -45,8 +37,7 @@ namespace Polaris.API
             {
                 var player = new SndPlayer($"polaris_snd_{nextPlayerId++}");
 
-                // force: true 只在需要叠放时开。游戏默认在同一帧里对同一个 cue 去重，
-                // 循环播放要绕过这个去重，否则连续两次循环请求会被吃掉一次。
+                // 游戏默认同帧内对同一 cue 去重；循环播放需绕过，否则会被吃掉一次。
                 if (!player.play(cue, loop))
                 {
                     player.Dispose();
@@ -106,7 +97,7 @@ namespace Polaris.API
             {
                 GameAudioPlayback playback = live[i];
 
-                // 开播宽限期内不判死活：CRI 的播放器不是 play() 返回就立刻报 "playing" 的。
+                // 开播宽限期内不判死活：play() 返回后 CRI 播放器不会立刻报 "playing"。
                 if (!playback.PastGracePeriod)
                 {
                     continue;

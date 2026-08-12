@@ -3,14 +3,7 @@ using System.Collections.Generic;
 
 namespace Polaris.API
 {
-    /// <summary>
-    /// "回调种类 ↔ 负荷类型"的唯一真相表。
-    /// <para>
-    /// 有了它，<c>Register&lt;TData&gt;</c> 才能在<b>注册那一刻</b>就否掉类型不匹配的调用。
-    /// 换成在派发时才做类型检查是行不通的：那时候调用栈里只剩派发核心，
-    /// 报出来的错指不到写错的那一行注册代码，而事件可能要玩很久才触发一次。
-    /// </para>
-    /// </summary>
+    /// <summary>"回调种类 ↔ 负荷类型"的唯一真相表，让 <c>Register&lt;TData&gt;</c> 在注册时就能否掉类型不匹配的调用（而非等到派发时才报错，那时错误已定位不到注册代码）。</summary>
     internal static class GameCallbackContract
     {
         static readonly Dictionary<GameStaticCallbackKind, Type> StaticData = new()
@@ -75,10 +68,7 @@ namespace Polaris.API
             [GameInstanceCallbackKind.GameMenuClosed] = typeof(GameMenuClosedCallbackData),
         };
 
-        /// <summary>
-        /// 实例回调允许挂在哪一种实例上。用来在注册时否掉"把敌人回调注册到存储实例上"
-        /// 这类调用——它不会报错，只会安静地永远收不到事件。
-        /// </summary>
+        /// <summary>实例回调允许挂在哪一种实例上，用于在注册时否掉类型不匹配的挂载（否则会安静地永远收不到事件）。</summary>
         static readonly Dictionary<GameInstanceCallbackKind, Type> InstanceOwner = new()
         {
             [GameInstanceCallbackKind.MapClosed] = typeof(GameMap),

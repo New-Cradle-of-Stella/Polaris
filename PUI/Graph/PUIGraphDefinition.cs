@@ -4,9 +4,7 @@ using System.Collections.Generic;
 namespace Polaris.PUI
 {
     /// <summary>
-    /// 一份不可变的图蓝图：节点（key + PUI 名）、边（source, trigger, target, blocking）、
-    /// 入口节点 key。一份 .puisln 编译对应一份 Definition；多次 <see cref="CreateSolution"/>
-    /// 会各自得到完全独立的运行时实例（各自的 PUI 副本、各自的当前节点）——这就是"真正的多实例"。
+    /// 不可变的图蓝图（节点、边、入口节点 key）；每次 <see cref="CreateSolution"/> 都产生独立的运行时实例。
     /// </summary>
     public sealed class PUIGraphDefinition
     {
@@ -26,9 +24,7 @@ namespace Polaris.PUI
         public static PUIGraphDefinitionBuilder CreateBuilder(string name) => new PUIGraphDefinitionBuilder(name);
 
         /// <summary>
-        /// 创建一份完全独立的运行时实例：每个节点都通过 <see cref="PUIManager"/> 的类型目录
-        /// 新建一份对应的 <see cref="IPUI"/>，再用 <see cref="PUIRuntime.Create"/> 包一层。
-        /// 多次调用互不干扰，各自拥有独立的 GameObject 与当前节点状态。
+        /// 创建一份独立的运行时实例，各节点的 PUI 均为新建。
         /// </summary>
         public PUISolution CreateSolution(string instanceName = null)
         {
@@ -37,9 +33,7 @@ namespace Polaris.PUI
         }
 
         /// <summary>
-        /// 校验：节点 key 唯一、所有边两端引用的节点存在、入口节点存在、每个节点的 PuiName 能在
-        /// <see cref="PUIManager"/> 的类型目录里解析到。失败即抛出，供 <see cref="CreateSolution"/>
-        /// 与生成代码的静态初始化尽早发现配置错误。
+        /// 校验节点 key 唯一、边引用有效、入口节点存在、PuiName 均可解析；失败则抛出异常。
         /// </summary>
         public void Validate()
         {

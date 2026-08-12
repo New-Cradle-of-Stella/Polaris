@@ -8,10 +8,9 @@ using Polaris.API;
 namespace Polaris.Patch
 {
     /// <summary>
-    /// <c>NelM2DBase.runPostForDraw()</c> 里的 <c>GM.isStoppingGame()</c> 决定这一帧要不要继续
-    /// 绘制世界。必须和 <see cref="Patch_NelM2DBase_run_GameMenuWorldPause"/> 用同一个
-    /// <see cref="GameMenuPauseRuntime.ShouldStopWorld"/>，否则策略为 <c>false</c> 时会出现
-    /// "逻辑在跑、画面却冻结"的半工作状态。
+    /// 把 <c>runPostForDraw</c> 里决定是否继续绘制世界的 <c>GM.isStoppingGame()</c> 替换成
+    /// <see cref="GameMenuPauseRuntime.ShouldStopWorld"/>，须与 <see cref="Patch_NelM2DBase_run_GameMenuWorldPause"/>
+    /// 保持一致，否则会出现逻辑跑、画面却冻结的半工作状态。
     /// </summary>
     [HarmonyPatch(typeof(NelM2DBase), nameof(NelM2DBase.runPostForDraw), new[] { typeof(float), typeof(bool), typeof(bool) })]
     internal static class Patch_NelM2DBase_runPostForDraw_GameMenuWorldPause

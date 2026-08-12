@@ -4,14 +4,8 @@ using System.Reflection;
 namespace Polaris.Settings
 {
     /// <summary>
-    /// 构造设置项的内部接口。<b>不对模组作者开放</b>——对外只有
-    /// <see cref="PolarisSettingAttribute"/> 一条声明途径，好处是注册时机由 Polaris 统一掌控，
-    /// 模组不可能因为注册晚于设置界面而踩空（见 <see cref="SettingsAPI"/> 的说明）。
-    /// <see cref="SettingsAttributeScanner"/> 把扫到的字段翻译成对这里的调用，
-    /// 取值范围校验、默认值裁剪都集中在这一层。
-    /// <para>
-    /// 各方法返回刚建好的设置项，调用方拿去挂字段读写委托与变更回调。
-    /// </para>
+    /// 构造设置项的内部接口，不对模组作者开放（对外唯一途径是 <see cref="PolarisSettingAttribute"/>）。
+    /// <see cref="SettingsAttributeScanner"/> 把扫到的字段翻译成对这里的调用；取值范围校验、默认值裁剪集中在这一层。
     /// </summary>
     internal sealed class SettingsGroupBuilder
     {
@@ -70,13 +64,8 @@ namespace Polaris.Settings
         }
 
         /// <summary>
-        /// 枚举的非泛型入口：扫描器只拿得到 <see cref="Type"/>，而 <see cref="EnumSetting{TEnum}"/>
-        /// 要求编译期类型实参，中间只能靠反射搭一次桥。
-        /// <para>
-        /// 这层桥刻意放在 <see cref="Enum{TEnum}"/> 旁边而不是扫描器里：实参数组和被调方法的签名
-        /// 必须逐字对应，隔着文件放的话签名一改另一边就对不上——编译器看不见，
-        /// 只有运行时才炸成 "Number of parameters specified does not match the expected number."
-        /// </para>
+        /// 枚举的非泛型入口：扫描器只有 <see cref="Type"/>，而 <see cref="EnumSetting{TEnum}"/> 需要编译期类型实参，靠反射搭桥。
+        /// 保持在 <see cref="Enum{TEnum}"/> 旁边，因反射调用的实参数组须与其签名逐字对应。
         /// </summary>
         internal ValueSettingDefinition EnumOfType(Type enumType, string id, string label, object def,
                                                    string[] choices, string desc)
@@ -91,8 +80,7 @@ namespace Polaris.Settings
             }
             catch (TargetInvocationException e) when (e.InnerException != null)
             {
-                // 校验异常经反射会被包一层，而包装层的 Message 没有任何信息量
-                // （"Exception has been thrown by the target of an invocation."），拆开再抛。
+                // 反射会包一层无信息量的异常，拆开再抛。
                 throw e.InnerException;
             }
         }
@@ -106,7 +94,7 @@ namespace Polaris.Settings
             var s = new EnumSetting<TEnum>(id, label, def);
             if (s.Values.Length == 0)
             {
-                // 成员数为 0 的枚举会让 meter 拿到 mx = -1，画出来是坏的；和 Choice 一样提前拦下。
+                // 空枚举会让 meter 拿到 mx = -1 画坏，提前拦下。
                 throw new ArgumentException($"The enum {typeof(TEnum).Name} of setting {id} has no members");
             }
 
@@ -134,10 +122,7 @@ namespace Polaris.Settings
             return Add(new TextSetting(id, label, def) { MaxLength = maxLength, Width = width }, desc);
         }
 
-        /// <summary>
-        /// 提交注册。此时会立刻绑定配置文件并把上次存的值回灌回来——
-        /// 也就是说 <see cref="Register"/> 一返回，字段就已经是玩家上次退出时的值了。
-        /// </summary>
+        /// <summary>提交注册；返回时字段已回灌为玩家上次退出时的值。</summary>
         public SettingGroup Register() => PolarisAPI.Settings.Register(group);
 
         T Add<T>(T setting, string desc) where T : ValueSettingDefinition

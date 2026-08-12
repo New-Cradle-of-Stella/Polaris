@@ -7,13 +7,7 @@ using UnityEngine;
 
 namespace Polaris.PUI.HotReload
 {
-    /// <summary>
-    /// 命名管道服务端跑在后台线程，但 <see cref="PUIManager.ApplyHotReload"/> 会碰
-    /// GameObject/Unity API，必须在主线程执行。这个组件把请求排进队列，在
-    /// <see cref="Update"/>（主线程）里逐个处理，处理完再唤醒等待它的后台线程。
-    /// 只有 <see cref="PuiHotReloadServer"/> 真正启动时才会挂到 <see cref="PUIManager.Root"/>
-    /// 上，不开热重载的场景下不会存在这个组件。
-    /// </summary>
+    /// <summary>把后台管道线程的热重载请求排队，在主线程 <see cref="Update"/> 里处理后唤醒等待方（Unity API 只能在主线程调用）。</summary>
     internal sealed class PuiHotReloadPump : MonoBehaviour
     {
         private sealed class PendingRequest
@@ -57,10 +51,7 @@ namespace Polaris.PUI.HotReload
             return (request.Ok, request.Error);
         }
 
-        /// <summary>
-        /// Root 是 DontDestroyOnLoad 的，只有整个游戏进程退出时才会走到这里；负责把
-        /// <see cref="PuiHotReloadServer"/> 的后台管道线程收干净，避免它卡住进程退出流程。
-        /// </summary>
+        /// <summary>进程退出时清理 <see cref="PuiHotReloadServer"/> 的后台管道线程，避免卡住退出流程。</summary>
         private void OnApplicationQuit()
         {
             PuiHotReloadServer.Stop();

@@ -4,14 +4,8 @@ using nel.gm;
 namespace Polaris.API
 {
     /// <summary>
-    /// <see cref="GameMenuAPI.SetWorldPause"/> 的运行时内核：谁真正拥有这次 <c>PauseMem</c>/
-    /// <c>ResumeMem</c>，以及四个关键补丁是否都成功应用。只在 Unity 主线程读写。
-    /// <para>
-    /// 只在这一层跳过 <c>PauseMem()</c> 不够——世界主循环仍会被
-    /// <c>NelM2DBase.run()</c>/<c>runPostForDraw()</c> 里的 <c>GM.isStoppingGame()</c> 截断；
-    /// 只改那两处调用点又会让 <c>PauseMem</c> 注册的对象继续处于暂停状态。四个补丁必须成对生效，
-    /// 见 <see cref="FeatureAvailable"/>。
-    /// </para>
+    /// <see cref="GameMenuAPI.SetWorldPause"/> 的运行时内核：跟踪 PauseMem/ResumeMem 的归属，
+    /// 以及四个关键补丁是否全部生效（见 <see cref="FeatureAvailable"/>）。只在 Unity 主线程读写。
     /// </summary>
     internal static class GameMenuPauseRuntime
     {
@@ -99,8 +93,7 @@ namespace Polaris.API
                 return vanilla;
             }
 
-            // Game Over、读档、退出或退回标题等终止状态，以及 BENCH 之外真正在关闭的普通菜单，
-            // 一律照原版停：只解除"菜单打开且策略为 false"这一种情况造成的停止。
+            // 真正的终止/关闭状态一律照原版停；只解除"菜单打开且策略为 false"造成的停止。
             if (gm.isClosingGame() || GAMEOVER.isActive())
             {
                 return true;

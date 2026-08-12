@@ -1,13 +1,8 @@
 namespace Polaris.API
 {
     /// <summary>
-    /// 全局静态回调的种类：与任何一个具体游戏实例都无关的事件，经
-    /// <see cref="GameCallbacksAPI.Register{TData}"/> 注册。
-    /// <para>
-    /// 每一种都绑定<b>唯一</b>一个回调数据类型，见 <see cref="GameCallbackContract"/>。
-    /// 注册时 <c>TData</c> 与之不符会立即抛 <see cref="System.ArgumentException"/>，
-    /// 而不是等到事件真的发生时才在派发路径上炸——那时调用栈里已经没有注册点了。
-    /// </para>
+    /// 全局静态回调的种类：与具体游戏实例无关的事件，经 <see cref="GameCallbacksAPI.Register{TData}"/> 注册。
+    /// 每种都绑定唯一的回调数据类型（见 <see cref="GameCallbackContract"/>），类型不符会在注册时立即抛异常。
     /// </summary>
     public enum GameStaticCallbackKind
     {
@@ -97,12 +92,8 @@ namespace Polaris.API
     }
 
     /// <summary>
-    /// 实例回调的种类：只发给"事件发生在它身上的那一个实例"的订阅者，经各实例类型自己的
-    /// <c>Register</c> 方法注册。
-    /// <para>
-    /// 注册表的键至少包含"种类 + 实例身份"两段，因此上一张地图的订阅永远不会收到新地图的
-    /// 同类事件；实例失效后，挂在它上面的订阅也随之停止收事件。
-    /// </para>
+    /// 实例回调的种类：只发给事件所属那一个实例的订阅者，经各实例类型自己的 <c>Register</c> 方法注册。
+    /// 注册表按"种类 + 实例身份"区分，实例失效后其订阅自动停止收事件。
     /// </summary>
     public enum GameInstanceCallbackKind
     {

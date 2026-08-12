@@ -1,21 +1,8 @@
 namespace Polaris.Localization
 {
     /// <summary>
-    /// Polaris 自己那几条设置项文案的内置翻译。
-    /// <para>
-    /// 为什么写在代码里而不是做成 <c>.plang</c>：设置项在 <c>Plugin.Awake</c> 阶段绑定
-    /// 配置文件时就已经在查表了（说明文字要写进 <c>.cfg</c> 注释），而 <c>.plang</c> 的
-    /// 注册与 resolver 挂载要到 <c>Start</c> 才发生——真做成 <c>.plang</c>，设置界面上的
-    /// 标签就会变成一串 key。同样的理由适用于 <c>Lang</c>/<c>Res</c> 两个子系统自己的设置项
-    /// （见各自的 <c>*Strings</c>），但<b>不适用于给玩家装的模组</b>——那些应该用
-    /// <c>.plang</c>，那边有编辑器、有 key 冲突检查，也不必把文案写进代码。
-    /// </para>
-    /// <para>
-    /// 三种语言的取舍与标题告知页一致（见 <see cref="NoticeLocale"/>）：中性值填英文，
-    /// 中文/日文各覆盖一份，其余语言退回英文。<c>"zh"</c> 一条就同时覆盖
-    /// <c>zh-cn</c> 与 <c>zh-tw</c>，<c>"ja"</c> 也会被游戏的默认语言 <c>"_"</c> 命中，
-    /// 理由见 <see cref="LocalizedText.Pick"/>。
-    /// </para>
+    /// Polaris 自己那几条设置项文案的内置翻译，写在代码里而非 <c>.plang</c>：
+    /// 设置项在 <c>Plugin.Awake</c> 绑定配置文件时就要查表（写进 <c>.cfg</c> 注释），早于 <c>.plang</c> 在 <c>Start</c> 才生效的注册。
     /// </summary>
     internal static class PolarisStrings
     {
@@ -29,10 +16,7 @@ namespace Polaris.Localization
 
         static bool registered;
 
-        /// <summary>
-        /// 由 <c>Plugin.Awake</c> 调一次。必须早于设置项扫描（<c>Plugin.Start</c>）——
-        /// 绑定配置文件时要拿说明文字去写 <c>.cfg</c> 注释，那时表里就得有货。
-        /// </summary>
+        /// <summary>由 <c>Plugin.Awake</c> 调一次，须早于设置项扫描（<c>Plugin.Start</c>）以便绑定配置文件时表里已有文案。</summary>
         internal static void Register()
         {
             if (registered)

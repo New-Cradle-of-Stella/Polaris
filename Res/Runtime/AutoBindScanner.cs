@@ -8,17 +8,9 @@ using BepInEx.Unity.Mono.Bootstrap;
 namespace Polaris.Res.Runtime
 {
     /// <summary>
-    /// 全自动发现：扫描全部已加载的 BepInEx 插件程序集，找到打了
-    /// <see cref="PolarisResourceFolderAttribute"/> 的 static 类，把类特性指定的文件夹（相对
-    /// 调用方 dll 所在目录的子路径，"和 dll 同级"）挂载进该模组的 <see cref="ModResources"/>，
-    /// 再把类里标了 <see cref="PolarisResourceAttribute"/> 的 static 字段自动回填。
-    /// <para>
-    /// **类特性是自动绑定的必要条件**：一个类里有 <see cref="PolarisResourceAttribute"/> 字段，
-    /// 但类本身没打 <see cref="PolarisResourceFolderAttribute"/>，不会被这里处理，只会记一条警告
-    /// 提示漏加了特性——不会回退到"猜一个默认文件夹"。仍然保留
-    /// <c>ModResources.MountDefault()</c>/<c>BindStaticFields(Type)</c> 这一套手动 API，给不想用
-    /// 类特性、想按需动态取用资源，或者想用不受"dll 同级"限制的目录的模组用。
-    /// </para>
+    /// 全自动发现：扫描全部已加载的 BepInEx 插件程序集，找到打了 <see cref="PolarisResourceFolderAttribute"/> 的 static 类，
+    /// 挂载类特性指定的文件夹并回填打了 <see cref="PolarisResourceAttribute"/> 的静态字段。
+    /// 类特性是自动绑定的必要条件，没打特性的类只会收到警告，不会猜测默认文件夹；仍可用 <c>ModResources.MountDefault()</c>/<c>BindStaticFields(Type)</c> 手动绑定。
     /// </summary>
     internal static class AutoBindScanner
     {
@@ -27,7 +19,7 @@ namespace Polaris.Res.Runtime
             int totalFolders = 0;
             int totalFields = 0;
 
-            // PluginAssemblies 已经做了去重（同一个程序集可能对应多个插件实例）。
+            // PluginAssemblies 已做去重（同一程序集可能对应多个插件实例）。
             foreach (Assembly assembly in PolarisAPI.Modules.PluginAssemblies)
             {
                 try
@@ -79,12 +71,8 @@ namespace Polaris.Res.Runtime
                     continue;
                 }
 
-                // 每个打了 [PolarisResourceFolder] 的类各用一张独立的挂载表：如果都合并挂进
-                // 同一个 modId 共享的 ModResources，ResourceId 只看 modId+kind+path，不含
-                // "挂载自哪个文件夹"，两个类各自的文件夹里只要出现同名相对路径就会撞上同一个
-                // 缓存条目——谁先绑定谁的内容被后绑定的顶掉。按类型全限定名单独开一张表，
-                // 从根上让"文件夹"成为资源身份的一部分，不需要改 ResourceId 本身，也不影响
-                // 模组自己手动 PolarisResAPI.For(modId) 用的那张共享表。
+                // 每个打了 [PolarisResourceFolder] 的类各用独立挂载表（按类型全限定名区分），
+                // 避免不同类的同名相对路径撞上共享 ModResources 里的同一缓存条目。
                 ModResources classResources = PolarisResAPI.For(modId + "#" + type.FullName);
                 classResources.Mount(absoluteFolder);
                 mountedFolders.Add(absoluteFolder);
@@ -100,9 +88,7 @@ namespace Polaris.Res.Runtime
             return (mountedFolders.Count, fieldsBound);
         }
 
-        /// <summary>类里有 <see cref="PolarisResourceAttribute"/> 字段、但类本身没打
-        /// <see cref="PolarisResourceFolderAttribute"/>：提示一下，免得模组作者以为自动绑定失效了
-        /// 却找不到原因。</summary>
+        /// <summary>类里有 <see cref="PolarisResourceAttribute"/> 字段但没打 <see cref="PolarisResourceFolderAttribute"/> 时提示一下。</summary>
         private static void WarnIfOrphaned(Type type)
         {
             int orphanCount = 0;

@@ -4,13 +4,8 @@ using nel;
 namespace Polaris.API
 {
     /// <summary>
-    /// 一个任务。入口是 <c>PolarisAPI.Game.Quests</c> 与
-    /// <see cref="GameStaticCallbackKind.QuestStarted"/> 回调。
-    /// <para>
-    /// 任务实例代表的是"任务这一条定义"，不是"它在追踪列表里的那一行"：
-    /// 被移出追踪列表之后实例仍然有效，只是 <see cref="GetProgress"/> 会返回 <c>null</c>。
-    /// 这样"任务完成了再重新接一次"不会让调用方手里的实例变成废引用。
-    /// </para>
+    /// 一个任务。实例代表任务定义本身而非追踪列表中的一行，移出追踪列表后实例仍有效，
+    /// 只是 <see cref="GetProgress"/> 会返回 <c>null</c>。
     /// </summary>
     public sealed class GameQuest : GameInstance
     {
@@ -80,8 +75,7 @@ namespace Polaris.API
                     return null;
                 }
 
-                // 分两次问：只在"含已完成"时查得到，就说明它已经完成了。
-                // 游戏没有一个直接的 "finished?" 查询，这是唯一不靠内部结构的判法。
+                // 游戏没有直接的 "finished?" 查询，用"只在含已完成时查得到"间接判断。
                 bool finished = includeFinished && tracker.getProgress(key, false) < 0;
                 return new GameQuestProgress(key, phase, finished);
             }
@@ -176,9 +170,8 @@ namespace Polaris.API
 
             try
             {
-                // 游戏只提供"是不是任一任务的目标"这一层查询，没有按任务分开的版本。
-                // 因此这里先确认该任务确实在追踪列表里，再问游戏——否则一个早就交掉的任务
-                // 也会因为别的任务在收同一种材料而回答 true。
+                // 游戏只有"是不是任一任务的目标"的查询，故先确认本任务在追踪列表里再问，
+                // 避免已交掉的任务因别的任务收同种材料而误判为 true。
                 return GetProgress(false) != null && tracker.isQuestTargetItem(native, grade);
             }
             catch (Exception)

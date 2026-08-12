@@ -8,18 +8,7 @@ using XX;
 
 namespace Polaris
 {
-    /// <summary>
-    /// 模组管理页右侧的详情浮窗，复刻游戏原版设置页 <c>nel.UiCFG.fnShowDesc</c> 的行为：
-    /// 一个独立于主面板的 <see cref="UiBoxDesigner"/>，贴在主面板右外侧，x 固定、y 跟随当前悬停行。
-    /// <para>
-    /// 和原版一样只挂 <c>fnHover</c>、不挂 <c>fnOut</c>——鼠标移开后浮窗保持显示最后悬停的那一项，
-    /// 直到悬停到另一项或页面关闭。挂 fnOut 会让鼠标在两行之间掠过时浮窗反复闪烁。
-    /// </para>
-    /// <para>
-    /// 已知行为（与原版一致，不是缺陷）：同一项持续悬停期间滚动列表，行动了而浮窗不动。
-    /// 因为 <c>fnHover</c> 不会对同一个按钮重复触发；滚动后鼠标下换成别的按钮时会自动校正。
-    /// </para>
-    /// </summary>
+    /// <summary>模组管理页右侧的详情浮窗，复刻原版设置页行为：只挂 fnHover 不挂 fnOut，鼠标移开后仍显示最后悬停项，避免闪烁。</summary>
     internal static class PolarisModDetailPopup
     {
         const string DesignerName = "PolarisModuleDetail";
@@ -59,11 +48,7 @@ namespace Polaris
         /// <summary>当前正在展示的 <see cref="UserModRecord.DisplayName"/>；展示的不是模组（如刷新按钮说明）时为 null。</summary>
         static string currentKey;
 
-        /// <summary>
-        /// 首次调用时在 <paramref name="family"/> 里建出浮窗；重复调用只更新 <paramref name="ownerBox"/> 引用。
-        /// 建完立刻 <c>deactivate</c>，并从 <c>family.activate()</c> 的自动激活位里摘掉——
-        /// 否则一打开管理页，鼠标还没碰任何东西浮窗就已经亮着了。
-        /// </summary>
+        /// <summary>首次调用时建出浮窗并立即隐藏（否则打开管理页时浮窗会先亮着）；重复调用只更新 owner 引用。</summary>
         internal static void Ensure(UiBoxDesignerFamily family, UiBoxDesigner ownerBox)
         {
             owner = ownerBox;
@@ -73,8 +58,7 @@ namespace Polaris
                 return;
             }
 
-            // 后 Create 的 designer z 更小（CreateT 里每次 base_z -= slip_z），会画在主面板上层；
-            // MASKTYPE.BOX 分到的 stencil 是 70 + ADs.Count，与主面板互不干扰。
+            // 后 Create 的 designer z 更小，会画在主面板上层。
             designer = family.Create(
                 DesignerName, 0f, 0f, PopupW, PopupH,
                 -1, 30f, UiBoxDesignerFamily.MASKTYPE.BOX);
@@ -84,24 +68,17 @@ namespace Polaris
             family.setAutoActivate(designer, false);
             designer.Focusable(false); // 不参与焦点，否则会和主列表抢，导致键盘导航失效
             designer.deactivate();
+
         }
 
-        /// <summary>
-        /// 收起浮窗并忘掉当前项。管理页关闭时必须调用，否则 <see cref="currentKey"/> 残留会让下次打开时
-        /// <see cref="Refresh"/> 把浮窗抢在主面板之前点亮。
-        /// 刻意不调 <c>Clear()</c>：留住正文 <see cref="FillBlock"/>，下次悬停仍走只换字的快路径。
-        /// </summary>
+        /// <summary>收起浮窗并忘掉当前项；管理页关闭时必须调用，否则残留状态会让下次打开时误点亮浮窗。</summary>
         internal static void Reset()
         {
             currentKey = null;
             designer?.deactivate();
         }
 
-        /// <summary>
-        /// 悬停某个模组行时调用：换内容，并把浮窗移到该行右侧。
-        /// <paramref name="targetEnabled"/> 是玩家期望的启停状态（可能还只存在于
-        /// <see cref="PolarisManagementUI"/> 的缓存里，与磁盘现状不一致）。
-        /// </summary>
+        /// <summary>悬停某个模组行时调用：换内容并移到该行右侧；<paramref name="targetEnabled"/> 可能只是尚未落盘的缓存状态。</summary>
         internal static void Show(aBtn button, UserModRecord record, bool targetEnabled, string error)
         {
             if (designer == null || owner == null)
@@ -127,15 +104,7 @@ namespace Polaris
             MoveTo(button);
         }
 
-        /// <summary>
-        /// 列表重建之后调用：按 <see cref="currentKey"/> 在新一批记录里重新查，只换文字、不动位置。
-        /// <para>
-        /// 不动位置是安全的——每个模组行高度统一 26f，切换启停只改标题里的勾选标记，
-        /// <c>OrderBy(DisplayName)</c> 的排序也不变，所以那一行重建后原地不动。
-        /// 若将来给某些行加上额外高度，这个前提就破了，届时要改成重新定位。
-        /// </para>
-        /// 查不到该键（文件被游戏外部删掉或改名）则收起浮窗。
-        /// </summary>
+        /// <summary>列表重建后调用：按 <see cref="currentKey"/> 重新查，只换文字不动位置（各行高度统一，重建后原地不动）；查不到则收起浮窗。</summary>
         internal static void Refresh(
             IReadOnlyList<UserModRecord> mods,
             Func<UserModRecord, bool> targetEnabled,
@@ -161,12 +130,7 @@ namespace Polaris
             Reset();
         }
 
-        /// <summary>
-        /// 把浮窗摆到 <paramref name="button"/> 所在行的右外侧。x 用主面板实际的 <c>swidth</c> 算
-        /// （不是 Create 时传入的宽度——框的实际宽度未必等于它，原版用的也是 <c>BxOut.swidth</c>）；
-        /// y 取按钮在容器内的位置，<c>getLocalPosFromContainer</c> 内部已扣掉滚动位移，
-        /// 返回的永远是视口内坐标，因此滚动后依然对齐，纵向也不会跑出屏幕。
-        /// </summary>
+        /// <summary>把浮窗摆到 <paramref name="button"/> 所在行的右外侧；y 坐标已扣掉滚动位移，故滚动后依然对齐。</summary>
         static void MoveTo(aBtn button)
         {
             UiBox ownerBox = owner.getBox();
@@ -184,10 +148,7 @@ namespace Polaris
             }
         }
 
-        /// <summary>
-        /// 写入正文。首次走 <c>Clear + addP</c> 建块，之后只改 <see cref="FillBlock"/> 的文字与行距，
-        /// 结构照抄原版 <c>fnShowDesc</c>（原版此处也不调 <c>init()</c>）。
-        /// </summary>
+        /// <summary>写入正文；首次 Clear+addP 建块，之后只改文字与行距。</summary>
         static void SetText(string text, bool isError)
         {
             float lineSpacing = CountLines(text) >= DenseLineThreshold ? LineSpacingDense : LineSpacingLoose;
@@ -207,8 +168,8 @@ namespace Polaris
             designer.WH(PopupW, PopupH);
             designer.alignx = ALIGN.LEFT;
 
-            // html 保持 false：正文里的作者、简介、链接都是第三方模组作者填的，出现 '<' 会被富文本解析器吃掉。
-            // text_auto_wrap 必须显式设 true：它的默认值是 TX.isEnglishLang()，中文环境下为 false。
+            // html 保持 false：第三方填的文本若含 '<' 会被富文本解析器吃掉。
+            // text_auto_wrap 须显式设 true，默认值 TX.isEnglishLang() 在中文环境下为 false。
             designer.addP(new DsnDataP(text, false)
             {
                 name = TextName,
@@ -264,21 +225,19 @@ namespace Polaris
 
             if (targetEnabled != record.Enabled)
             {
-                // 本页里改过、但还没落盘的状态。文案要说清"现在是什么"和"重启后会变成什么"，
-                // 别让玩家以为点一下就已经生效了。
+                // 已改动但未落盘：需说清现状与重启后的结果，避免玩家以为点一下就生效。
                 text.Append('\n').Append(ModManagerStrings.Text(record.Enabled
                     ? ModManagerStrings.DetailPendingDisable
                     : ModManagerStrings.DetailPendingEnable));
             }
             else if (!record.Enabled)
             {
-                // 没有待应用的改动时，磁盘现状就是本次启动时的状态，不必再提"重启后生效"。
+                // 无待应用改动，磁盘现状就是本次启动状态，不必再提"重启后生效"。
                 text.Append('\n').Append(ModManagerStrings.Text(ModManagerStrings.DetailDisabled));
             }
             else if (!hasModInfo)
             {
-                // 两种情况都会走到这里，文案要同时说清：模组根本没标特性；以及文件虽然是启用
-                // 状态、但本次启动时 BepInEx 并没有加载过它（比如是在游戏外面手动改名启用的）。
+                // 覆盖两种情况：模组未标特性；或文件已启用但本次 BepInEx 未加载它。
                 text.Append('\n').Append(ModManagerStrings.Text(ModManagerStrings.DetailNoInfo));
             }
 
@@ -297,7 +256,7 @@ namespace Polaris
             return text.ToString();
         }
 
-        /// <summary>截断超长字段。浮窗高度固定，放任第三方填的长文本会把后面的行挤没。</summary>
+        /// <summary>截断超长字段，避免第三方长文本把后面的行挤没。</summary>
         static string Clip(string text, int max)
         {
             return text == null || text.Length <= max ? text : text.Substring(0, max - 1) + "…";

@@ -4,11 +4,7 @@ using Polaris.API;
 
 namespace Polaris.Patch
 {
-    /// <summary>
-    /// 打 <c>Add</c> 的 5 参数重载（没有 <c>out IRow</c>，签名更好写）而不是它转发到的 6 参数版本——
-    /// 前者是外层包装，Postfix 在它返回时跑，此时内层版本已经执行完毕，观察到的仍然是最终结果。
-    /// <c>__result</c> 是实际加进去的数量；<c>execute == false</c> 时是"预演"，不算真的发生。
-    /// </summary>
+    /// <summary>打 <c>Add</c> 的 5 参数外层重载；<c>__result</c> 是实际加入数量，<c>execute == false</c> 时只是预演不算发生。</summary>
     [HarmonyPatch(typeof(ItemStorage), nameof(ItemStorage.Add),
         new[] { typeof(NelItem), typeof(int), typeof(int), typeof(bool), typeof(bool) })]
     [PolarisPatchFeature("ItemAdded")]
@@ -26,8 +22,7 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary><c>ItemStorage.Reduce</c> 是"要么按 <c>count</c> 全部扣掉、要么整体失败"的语义，
-    /// 不存在部分扣除，所以 <c>__result == true</c> 时直接用请求的 <c>count</c> 当作变化量。</summary>
+    /// <summary><c>Reduce</c> 全扣或整体失败、无部分扣除，<c>__result == true</c> 时直接用请求的 <c>count</c> 当变化量。</summary>
     [HarmonyPatch(typeof(ItemStorage), nameof(ItemStorage.Reduce),
         new[] { typeof(NelItem), typeof(int), typeof(int), typeof(bool) })]
     [PolarisPatchFeature("ItemRemoved")]
@@ -45,15 +40,7 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary>
-    /// <c>ItemStorage.tranferItems</c> 是 Storage 间转移的入口，单独发一条事件，
-    /// 避免被误报成一次无关联的增加 + 减少。转移方向是"从 <c>__instance</c> 到 <c>Dest</c>"；
-    /// <c>__result</c> 是实际转移的物品行数，为 0 表示什么都没动。
-    /// <para>
-    /// 形参名必须与游戏一致（<c>Dest</c>）：Harmony 是<b>按名字</b>把原方法的实参注进来的，
-    /// 名字对不上会在应用补丁时直接抛 "Parameter not found"，而不是安静地注入 null。
-    /// </para>
-    /// </summary>
+    /// <summary>Storage 间转移入口，单独发事件避免误报为无关的增加+减少；<c>__result</c> 为 0 表示未转移。形参名 <c>Dest</c> 必须与游戏签名一致，否则 Harmony 注入时会抛 "Parameter not found"。</summary>
     [HarmonyPatch(typeof(ItemStorage), nameof(ItemStorage.tranferItems))]
     [PolarisPatchFeature("ItemsTransferred")]
     internal static class Patch_ItemStorage_tranferItems_Callbacks
@@ -70,8 +57,7 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary><c>NelItemManager.getItem</c> 是玩家"获得记录"增加的入口；<c>__result</c> 是实际
-    /// 记为获得的数量。这与某个 Storage 是否真的多了这件物品是两件事，各打各的补丁。</summary>
+    /// <summary>玩家"获得记录"入口；与 Storage 是否真的增加物品是两件事，各打各的补丁。</summary>
     [HarmonyPatch(typeof(NelItemManager), nameof(NelItemManager.getItem),
         new[] { typeof(NelItem), typeof(int), typeof(int), typeof(bool), typeof(bool), typeof(bool), typeof(bool) })]
     [PolarisPatchFeature("ItemObtained")]
@@ -104,10 +90,7 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary>
-    /// <c>NelItem.Use</c> 是物品使用的唯一真实入口（菜单、快捷栏与事件脚本都走它）。
-    /// <c>__result</c> 是游戏给出的使用结果码，0 一般表示什么也没发生。
-    /// </summary>
+    /// <summary>物品使用的唯一入口（菜单/快捷栏/事件脚本均经此）；<c>__result</c> 为结果码，0 表示未发生任何效果。</summary>
     [HarmonyPatch(typeof(NelItem), nameof(NelItem.Use))]
     [PolarisPatchFeature("ItemUsed")]
     internal static class Patch_NelItem_Use_Callbacks

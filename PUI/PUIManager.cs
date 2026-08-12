@@ -8,34 +8,24 @@ using UnityEngine;
 
 namespace Polaris.PUI
 {
-    /// <summary>
-    /// PUI 运行时的根节点持有者 + 类型/图目录 + 便捷封装。自 PUI/PUISolution 改为可直接
-    /// 通过 API 实例化的对象之后，本类不再是唯一入口：<see cref="PUIRuntime.Create"/> 与
-    /// <see cref="PUIGraphDefinition.CreateSolution"/> 才是核心创建路径，本类只负责
-    /// <see cref="Root"/> 的生命周期、按名字的进程级共享实例（供 MainMenuPUI 等非图场景使用）、
-    /// 图定义/默认共享解决方案的目录，以及热重载的扇出。
-    /// </summary>
+    /// <summary>PUI 运行时的根节点持有者 + 类型/图目录 + 便捷封装；负责 Root 生命周期、按名字的共享实例、图定义目录及热重载扇出。</summary>
     internal static class PUIManager
     {
-        /// <summary>按名字的进程级共享 PUI 实例——非图场景（比如 MainMenuPUI 直接按名字打开一个
-        /// 窗口）使用；图节点各自创建独立实例，不占用这个表。</summary>
+        /// <summary>按名字的进程级共享 PUI 实例；图节点各自创建独立实例，不占用此表。</summary>
         private static readonly Dictionary<string, PUIRuntime> namedInstances = new Dictionary<string, PUIRuntime>();
 
-        /// <summary>PuiName -&gt; 类型的目录，来自 [PUIAutoRegistration] 扫描结果；供
-        /// <see cref="CreateInstance"/>／<see cref="PUIGraphDefinition.Validate"/> 解析图节点。</summary>
+        /// <summary>PuiName -&gt; 类型目录，来自 [PUIAutoRegistration] 扫描结果。</summary>
         private static readonly Dictionary<string, Type> puiTypes = new Dictionary<string, Type>();
 
         private static readonly Dictionary<string, PUIGraphDefinition> graphCatalog = new Dictionary<string, PUIGraphDefinition>();
 
-        /// <summary>Init() 时为每份发现的图自动创建的默认共享实例，保留"编译完 .puisln 就能用"
-        /// 的零代码体验；需要额外独立实例的 mod 自行再调用 Definition.CreateSolution()。</summary>
+        /// <summary>Init() 时为每份发现的图自动创建的默认共享实例。</summary>
         private static readonly Dictionary<string, PUISolution> defaultSolutions = new Dictionary<string, PUISolution>();
 
-        /// <summary>所有存活的、支持热重载的实例（不管是按名字共享的还是某个图节点专属的），供
-        /// <see cref="ApplyHotReload"/> 按名字扇出。</summary>
+        /// <summary>所有存活的支持热重载的实例，供 <see cref="ApplyHotReload"/> 按名字扇出。</summary>
         private static readonly List<PUIHotReloadRuntime> hotReloadInstances = new List<PUIHotReloadRuntime>();
 
-        /// <summary>每个程序集是否标了 <see cref="PUIHotFixEnabledAttribute"/>，只需要判定一次。</summary>
+        /// <summary>每个程序集是否启用热重载，只判定一次并缓存。</summary>
         private static readonly Dictionary<Assembly, bool> hotReloadEnabledAssemblies = new Dictionary<Assembly, bool>();
 
         private static bool hotReloadServerStarted;
@@ -45,12 +35,7 @@ namespace Polaris.PUI
         /// <summary>所有 PUI 专属 GameObject 的挂载根节点。</summary>
         internal static GameObject Root { get; private set; }
 
-        /// <summary>
-        /// 初始化：创建根节点、挂载 <see cref="PUISolutionPump"/>；扫描并注册所有标记了
-        /// <see cref="PUIAutoRegistrationAttribute"/> 的 <see cref="IPUI"/> 实现（同时建立
-        /// PuiName -&gt; 类型目录）；再扫描所有标记了 <see cref="PUISolutionAutoRegistrationAttribute"/>
-        /// 的图类，登记其 <c>Definition</c> 并各自创建一份默认共享 <see cref="PUISolution"/>。
-        /// </summary>
+        /// <summary>初始化：创建根节点，扫描并注册所有 <see cref="IPUI"/> 自动注册实现与状态机图类，各建立目录并为图创建默认共享解决方案。</summary>
         internal static void Init()
         {
             if (initialized)
@@ -62,12 +47,7 @@ namespace Polaris.PUI
 
             Root = new GameObject("Polaris.PUI.Root");
 
-            // 根节点自己就带上"盖住标题画面常驻 UI"的 z：所有 PUI 宿主都是
-            // SetParent(Root, worldPositionStays: false) 挂进来的（见 PUIRuntime.CreateHostObject），
-            // 局部 z 保持 0，于是整棵树——正式窗口、状态机图节点、热重载临时宿主——一次性都在这一层。
-            // 不这么做的话宿主停在默认的 z=0，和标题场景里 z=0 的版本号文本平局：那几行
-            // "ver 0.29j / (26/02/10 Early Access Version XI)" 会画在 PUI 窗口上面。
-            // 取值与整张 z 分布表见 UiDepth。
+            // 设置根节点 z，避免与标题场景里同为 z=0 的版本号文本重叠；取值见 UiDepth。
             XX.IN.setZ(Root.transform, UiDepth.Window);
 
             UnityEngine.Object.DontDestroyOnLoad(Root);
@@ -75,9 +55,7 @@ namespace Polaris.PUI
 
             foreach (IPUI pui in DiscoverAutoRegistered())
             {
-                // 一个 Mod 的 IPUI 实现或 Register（比如撞名）写坏，不该连累其它 Mod 的自动
-                // 注册——尤其是这里是遍历中间，异常不接住会直接中止整个 Init()，后面排队的
-                // PUI 类型和下面的 .puisln 状态机图扫描全部不会跑，连最后一行统计日志都出不来。
+                // 单个 Mod 的注册失败不应中止整个 Init() 及后续扫描。
                 try
                 {
                     puiTypes[pui.Name] = pui.GetType();
@@ -106,8 +84,7 @@ namespace Polaris.PUI
                 }
             }
 
-            // 玩家中途切语言时，已经构建过的 PUI 得重新取一遍词（&key 是在 BuildUI 里求值的），
-            // 详见 PUIRuntime.RefreshAllForLocaleChange。
+            // 切语言时需重新取词，详见 PUIRuntime.RefreshAllForLocaleChange。
             API.GameSessionRuntime.LocaleChanged += OnLocaleChanged;
 
             Plugin.Logger.LogMessage(
@@ -123,11 +100,7 @@ namespace Polaris.PUI
             }
         }
 
-        /// <summary>
-        /// 手动注册一个 PUI 实例为按名字的进程级共享实例（自动注册未覆盖的场景可用）。
-        /// 是否启用热重载由 <paramref name="pui"/> 所在程序集是否标了
-        /// <see cref="PUIHotFixEnabledAttribute"/> 决定（见 <see cref="PUIRuntime.Create"/>）。
-        /// </summary>
+        /// <summary>手动注册一个 PUI 实例为按名字的进程级共享实例。</summary>
         internal static PUIRuntime Register(IPUI pui)
         {
             if (pui == null)
@@ -201,9 +174,7 @@ namespace Polaris.PUI
         /// <summary>PuiName 是否能在类型目录里解析到；供 <see cref="PUIGraphDefinition.Validate"/> 使用。</summary>
         internal static bool IsKnownPuiName(string puiName) => puiTypes.ContainsKey(puiName);
 
-        /// <summary>按类型目录新建一份独立的 IPUI + PUIRuntime；不进入 <see cref="namedInstances"/>，
-        /// 专供 <see cref="PUISolution"/> 的图节点使用——这正是"真正的多实例"的落地点：每次调用
-        /// 都是全新的对象。</summary>
+        /// <summary>按类型目录新建一份独立的 IPUI + PUIRuntime，供 <see cref="PUISolution"/> 图节点使用；不进入 <see cref="namedInstances"/>。</summary>
         internal static PUIRuntime CreateInstance(string puiName)
         {
             if (!puiTypes.TryGetValue(puiName, out Type type))
@@ -247,11 +218,7 @@ namespace Polaris.PUI
             hotReloadInstances.Add(runtime);
         }
 
-        /// <summary>
-        /// 把一份热重载指令应用到所有存活的、名字匹配的实例上（一个名字下可能同时存在按名字共享
-        /// 的那一份，以及若干个 PUISolution 图节点专属的独立副本，全部收到同一次推送）；由
-        /// <see cref="PuiHotReloadPump"/> 在主线程调用。
-        /// </summary>
+        /// <summary>把一份热重载指令推送给所有存活的、名字匹配的实例（可能同时命中共享实例与多个图节点副本）。</summary>
         internal static (bool ok, string error) ApplyHotReload(string name, List<PuiWireCommand> commands)
         {
             List<PUIHotReloadRuntime> targets = hotReloadInstances
@@ -279,9 +246,7 @@ namespace Polaris.PUI
             return failures.Count == 0 ? (true, null) : (false, string.Join("; ", failures));
         }
 
-        // 作用域刻意用 InAppDomain 而不是 InPlugins：PUI 实现类不一定住在 BepInEx 插件
-        // 主程序集里，模组把它们拆到附属 dll 是允许的。扫描本身与兜底逻辑走
-        // PolarisAPI.Types，程序集的类型表在那里按程序集缓存，各模块共用。
+        // 用 InAppDomain 而非 InPlugins：PUI 实现类允许拆在附属 dll 里，不局限于主插件程序集。
         private static IEnumerable<IPUI> DiscoverAutoRegistered()
         {
             foreach ((Type type, _) in PolarisAPI.Types.InAppDomainWith<PUIAutoRegistrationAttribute>())
@@ -306,10 +271,7 @@ namespace Polaris.PUI
             }
         }
 
-        /// <summary>
-        /// 找到所有 .puisln 生成的、带 <see cref="PUISolutionAutoRegistrationAttribute"/> 的
-        /// 静态图类（形如 {{FileName}}_Solution）；调用方按需反射读取其 <c>Definition</c>。
-        /// </summary>
+        /// <summary>找到所有 .puisln 生成的带 <see cref="PUISolutionAutoRegistrationAttribute"/> 的静态图类。</summary>
         private static IEnumerable<Type> DiscoverSolutionGraphs() =>
             PolarisAPI.Types.InAppDomainWith<PUISolutionAutoRegistrationAttribute>().Select(x => x.Type);
     }

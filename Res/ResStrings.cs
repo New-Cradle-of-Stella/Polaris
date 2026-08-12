@@ -2,11 +2,7 @@ using Polaris.Localization;
 
 namespace Polaris.Res
 {
-    /// <summary>
-    /// 资源子系统设置项文案的内置翻译。写在代码里而不是做成 <c>.plang</c> 的理由见
-    /// <c>Polaris.Localization.PolarisStrings</c>：设置项在 <c>Plugin.Awake</c> 阶段绑定
-    /// 配置文件时就要能查到文案，那时 <c>.plang</c> 的注册还没发生。
-    /// </summary>
+    /// <summary>资源子系统设置项文案的内置翻译；写在代码里是因为 <c>Plugin.Awake</c> 绑定配置文件时 <c>.plang</c> 还没注册。</summary>
     internal static class ResStrings
     {
         const string P = "polarisres.settings.";

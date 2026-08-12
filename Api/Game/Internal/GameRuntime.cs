@@ -7,18 +7,8 @@ using XX;
 namespace Polaris.API
 {
     /// <summary>
-    /// v2 游戏层的每帧泵：推进实例生命周期，并把"读一个值就能知道"的那一类事件用状态差分
-    /// 发布出去。
-    /// <para>
-    /// 为什么有一部分回调走轮询而不是 Harmony 补丁：日夜、天气、危险度、音量、语言、金钱这些量
-    /// 在游戏里都有<b>多条</b>写入路径（事件脚本、UI、存档读入、内部推进），逐条打补丁要跟着
-    /// 游戏版本追一整串内部调用链，而读一个字段就能得到最终结果。补丁留给那些"必须知道发生过"
-    /// 而状态上看不出来的事件（存档写入、物品使用、任务更新）。
-    /// </para>
-    /// <para>
-    /// 差分只负责<b>入队</b>，真正派发给订阅者是
-    /// <see cref="Infra.CallbackRuntime.Drain"/> 的事，因此所有回调都在同一条时间线上按发生顺序执行。
-    /// </para>
+    /// v2 游戏层的每帧泵：推进实例生命周期，并对可轮询状态做差分以发布事件（这些量写入路径多，逐条打补丁不划算）；
+    /// 差分只入队，实际派发由 <see cref="Infra.CallbackRuntime.Drain"/> 负责。
     /// </summary>
     internal static class GameRuntime
     {
@@ -52,8 +42,7 @@ namespace Polaris.API
         /// <summary>由 <see cref="Plugin.Update"/> 每帧调用，在回调派发之前。</summary>
         internal static void Pump()
         {
-            // 顺序有讲究：地图代数要先于任何对外回调推进，订阅者在自己的回调里取实例时，
-            // 该失效的应该已经失效了。
+            // 地图代数必须先于其他回调推进，确保订阅者取实例时失效状态已生效。
             PumpMapLifetime();
 
             PumpWorldState();
@@ -116,8 +105,7 @@ namespace Polaris.API
             lastMap = map;
             lastMapKey = SafeMapKey(map);
 
-            // 上一张图里发出去的角色包装器整体作废：游戏的 mover 是对象池复用的，
-            // 只比对引用相等会让"同一个池对象换了个角色"被误认成同一个目标。
+            // 整体作废旧地图的角色包装器：mover 对象池复用,仅比较引用会把复用对象误认成同一目标。
             GameCharacter.InvalidateAll();
             GamePlayer.InvalidateAllPlayers();
             GameEnemy.InvalidateAllEnemies();
@@ -143,8 +131,7 @@ namespace Polaris.API
                 GameCallbackHub.PublishStatic(
                     GameStaticCallbackKind.MapOpened, () => new MapOpenedCallbackData(opened));
 
-                // 地图的动作逻辑在切图完成的同一帧就绪；游戏没有单独的通知点，
-                // 而"这张图开好了"正是它成立的时刻。
+                // 地图动作逻辑在切图完成同帧就绪,以此帧作为其就绪的通知点。
                 GameCallbackHub.PublishInstance(
                     GameInstanceCallbackKind.MapActionInitialized,
                     opened,
@@ -184,8 +171,7 @@ namespace Polaris.API
 
             if (!known)
             {
-                // 第一次探到只记下来、不发事件：把"启动时读到的初值"当成一次变化，
-                // 会让每个订阅者在进游戏的那一帧收到一串假的状态变更。
+                // 首次探测只记录不发事件,避免把启动初值当成一次变化广播出去。
                 known = true;
                 lastNight = isNight;
                 lastNightLevel = nightLevel;

@@ -7,22 +7,12 @@ using UnityEngine.SceneManagement;
 namespace Polaris.Diagnostics
 {
     /// <summary>
-    /// 主线程的"我还活着"信号，以及"此刻正在执行谁的代码"的面包屑。<see cref="Watchdog"/>
-    /// 在后台线程读这两样东西，据此判断主线程是不是卡住了、以及卡在谁身上。
-    /// <para>
-    /// <b>写入方永远只有主线程，读取方永远只有看门狗线程</b>，所以这里没有锁：每帧都要走的
-    /// 代码上挂一把锁，代价会落在从不出问题的那 99.99% 的帧上。取而代之的是
-    /// <see cref="Volatile"/> 读写 + 只用引用/int/long 这种单次写入就完整的字段——看门狗最坏
-    /// 情况是读到上一帧的值，而它要回答的问题是"最近这三十秒有没有推进过"，差一帧毫无影响。
-    /// </para>
+    /// 主线程的心跳信号与"正在执行谁的代码"面包屑，供 <see cref="Watchdog"/> 在后台线程判断卡死。
+    /// 写入方只有主线程、读取方只有看门狗线程，故不加锁，改用 <see cref="Volatile"/> 读写。
     /// </summary>
     internal static class MainThreadBeat
     {
-        /// <summary>
-        /// 计时一律用 <see cref="Stopwatch"/>，不用 <c>Environment.TickCount</c>（约 49 天回绕）
-        /// 也不用 <c>DateTime.UtcNow</c>（玩家改系统时间、夏令时切换都会让它跳）。
-        /// 卡死判定唯一需要的性质就是单调，而这正是 Stopwatch 唯一保证的性质。
-        /// </summary>
+        /// <summary>用 <see cref="Stopwatch"/> 计时（单调，不受系统时间/回绕影响）。</summary>
         static readonly Stopwatch Clock = Stopwatch.StartNew();
 
         /// <summary>面包屑栈的深度上限。嵌套超过这个数只累加深度、不再占槽（见 <see cref="Push"/>）。</summary>
@@ -56,11 +46,7 @@ namespace Polaris.Diagnostics
             Volatile.Write(ref beatMillis, Clock.ElapsedMilliseconds);
         }
 
-        /// <summary>
-        /// 面包屑的写入方必须是主线程，否则两个线程一起推同一个栈会把它撕坏。
-        /// 后台线程调进来时 <see cref="Enter"/> 直接返回空作用域——它的调用点通常是
-        /// <see cref="Infra.ErrorsAPI.Guard"/> 这种两边都能用的 API，不该为此要求调用方判断自己在哪个线程。
-        /// </summary>
+        /// <summary>面包屑栈只能由主线程写；非主线程调用 <see cref="Enter"/> 会直接返回空作用域。</summary>
         internal static bool OnMainThread => Thread.CurrentThread.ManagedThreadId == mainThreadId;
 
         // ================== 心跳 ==================
@@ -111,16 +97,13 @@ namespace Polaris.Diagnostics
             }
             catch (Exception)
             {
-                // 场景名只是报告里的一条线索，读不到就不读，绝不能把每帧都要走的心跳弄成抛异常的地方。
+                // 场景名只是线索，读不到就不读，不能让每帧心跳抛异常。
             }
         }
 
         // ================== 面包屑 ==================
 
-        /// <summary>
-        /// 进入一段"正在替某个模组执行代码"的区间。返回的作用域是 <c>struct</c>，
-        /// <c>using</c> 起来不装箱——这条路径要能放心地铺到每个回调调用点上。
-        /// </summary>
+        /// <summary>进入一段"正在替某个模组执行代码"的区间；返回值为 struct 作用域，using 不装箱。</summary>
         internal static Scope Enter(string what, Assembly owner)
         {
             if (string.IsNullOrEmpty(what) || !OnMainThread)
@@ -142,7 +125,7 @@ namespace Polaris.Diagnostics
 
             if (d < MaxDepth)
             {
-                // 先写槽再发布深度：看门狗读到新深度时，对应的槽必须已经有内容。
+                // 先写槽再发布深度，确保看门狗读到新深度时槽已有内容。
                 activities[d] = what;
                 owners[d] = owner;
             }
@@ -159,7 +142,7 @@ namespace Polaris.Diagnostics
                 return;
             }
 
-            // 先发布深度再清槽，和 Push 相反：看门狗读到的深度只会指向仍然有效的槽。
+            // 先发布深度再清槽（与 Push 相反），保证看门狗读到的深度总指向有效槽。
             Volatile.Write(ref depth, d);
 
             if (d < MaxDepth)
@@ -169,13 +152,6 @@ namespace Polaris.Diagnostics
             }
         }
 
-        /// <summary>栈顶那一条，也就是"最内层正在执行的是什么"。没有埋点时为 null。</summary>
-        internal static string CurrentActivity()
-        {
-            int top = Top();
-            return top >= 0 ? activities[top] : null;
-        }
-
         /// <summary>栈顶那一条的责任程序集。没有埋点、或调用方没给出责任方时为 null。</summary>
         internal static Assembly CurrentOwner()
         {
@@ -183,11 +159,7 @@ namespace Polaris.Diagnostics
             return top >= 0 ? owners[top] : null;
         }
 
-        /// <summary>
-        /// 整条面包屑链，由外到内用 <c>→</c> 连起来，例如
-        /// <c>本地化子系统初始化 → WhenReady 回调</c>。报告里写这一条而不是只写栈顶：
-        /// 外层说明"这是在哪个阶段"，内层说明"具体卡在哪一步"，两者缺一都不够定位。
-        /// </summary>
+        /// <summary>整条面包屑链，由外到内连接，比只看栈顶更能定位卡住的位置。</summary>
         internal static string ActivityChain()
         {
             int d = Volatile.Read(ref depth);
@@ -227,11 +199,7 @@ namespace Polaris.Diagnostics
             return Math.Min(d, MaxDepth) - 1;
         }
 
-        /// <summary>
-        /// <see cref="Enter"/> 的作用域。<c>readonly struct</c> + 一个 <c>active</c> 标记：
-        /// 非主线程或空标题时拿到的是 <c>default</c>，<see cref="Dispose"/> 什么都不做，
-        /// 于是调用方永远可以无条件 <c>using</c>。
-        /// </summary>
+        /// <summary><see cref="Enter"/> 的作用域；非主线程或空标题时为 default，Dispose 什么都不做。</summary>
         internal readonly struct Scope : IDisposable
         {
             readonly bool active;

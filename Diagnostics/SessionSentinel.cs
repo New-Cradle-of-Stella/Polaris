@@ -8,42 +8,20 @@ using System.Text;
 namespace Polaris.Diagnostics
 {
     /// <summary>
-    /// 会话哨兵：让"这一局是怎么结束的"变成一个盘上的事实，而不是一件必须靠退出回调才能记下来的事。
-    /// <para>
-    /// 起因是一个结构性的盲区：<c>OnApplicationQuit</c> 只在<b>正常</b>退出时才会被调用。原生崩溃、
-    /// <c>StackOverflowException</c>、内存耗尽、进程被强杀，全都不会走到那里——于是
-    /// <see cref="PolarisErrorNotice.PersistPending"/> 也不会执行，<b>信息最值钱的那一局恰好是唯一
-    /// 什么都留不下的一局</b>：玩家下次启动看到的是一片安静，会以为一切正常。
-    /// </para>
-    /// <para>
-    /// 做法很土但可靠：启动时在 <see cref="Infra.PathsAPI.StateDir"/> 下写一个标记文件，运行期由
-    /// <see cref="Watchdog"/> 线程每几秒把心跳（时间、帧号、场景、面包屑、本局错误摘要）刷进去，
-    /// 正常退出时把它删掉。<b>下次启动时文件还在，就说明上一局没有正常结束</b>；文件里的内容则
-    /// 交代了它是停在哪一刻、卡在谁身上。
-    /// </para>
-    /// <para>
-    /// 写盘用 <c>File.WriteAllText</c> 直接盖，不搞"写临时文件再改名"的原子替换。理由是这里的
-    /// 失败模式必须朝安全的方向倒：原子替换有个"旧的已删、新的未成"的窗口，在那一瞬崩溃就会
-    /// 让下一局误判成"正常退出"（漏报）；而直接盖最坏只是留下一个内容截断的文件——<b>文件存在
-    /// 本身就是结论</b>，内容只是细节，解析器对缺字段一律容忍。
-    /// </para>
+    /// 会话哨兵：启动时在 <see cref="Infra.PathsAPI.StateDir"/> 写标记文件，由看门狗线程定期刷心跳
+    /// （时间/帧号/场景/面包屑/错误摘要），正常退出时删除；下次启动文件还在即说明未正常结束。
+    /// 写盘直接覆盖（不做原子替换），因为文件存在本身就是结论，内容截断可接受。
     /// </summary>
     internal static class SessionSentinel
     {
-        /// <summary>
-        /// 文件名带 pid。玩家同时开两份游戏是允许的，共用一个固定文件名会让两个进程互相盖写，
-        /// 而且第二个进程一启动就会把第一个进程正在用的哨兵当成"上一局崩了"。
-        /// </summary>
+        /// <summary>文件名带 pid，避免多开游戏时多个进程互相盖写哨兵文件。</summary>
         const string FilePrefix = "_session_";
         const string FileSuffix = ".txt";
 
         /// <summary>心跳里最多带几条错误摘要，和告知页能显示的条数对齐。</summary>
         const int MaxErrorLines = 5;
 
-        /// <summary>
-        /// 判不出对应进程还在不在时，超过这个天数的哨兵文件一律当成陈旧的清掉。
-        /// 没有这一条，"拿不准就当它还活着"的保守策略会让这些文件永远堆在目录里。
-        /// </summary>
+        /// <summary>判不出对应进程还在不在时，超过这个天数的哨兵文件一律当成陈旧的清掉。</summary>
         const int StaleAfterDays = 1;
 
         const string TimeFormat = "yyyy-MM-dd HH:mm:ss";
@@ -57,8 +35,7 @@ namespace Polaris.Diagnostics
         static DateTime processStart;
         static int processId;
 
-        // 卡死判定的结果。被判过一次就一直带着——哪怕主线程后来又恢复了，
-        // "这一局卡过 34 秒"仍然是玩家应该知道的事实。
+        // 卡死判定结果：一旦判定就一直保留，即使主线程后来恢复了。
         static bool hung;
         static double hungStallSeconds;
         static string hungActivity;
@@ -66,21 +43,10 @@ namespace Polaris.Diagnostics
         /// <summary>上一局的结局；上一局正常退出（或这是第一次运行）时为 null。</summary>
         internal static LastSessionInfo LastSession { get; private set; }
 
-        /// <summary>
-        /// 读上一局的哨兵时就没能读成（状态目录不存在、权限不足）。这时候"没找到哨兵文件"
-        /// 不等于"上一局正常退出"，只等于我们什么都没看见——见 <see cref="LastEnd"/>。
-        /// </summary>
+        /// <summary>读上一局哨兵时失败（目录不存在/权限不足）；此时"没找到"不等于"正常退出"。</summary>
         static bool readFailed;
 
-        /// <summary>
-        /// 上一局是怎么结束的，四个结论都能出现（<see cref="LastSession"/> 只在出事时才非 null，
-        /// 分不出"正常退出"和"没看见"）。
-        /// <para>
-        /// <b><see cref="SessionEndKind.Clean"/> 也包含"这是第一次装 Polaris"</b>：第一次运行和
-        /// 上一局正常退出留下的东西完全一样——什么都没有——这一层区分不出来，也没有必要区分。
-        /// 真正的 <see cref="SessionEndKind.Unknown"/> 留给"我们连看都没看成"那种情况。
-        /// </para>
-        /// </summary>
+        /// <summary>上一局结束方式；<see cref="SessionEndKind.Clean"/> 也涵盖"第一次运行"这种情况。</summary>
         internal static SessionEndKind LastEnd
         {
             get
@@ -94,11 +60,7 @@ namespace Polaris.Diagnostics
             }
         }
 
-        /// <summary>
-        /// 由 <c>Plugin.Awake</c> 尽早调用：先把上一局留下的哨兵读掉，再为本局写一个新的。
-        /// 顺序不能反——本局的文件名虽然带 pid，但 pid 是会被系统回收再分配的，
-        /// 先写就有可能把恰好和我们同号的那份上一局记录盖掉。
-        /// </summary>
+        /// <summary>由 <c>Plugin.Awake</c> 尽早调用：先读上一局哨兵再写本局的，顺序不能反（pid 会被回收复用）。</summary>
         internal static void Install()
         {
             if (installed)
@@ -124,13 +86,7 @@ namespace Polaris.Diagnostics
             Flush();
         }
 
-        /// <summary>
-        /// 刷一次心跳。由 <see cref="Watchdog"/> 线程每几秒调用一次，也在判定卡死的那一刻立刻调用。
-        /// <para>
-        /// 心跳落盘刻意放在看门狗线程上，不放在 <c>Update</c> 里：这件事每几秒才做一次，
-        /// 但它是一次同步写盘，摊在主线程上就是每隔几秒给玩家一个可能被磁盘卡住的机会。
-        /// </para>
-        /// </summary>
+        /// <summary>刷一次心跳，由看门狗线程调用（放在后台线程避免主线程被同步写盘卡住）。</summary>
         internal static void Flush()
         {
             if (disabled)
@@ -147,18 +103,13 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    // 写不了盘（目录只读、磁盘满、被杀毒锁住）不会自己好，别每几秒重试一次。
-                    // 这里也不记日志：这个方法跑在后台线程上，而它唯一的失败原因是文件系统，
-                    // 每几秒往控制台刷一行同样的抱怨对谁都没有帮助。
+                    // 写不了盘不会自己好，不重试，也不记日志（避免每几秒刷一遍同样的抱怨）。
                     disabled = true;
                 }
             }
         }
 
-        /// <summary>
-        /// 记下"本局被判定为卡死"，并立刻落盘。落盘不能等下一次周期性心跳：判定之后玩家很可能
-        /// 直接去任务管理器把游戏结束掉，那之后我们再没有机会写任何东西。
-        /// </summary>
+        /// <summary>记下本局被判定为卡死并立刻落盘，不等下一次周期性心跳。</summary>
         internal static void MarkHung(HangReport report)
         {
             if (report == null)
@@ -173,11 +124,7 @@ namespace Polaris.Diagnostics
             Flush();
         }
 
-        /// <summary>
-        /// 正常退出时把哨兵删掉，这是"上一局是正常结束的"唯一表达方式。
-        /// 必须排在 <see cref="PolarisErrorNotice.PersistPending"/> 之后——那一步才是正常退出路径下
-        /// 真正把错误摘要交给下一局的地方，在它之前删掉哨兵，中间万一出事就两边都没留下。
-        /// </summary>
+        /// <summary>正常退出时删掉哨兵；必须在 <see cref="PolarisErrorNotice.PersistPending"/> 之后调用。</summary>
         internal static void Close()
         {
             lock (Gate)
@@ -192,8 +139,7 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    // 删不掉只会让下一局多报一次"上一局没有正常退出"。不好，但不值得为它做任何事——
-                    // 这一刻进程正在退出，再抛任何东西都只会盖掉真正的退出流程。
+                    // 删不掉只会让下一局多报一次误判，不值得为此中断正在退出的流程。
                 }
             }
         }
@@ -223,8 +169,7 @@ namespace Polaris.Diagnostics
             b.Append("frame=").Append(MainThreadBeat.LastFrame).Append('\n');
             b.Append("scene=").Append(Clean(MainThreadBeat.SceneName)).Append('\n');
 
-            // 卡死判定时的面包屑要固定住，不能改用"现在"的——主线程可能已经恢复并走到别处了，
-            // 而报告要说的是它当时卡在哪。没被判过卡死时才用实时值。
+            // 已判定卡死时用当时固定的面包屑，而非主线程恢复后的实时值。
             b.Append("activity=").Append(Clean(hung ? hungActivity : MainThreadBeat.ActivityChain())).Append('\n');
             b.Append("stall=").Append(hungStallSeconds.ToString("0.0", CultureInfo.InvariantCulture)).Append('\n');
             b.Append("report=").Append(Clean(ErrorReportWriter.LastWrittenPath)).Append('\n');
@@ -242,10 +187,7 @@ namespace Polaris.Diagnostics
             return b.ToString();
         }
 
-        /// <summary>
-        /// 值里出现换行就会把 <c>键=值</c> 这个格式撕开。异常消息带换行是常事，
-        /// 所以每个值都过一遍这里。
-        /// </summary>
+        /// <summary>去掉换行，避免撕裂 <c>键=值</c> 格式（异常消息常带换行）。</summary>
         static string Clean(string value)
         {
             if (string.IsNullOrEmpty(value))
@@ -258,10 +200,7 @@ namespace Polaris.Diagnostics
 
         // ================== 读 ==================
 
-        /// <summary>
-        /// 扫一遍状态目录，找出上一局留下的哨兵。找到的（确认不属于任何在跑的进程的）一律读完就删——
-        /// 它的使命只是活过一次进程边界，留着只会让下一局重复告知同一件事。
-        /// </summary>
+        /// <summary>扫状态目录找出上一局留下的哨兵（确认不属于仍在跑的进程），读完即删。</summary>
         static LastSessionInfo ReadStale()
         {
             List<string> files;
@@ -269,8 +208,7 @@ namespace Polaris.Diagnostics
             {
                 if (!Directory.Exists(PolarisAPI.Paths.StateDir))
                 {
-                    // 目录本该在这之前就由 EnsureDirectories 建好了。它不在，说明那一步也失败了
-                    // （只读安装、权限不足）——那我们既没写过上一局的哨兵，也读不到，只能说不知道。
+                    // 目录应已由 EnsureDirectories 建好；不存在说明那一步失败了（只读/权限不足）。
                     readFailed = true;
                     return null;
                 }
@@ -299,13 +237,13 @@ namespace Polaris.Diagnostics
                 DateTime started = Time(fields, "started");
                 DateTime alive = Time(fields, "alive");
 
-                // 自己的 pid 不可能属于"另一个还在跑的实例"：那个实例就是我们，而我们刚启动。
+                // 自己的 pid 不可能是别的进程。
                 bool mine = pid == processId;
                 bool old = alive != DateTime.MinValue && (DateTime.Now - alive).TotalDays >= StaleAfterDays;
 
                 if (!mine && !old && StillRunning(pid, started))
                 {
-                    // 玩家同时开着另一份游戏。它的哨兵不是崩溃证据，别读也别删。
+                    // 玩家同时开着另一份游戏，其哨兵不是崩溃证据。
                     continue;
                 }
 
@@ -326,8 +264,7 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    // 删不掉就下次再删。此时 LastSession 已经读出来了，功能不受影响；
-                    // 唯一的后果是同一条告知可能再出现一次。
+                    // 删不掉就下次再删，LastSession 已读出，功能不受影响。
                 }
             }
 
@@ -388,15 +325,11 @@ namespace Polaris.Diagnostics
                 }
             }
 
-            // 认不出格式就不认——目录里可能有别的东西，把随便一个文件当成哨兵读出来会更糟。
+            // 认不出格式就不认，防止把目录里别的文件误当成哨兵。
             return fields.ContainsKey("polaris_session") ? fields : null;
         }
 
-        /// <summary>
-        /// 这个 pid 是不是还对应着上一局那个进程。<b>判不出来时一律回答"是"</b>：
-        /// 把另一个正在玩的实例误判成崩溃，比漏报一次崩溃要糟糕得多——前者是对着玩家胡说，
-        /// 后者只是少说一句。真正陈旧的文件由 <see cref="StaleAfterDays"/> 兜底清理。
-        /// </summary>
+        /// <summary>判断 pid 对应的进程是否还在跑；判不出来时回答"是"（宁可漏报也不误判崩溃）。</summary>
         static bool StillRunning(int pid, DateTime startedAt)
         {
             if (pid <= 0)
@@ -414,7 +347,7 @@ namespace Polaris.Diagnostics
 
                 try
                 {
-                    // pid 会被系统回收再分配，光看"有这个 pid"不够，启动时间也得对得上。
+                    // pid 会被回收复用，还要核对启动时间。
                     if (startedAt != DateTime.MinValue
                         && Math.Abs((process.StartTime - startedAt).TotalSeconds) > 5d)
                     {
@@ -423,14 +356,14 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    // 读别的进程的启动时间可能因权限被拒。那就只按"pid 还在"算。
+                    // 读不到启动时间（权限不足）就只按 pid 判断。
                 }
 
                 return true;
             }
             catch (ArgumentException)
             {
-                // 没有这个 pid——这是最常见的分支，也正是"上一局真的没了"。
+                // 没有这个 pid：上一局真的没了。
                 return false;
             }
             catch (Exception)

@@ -4,17 +4,8 @@ using nel;
 namespace Polaris.API
 {
     /// <summary>
-    /// 一个物品存储容器：主背包、贵重品、强化品与住宅仓库各是一个实例，
-    /// 入口在 <c>PolarisAPI.Game.Inventory</c> 下。
-    /// <para>
-    /// 每个存储都有自己的容量、分级规则与可否装水的策略，所以它们是<b>四个不同的实例</b>
-    /// 而不是一个带枚举参数的门面——后者会让"这个操作作用在哪个容器上"藏在参数里，
-    /// 而实例回调也就没法只发给真正变化的那一个容器。
-    /// </para>
-    /// <para>
-    /// grade（品级）在游戏里是 0–4。本层会校验：越界的 grade 传给游戏会静默落到别的格子里，
-    /// 或者写坏一行库存。
-    /// </para>
+    /// 一个物品存储容器：主背包、贵重品、强化品与住宅仓库各是一个实例，入口在 <c>PolarisAPI.Game.Inventory</c> 下。
+    /// grade（品级）范围 0–4，本层会校验，避免越界值被游戏静默错放或写坏库存。
     /// </summary>
     public sealed class GameStorage : GameInstance
     {
@@ -94,10 +85,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 判断指定物品能否放入该存储容器。走的是游戏自己的入库演算的空跑模式，
-        /// 不是自己按容量估算，因此和真的放一次的结果一致。
-        /// </summary>
+        /// <summary>判断指定物品能否放入该存储容器；走游戏入库演算的空跑模式，结果与真实放入一致。</summary>
         public bool CanAdd(GameItem item, int count = 1, int grade = 0)
         {
             ItemStorage s = Native;
@@ -117,13 +105,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 向该存储容器加入物品，返回<b>实际</b>加入的数量。
-        /// <para>
-        /// 放不下时是<b>部分成功</b>：调用方要按返回值结算（例如奖励发放要据此决定是否还欠玩家东西），
-        /// 而不是假设一定全进去了。
-        /// </para>
-        /// </summary>
+        /// <summary>向该存储容器加入物品，返回实际加入的数量；放不下时是部分成功，调用方需按返回值结算。</summary>
         public int Add(GameItem item, int count = 1, int grade = 0)
         {
             EnsureUsable();
@@ -146,13 +128,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 从该存储容器移除指定数量的物品。
-        /// <para>
-        /// 数量不够时<b>一个都不扣</b>并返回 <c>false</c>：半扣一半在物品消耗场景里等同于坑玩家，
-        /// 宁可整笔失败让调用方重试。
-        /// </para>
-        /// </summary>
+        /// <summary>从该存储容器移除指定数量的物品；数量不够时一个都不扣，返回 <c>false</c>，避免半扣坑玩家。</summary>
         public bool Reduce(GameItem item, int count = 1, int grade = -1)
         {
             EnsureUsable();
@@ -185,9 +161,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 清空该存储容器中的全部物品。<paramref name="newCapacity"/> 传 -1 表示保持当前容量。
-        /// </summary>
+        /// <summary>清空该存储容器中的全部物品；<paramref name="newCapacity"/> 传 -1 表示保持当前容量。</summary>
         public void Clear(int newCapacity = -1)
         {
             EnsureUsable();
@@ -203,8 +177,7 @@ namespace Polaris.API
                 bool wasEmpty = s.row_max <= 0 || !HasAnything(s);
                 s.clearAllItems(newCapacity);
 
-                // 只有本来非空的容器被清空才算一次事件：空容器再清一次什么都没发生，
-                // 发出去只会让订阅者误以为玩家丢了东西。
+                // 只有本来非空的容器才算一次清空事件，避免误导订阅者。
                 if (!wasEmpty)
                 {
                     GameCallbackHub.PublishInstance(
@@ -219,10 +192,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 使用该存储容器中的指定物品，返回游戏给出的使用结果码（含义由物品自身决定，
-        /// 非零一般表示确实生效）。玩家不在场时不做任何事并返回 0。
-        /// </summary>
+        /// <summary>使用该存储容器中的指定物品，返回游戏给出的使用结果码（含义由物品决定）；玩家不在场时返回 0。</summary>
         public int Use(GameItem item, int grade = 0)
         {
             EnsureUsable();
@@ -253,10 +223,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 从该存储容器取出物品，在当前地图生成掉落物。
-        /// 数量不够、没有地图或没有玩家时不做任何事并返回 <c>null</c>。
-        /// </summary>
+        /// <summary>从该存储容器取出物品并在当前地图生成掉落物；数量不够或缺地图/玩家时返回 <c>null</c>。</summary>
         public GameDrop Drop(GameItem item, int count = 1, int grade = 0)
         {
             EnsureUsable();
@@ -296,10 +263,7 @@ namespace Polaris.API
 
         static bool ValidGrade(int grade) => grade >= 0 && grade <= MaxGrade;
 
-        /// <summary>
-        /// 容器里现在有没有东西。读的是物品行列表本身，不是 UI 按钮数量——按钮只有在这个容器
-        /// 正被某个界面显示时才存在，拿它判空会让"后台容器被清空"这条事件永远发不出来。
-        /// </summary>
+        /// <summary>容器里现在有没有东西；读物品行列表本身而非 UI 按钮数量，后者不在界面显示时不存在。</summary>
         static bool HasAnything(ItemStorage s)
         {
             try
@@ -308,7 +272,7 @@ namespace Polaris.API
             }
             catch (Exception)
             {
-                // 问不出来就当作非空：漏发一条"清空"事件比无中生有地发一条更难查。
+                // 问不出来就当作非空，避免漏发清空事件。
                 return true;
             }
         }

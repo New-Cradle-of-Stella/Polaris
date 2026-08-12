@@ -18,34 +18,25 @@ namespace Polaris
         {
             Logger = base.Logger;
 
-            // 必须是第一行：这一步只记住"主线程是哪一个"并给心跳一个初值，之后所有面包屑埋点
-            // 才知道自己在不在主线程上（见 Diagnostics.MainThreadBeat）。
+            // 必须是第一行：记住主线程身份并给心跳一个初值，供之后所有埋点判断是否在主线程上。
             Diagnostics.MainThreadBeat.Install();
 
-            // 尽早安装：从这一行开始，Unity 异常、后台线程未捕获异常、其它插件报出的严重错误
-            // 都会被接住并归因。装在 EnsureDirectories 之前，是为了让下面那一行自己也受保护。
+            // 尽早安装：从这里开始接住并归因 Unity 异常、后台线程未捕获异常、其它插件的严重错误。
             Diagnostics.ErrorCapture.Install();
 
-            // 目录建不出来（只读安装、权限不足）不该把整个 Awake 掀掉——Awake 抛异常之后
-            // Unity 不会再调 Start，Start 里那几个子系统的初始化就一个都不会执行。这正是
-            // PatchAllIndividually 当初要解决的那类失败模式，同一个坑不该在这里再踩一次。
+            // 目录建不出来不该把整个 Awake 掀掉，否则 Unity 不会再调 Start，子系统全部起不来。
             PolarisAPI.Errors.Guard(
                 PolarisAPI.Paths.EnsureDirectories,
                 "creating the Polaris directory structure");
 
-            // 崩溃与卡死检测。三步都要在这里、都要在目录建好之后：
-            //   1. 阈值：看门狗线程一起跑就得带着它们，等不到 Start 阶段的设置项扫描；
-            //   2. 环境信息：Application.version 这类属性只能主线程读，而写卡死报告的是看门狗线程；
-            //   3. 哨兵：先读掉上一局留下的标记（那是崩溃的唯一证据），再为本局写一个新的。
+            // 崩溃/卡死检测：先读上一局留下的哨兵标记，再为本局写一个新的。
             Diagnostics.DiagnosticsConfig.Resolve();
             Diagnostics.ErrorReportWriter.PrimeEnvironment();
             PolarisAPI.Errors.Guard(Diagnostics.SessionSentinel.Install, "registering this session's sentinel");
             PolarisAPI.Errors.Guard(ReportLastSession, "reading how the previous session ended");
             Diagnostics.Watchdog.Install();
 
-            // 内置文案表。三张表都必须早于 Start 阶段的设置项扫描：绑定配置文件时要拿说明
-            // 文字去写 .cfg 注释，那一步就已经在查表了。放在这里也顺便让告知页之类的早期
-            // 界面能用上。
+            // 内置文案表必须早于 Start 阶段的设置项扫描，绑定配置时要用说明文字查表。
             Localization.PolarisStrings.Register();
             Lang.LangStrings.Register();
             Res.ResStrings.Register();
@@ -56,10 +47,7 @@ namespace Polaris
             Logger.LogMessage(Logo);
         }
 
-        /// <summary>
-        /// 上一局没有正常结束时，把结论摊到控制台、写进本局报告、并给标题画面的告知页上膛。
-        /// 上一局正常退出时（也就是绝大多数时候）这里一个字都不说。
-        /// </summary>
+        /// <summary>上一局非正常结束时，把结论摊到控制台、写进本局报告、给告知页上膛；正常退出时不吭声。</summary>
         private static void ReportLastSession()
         {
             Diagnostics.LastSessionInfo last = Diagnostics.SessionSentinel.LastSession;
@@ -75,18 +63,7 @@ namespace Polaris
             PolarisErrorNotice.AdoptLastSession(last);
         }
 
-        /// <summary>
-        /// 逐个类应用 Harmony 补丁，而不是一把 <c>harmony.PatchAll()</c>。
-        /// <para>
-        /// <c>PatchAll</c> 是全有全无的：任何一个补丁类出问题（目标方法有重载没指定参数类型、
-        /// 游戏版本更新后方法没了、签名变了……）异常都会冒出 <c>Awake</c>，而 Awake 抛异常
-        /// 之后 Unity 不会再调 <c>Start</c>——于是 <see cref="Start"/> 里那几个子系统的初始化
-        /// 整个不执行，一个都起不来。一个补丁的问题不该有这么大的杀伤半径。
-        /// </para>
-        /// <para>
-        /// 改成逐类应用之后，坏掉的那个补丁响亮地报错并跳过，其余功能照常。
-        /// </para>
-        /// </summary>
+        /// <summary>逐个类应用 Harmony 补丁而非一把 <c>PatchAll()</c>：后者全有全无，一个补丁坏了会连累其它子系统全不起来；逐类应用则坏一个报错跳过，其余照常。</summary>
         private void PatchAllIndividually()
         {
             int applied = 0;
@@ -95,8 +72,7 @@ namespace Polaris
             {
                 try
                 {
-                    // 面包屑：补丁应用是启动阶段少数几个"会执行大量反射与 IL 生成"的地方，
-                    // 卡在这里时看门狗要能说出卡在哪一个补丁上。
+                    // 面包屑：补丁应用涉及大量反射与 IL 生成，卡住时看门狗要能说出卡在哪个补丁上。
                     using (Diagnostics.MainThreadBeat.Enter($"applying patch {type.Name}", type.Assembly))
                     {
                         // 没标 [HarmonyPatch] 的类型，Patch() 是空操作。
@@ -109,9 +85,7 @@ namespace Polaris
                 }
                 catch (Exception ex)
                 {
-                    // 责任人直接点名（就是 Polaris 自己——这些补丁类都在本程序集里），
-                    // 不必走堆栈推断。归因、去重与报告归档都由 Errors 统一负责，这里只补一句
-                    // 玩家最需要知道的后果。
+                    // 责任人直接点名（这些补丁类都在本程序集里）；归因与报告归档由 Errors 统一负责。
                     PolarisAPI.Errors.Report(ex, $"applying patch {type.Name}", type.Assembly);
                     Logger.LogError($"[Polaris] The feature owned by patch {type.Name} is unavailable this session.");
                     Infra.CallbackPatchRegistry.ReportFailed(type, ex);
@@ -121,23 +95,13 @@ namespace Polaris
             Logger.LogMessage($"[Polaris] Applied {applied} Harmony patches.");
         }
 
-        /// <summary>
-        /// 各子系统的初始化统一放在这里，而不是各自找地方自启：到了 Start 阶段所有插件都已
-        /// 完成 Awake、程序集也都加载完毕，靠反射扫描其它模组的那几个子系统
-        /// （PUI 的自动注册、Res 的资源发现、Lang 的 key 表）才看得到完整的插件名单。
-        /// <para>
-        /// <b>下面的顺序有硬约束，不能随手调</b>：Res 必须早于 PUI（PUI 的图片控件用 Res 取
-        /// 素材）；Lang 的 resolver 必须早于 <see cref="Settings.SettingsAttributeScanner"/>
-        /// （设置项的标签与说明支持 <c>&amp;键</c> 本地化写法，扫描时就要能求值）。
-        /// </para>
-        /// </summary>
+        /// <summary>各子系统初始化统一放在 Start（此时所有插件已完成 Awake，反射扫描才看得到完整插件名单）。下面顺序有硬约束：Res 须早于 PUI，Lang resolver 须早于设置项扫描。</summary>
         private void Start()
         {
             // 必须最先注册，赶在其它模组注册主菜单按钮之前占住"设置"后面的位置。
             PolarisManagementUI.RegisterButton();
 
-            // 每个子系统各自兜底：一个起不来不该连累另外两个，更不该把异常抛回 Start
-            // ——那会让后面的设置项扫描也一起不执行。
+            // 每个子系统各自兜底：一个起不来不该连累另外两个，也不该把异常抛回 Start。
             InitSubsystem("resource", Res.Runtime.ResRuntime.Init);
 
             InitSubsystem("localization", () =>
@@ -148,20 +112,14 @@ namespace Polaris
 
             InitSubsystem("PUI", PUI.PUIManager.Init);
 
-            // 扫描登记生成类之后会顺带把所有事件解包成 plugins/Polaris/events/ 下的 .cmd 文件
-            // （纯文件 IO，不碰 EV，安全），见 Event\PolarisEventRegistryScanner.cs /
-            // Event\PolarisEventRuntime.cs 的说明。
+            // 扫描登记生成类后顺带把所有事件解包成 plugins/Polaris/events/ 下的 .cmd 文件。
             InitSubsystem("event", Event.PolarisEventRegistryScanner.ScanAll);
 
-            // 必须排在三个子系统之后：Builder 轨的设置项注册可能发生在子系统初始化里，
-            // 两轨都到齐了才轮到特性轨扫描，也才能让"注册晚于设置界面"的警告判断准确。
+            // 须排在三个子系统之后：Builder 轨的设置项注册可能发生在子系统初始化里。
             Settings.SettingsAttributeScanner.ScanAll();
         }
 
-        /// <summary>
-        /// 跑一个子系统的初始化。<see cref="PolarisAPI.Errors"/> 的 Guard 已经负责了面包屑、
-        /// 归因与报告归档，这里只补一句玩家最需要知道的后果。
-        /// </summary>
+        /// <summary>跑一个子系统的初始化；Guard 已负责面包屑、归因与报告归档，这里只补一句后果说明。</summary>
         private static void InitSubsystem(string name, Action init)
         {
             if (!PolarisAPI.Errors.Guard(init, $"{name} subsystem initialization"))
@@ -170,65 +128,42 @@ namespace Polaris
             }
         }
 
-        /// <summary>
-        /// Polaris 自己的每帧泵。驱动 MTRX 就绪门控的等待队列
-        /// （见 <see cref="API.GameSessionRuntime.WhenReady"/>）、语言变更探测、地图代数推进，
-        /// 以及能力层的每帧回调——这些事所有下游模组都要用，放在这里比让每个模组各建一个
-        /// MonoBehaviour 轮询划算。
-        /// </summary>
+        /// <summary>Polaris 自己的每帧泵：驱动就绪门控、语言变更探测、地图代数推进及能力层回调，供所有下游模组共用。</summary>
         private void Update()
         {
-            // 心跳必须是第一行、且在 Pump 之外：Pump 里跑的是下游模组注册进来的回调，
-            // 万一其中一个卡住了，这一帧的心跳应该是"已经打过"的——看门狗量的是"帧与帧之间
-            // 隔了多久"，把心跳放在回调之后会让卡住的那一帧连带把上一帧也算进停摆时长里。
+            // 心跳必须是第一行且在 Pump 之外：Pump 里的回调若卡住，这一帧的心跳也要算已打过。
             Diagnostics.MainThreadBeat.Beat(UnityEngine.Time.frameCount);
 
             API.GameSessionRuntime.Pump();
             PolarisAPI.GameMenu.Pump();
         }
 
-        /// <summary>
-        /// 这一帧里所有 <c>Update</c> 都跑完之后。单独留一个泵是因为"读别人算完的结果"
-        /// （相机位置、角色最终坐标）只有在这个时机才准。
-        /// </summary>
+        /// <summary>所有 Update 跑完之后再泵一次，此时读相机位置、角色坐标等"别人算完的结果"才准。</summary>
         private void LateUpdate()
         {
             API.GameSessionRuntime.PumpLate();
         }
 
-        /// <summary>
-        /// 窗口失焦/回到前台。这是卡死误报的最大来源：<c>Application.runInBackground</c> 为 false 时，
-        /// 窗口一失焦 Unity 就不再调 <see cref="Update"/>——主线程完全健康，只是没事干。
-        /// 玩家去泡杯茶回来，看门狗已经"发现"了一次五分钟的卡死。
-        /// </summary>
+        /// <summary>窗口失焦/回到前台；失焦时 Unity 不再调 Update，须暂停看门狗以免误报卡死。</summary>
         private void OnApplicationFocus(bool hasFocus)
         {
             Diagnostics.Watchdog.SetPaused(!hasFocus);
         }
 
-        /// <summary>
-        /// 被系统挂起/恢复。语义和失焦不同（移动端才是常态，桌面端也会在某些窗口状态下触发），
-        /// 但对看门狗的意义一样：这段时间里不推进帧是正常的。
-        /// </summary>
+        /// <summary>被系统挂起/恢复；对看门狗的意义与失焦相同，这段时间不推进帧属于正常。</summary>
         private void OnApplicationPause(bool isPaused)
         {
             Diagnostics.Watchdog.SetPaused(isPaused);
         }
 
 
-        /// <summary>
-        /// 进程退出前的收尾：把本局的错误情况落一份"上一局摘要"，供下次启动时标题画面的
-        /// <see cref="PolarisErrorNotice"/> 读取；控制台补一行汇总（没有任何模组相关错误时
-        /// <see cref="Diagnostics.ErrorRegistry.Summary"/> 返回 null，这里不吭声——没出错的
-        /// 一局，错误系统必须一个字都不说）。
-        /// </summary>
+        /// <summary>进程退出前的收尾：落一份"上一局摘要"供下次启动读取，控制台补一行汇总（无错误时不吭声）。</summary>
         private void OnApplicationQuit()
         {
-            // 只清零本地标志，不调用 PauseMem/ResumeMem：进程都要退出了，没有必要主动恢复世界。
+            // 只清零本地标志，不主动恢复世界：进程都要退出了没必要。
             API.GameMenuPauseRuntime.Reset();
 
-            // 第一件事：停掉看门狗。这之后 Unity 不再调 Update，而进程还要活一会儿（存档、淡出、
-            // 资源释放），不停掉就会把正常的退出过程判成卡死，还顺手给下一局上一发误报。
+            // 先停看门狗：退出过程还要活一会儿（存档、淡出），不停会把它误判成卡死。
             Diagnostics.Watchdog.Uninstall();
 
             string summary = Diagnostics.ErrorRegistry.Summary();
@@ -239,9 +174,7 @@ namespace Polaris
 
             PolarisAPI.Errors.Guard(PolarisErrorNotice.PersistPending, "saving the previous session's error summary");
 
-            // 最后一件事：删掉会话哨兵，这是"这一局是正常结束的"唯一表达方式。必须排在
-            // PersistPending 之后——那一步才是正常退出路径下真正把摘要交给下一局的地方，
-            // 在它之前就删掉哨兵，中间万一出事就两边都没留下。
+            // 最后删掉会话哨兵，这是"正常结束"的唯一表达方式；须排在 PersistPending 之后。
             Diagnostics.SessionSentinel.Close();
         }
 

@@ -6,16 +6,8 @@ namespace Polaris.API
 {
     /// <summary>
     /// v2 回调的进程唯一派发核心：静态回调按种类分组，实例回调按"种类 + 实例编号"分组。
-    /// <para>
-    /// 派发不在事件发生的那一刻同步进行，而是入队交给
-    /// <see cref="CallbackRuntime"/>，由 <see cref="Plugin.Update"/>/<see cref="Plugin.LateUpdate"/>
-    /// 统一清空。这样做的原因和 v1 一样：Harmony 补丁是在原版流程<b>中间</b>被调用的，
-    /// 在那里直接执行下游回调，等于让任意模组的代码插进原版函数的执行途中。
-    /// </para>
-    /// <para>
-    /// 每个订阅列表都是 copy-on-write 的数组：派发路径只读一次字段引用，
-    /// 回调内部的增删要到下一次事件才可见，因此不会出现"边遍历边改集合"。
-    /// </para>
+    /// 派发经 <see cref="CallbackRuntime"/> 入队延迟执行（避免在 Harmony 补丁中间同步触发下游代码），
+    /// 订阅列表用 copy-on-write 数组保证派发时不受并发增删影响。
     /// </summary>
     internal static class GameCallbackHub
     {
@@ -111,8 +103,7 @@ namespace Polaris.API
                 }
             }
 
-            // 已经失效的实例上注册：立刻把注册句柄标成非活跃，调用方一问 IsActive 就知道，
-            // 而不是留一个永远不会触发、看起来却很正常的注册。
+            // 在已失效的实例上注册：立即标记为非活跃，避免留下一个永远不会触发的“正常”注册。
             if (!owner.IsValid)
             {
                 registration.Dispose();
@@ -127,7 +118,7 @@ namespace Polaris.API
             Array.Copy(current, next, current.Length);
             next[current.Length] = entry;
 
-            // 稳定排序：优先级相同的按注册先后执行，这是下游能依赖的唯一顺序保证。
+            // 稳定排序：优先级相同则按注册顺序执行。
             Array.Sort(next, static (a, b) =>
             {
                 int byPriority = a.Options.Priority.CompareTo(b.Options.Priority);
@@ -217,8 +208,7 @@ namespace Polaris.API
                 }
             }
 
-            // 在锁外改标志：Registration.MarkInactiveOnly 不会回头调用移除逻辑，
-            // 但调用方可能在自己的 Dispose 里做别的事，不该把它们圈在本模块的锁里。
+            // 在锁外标记非活跃，避免调用方 Dispose 中的其他逻辑被锁住。
             foreach (Entry entry in orphaned)
             {
                 entry.Active = false;
@@ -251,10 +241,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 发布一条静态回调。<paramref name="factory"/> 只在确实有订阅者时才被调用，
-        /// 因此"每帧探测但通常没人听"的差分事件不会白白构造负荷对象。
-        /// </summary>
+        /// <summary>发布一条静态回调；<paramref name="factory"/> 只在有订阅者时才被调用，避免无人监听时白白构造负荷。</summary>
         internal static void PublishStatic<TData>(GameStaticCallbackKind kind, Func<TData> factory)
             where TData : GameCallbackData
         {
@@ -326,10 +313,7 @@ namespace Polaris.API
             CallbackRuntime.Enqueue(() => Dispatch(current, data, context));
         }
 
-        /// <summary>
-        /// 真正调用订阅者。取的是发布那一刻的数组快照：这一轮之后新增的订阅者收不到本次事件，
-        /// 这一轮之内被 Dispose 的订阅者也不会再被调到（靠 <see cref="Entry.Active"/> 挡住）。
-        /// </summary>
+        /// <summary>真正调用订阅者，使用发布那一刻的数组快照；本轮新增的订阅者不会收到，本轮被 Dispose 的靠 <see cref="Entry.Active"/> 挡住。</summary>
         static void Dispatch<TData>(Entry[] entries, TData data, string context) where TData : GameCallbackData
         {
             for (int i = 0; i < entries.Length; i++)
@@ -342,8 +326,7 @@ namespace Polaris.API
 
                 if (entry.Options.Once)
                 {
-                    // 调用前就标记失效：回调内部即使触发同类事件，也只会入队而不会同步递归回来，
-                    // 但仍然要在调用前完成标记，堵住任何重入路径导致同一次事件执行两遍。
+                    // 调用前先标记失效，防止重入路径下同一事件被执行两遍。
                     entry.Active = false;
                     entry.Registration.Dispose();
                 }

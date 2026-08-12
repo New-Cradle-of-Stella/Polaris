@@ -4,15 +4,9 @@ using m2d;
 namespace Polaris.API
 {
     /// <summary>
-    /// 场上的一个角色（玩家、敌人、NPC 共通的那一部分）：位置、速度、朝向、体力与魔力，
-    /// 以及位移、治疗和伤害。玩家独有的状态机在 <see cref="GamePlayer"/>，
-    /// 敌人独有的在 <see cref="GameEnemy"/>。
-    /// <para>
-    /// 取得实例的入口是 <see cref="GameMap.FindCharacter"/> 与
-    /// <see cref="PolarisAPI.Game.World"/> 下的玩家属性；不要缓存游戏对象本身——
-    /// 游戏的角色是对象池复用的，切图之后同一个池对象会变成另一个角色。
-    /// 包装器替你处理了这件事：地图一换，上一张图发出去的包装器整体失效。
-    /// </para>
+    /// 场上角色（玩家/敌人/NPC 共通部分）：位置、速度、朝向、体力与魔力，以及位移、治疗和伤害。
+    /// 玩家、敌人的独有状态机分别在 <see cref="GamePlayer"/>、<see cref="GameEnemy"/>。
+    /// 角色对象是对象池复用的，不要缓存原生对象；包装器会随地图切换整批失效。
     /// </summary>
     public class GameCharacter : GameInstance
     {
@@ -25,7 +19,7 @@ namespace Polaris.API
             this.target = target;
         }
 
-        /// <summary>本层内部取包装器的唯一入口。玩家与敌人有各自的子类表，这里只管通用角色。</summary>
+        /// <summary>取包装器的唯一入口。</summary>
         internal static GameCharacter Wrap(M2Attackable native)
         {
             if (native == null)
@@ -33,8 +27,7 @@ namespace Polaris.API
                 return null;
             }
 
-            // 玩家和敌人有更具体的包装器，优先给出具体类型：下游拿到 GameCharacter 之后
-            // 还要再 as 一次才能用状态机，那等于把这层判断推给了每一个调用方。
+            // 玩家/敌人优先返回更具体的子类包装器，省得下游再做一次类型判断。
             if (native is nel.PR pr)
             {
                 return GamePlayer.Wrap(pr);
@@ -59,7 +52,7 @@ namespace Polaris.API
         {
             get
             {
-                // Unity 对象被销毁之后 == null 为真而引用本身不为 null，这里必须用 Unity 的相等语义。
+                // 须用 Unity 的相等语义：对象被销毁后 == null 为真，但引用本身不为 null。
                 if (target == null)
                 {
                     return false;
@@ -74,7 +67,7 @@ namespace Polaris.API
         /// <summary>这个角色是在哪一代地图上取到的。地图一换，整代包装器作废。</summary>
         internal int MapGeneration { get; } = GameBinding.MapGeneration;
 
-        // ── 只读查询：任何时刻都能安全地问，失效时给零值 ────────────────────────
+        // ── 只读查询：失效时给零值 ────────────────────────
 
         /// <summary>该角色的横向坐标。</summary>
         public float X => Read(static t => t.x, 0f);
@@ -112,7 +105,7 @@ namespace Polaris.API
         /// <summary>该角色当前是否存活。</summary>
         public bool IsAlive => Read(static t => t.is_alive, false);
 
-        // ── 动作：失效时抛，不安静作用到别的对象上 ──────────────────────────────
+        // ── 动作：失效时不生效 ──────────────────────────
 
         /// <summary>把该角色直接移动到目标坐标。硬设位置，不做寻路，也不做碰撞回退。</summary>
         public void Teleport(GameVector2 position)
@@ -121,10 +114,7 @@ namespace Polaris.API
             Act("Teleport", t => t.setTo(position.X, position.Y));
         }
 
-        /// <summary>
-        /// 让该角色按坐标偏移移动。<paramref name="checkFoot"/> 为真时走游戏自己的带碰撞位移
-        /// （会被墙挡住，返回是否真的走完），为假时是硬设位置。
-        /// </summary>
+        /// <summary>按坐标偏移移动该角色；<paramref name="checkFoot"/> 为真走带碰撞的位移，为假直接硬设位置。</summary>
         public bool MoveBy(GameVector2 delta, bool checkFoot = true)
         {
             EnsureUsable();
@@ -152,26 +142,19 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 设置该角色的移动速度。会覆盖角色这一帧自己算出来的速度，适合击退、弹射一类的效果；
-        /// 想让角色"走过去"请自己做位移插值，那属于上层补间，不是本层的能力。
-        /// </summary>
+        /// <summary>设置该角色的移动速度，覆盖本帧自算速度，适合击退、弹射等效果。</summary>
         public void SetVelocity(GameVector2 velocity)
         {
             EnsureUsable();
             Act("SetVelocity", t => t.setVelocityForce(velocity.X, velocity.Y));
         }
 
-        /// <summary>
-        /// 设置该角色的朝向。<paramref name="forceSprite"/> 为真时连同当前显示的图像一起翻过去，
-        /// 否则只改逻辑朝向、让图像按原本的过渡动画自己转。
-        /// </summary>
+        /// <summary>设置该角色的朝向；<paramref name="forceSprite"/> 为真时图像立即跟着翻转，否则走原本的过渡动画。</summary>
         public void SetFacing(GameFacing facing, bool forceSprite = false)
         {
             EnsureUsable();
 
-            // 走游戏自己的 setAim 而不是直接写 is_right：转身在游戏里带着一段图像过渡，
-            // 只改布尔字段会让角色的朝向和它正在显示的图像对不上，直到下一次动画刷新才修正。
+            // 走游戏的 setAim 而非直接写 is_right，避免图像朝向与逻辑朝向脱节。
             XX.AIM aim = facing == GameFacing.Right ? XX.AIM.R : XX.AIM.L;
             Act("SetFacing", t => t.setAim(aim, forceSprite));
         }
@@ -230,10 +213,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 对该角色造成体力值伤害，返回<b>实际</b>扣掉的数值——请求量不等于到账量，
-        /// 抗性、护盾与无敌帧都由游戏裁剪。<paramref name="force"/> 无视这些判定。
-        /// </summary>
+        /// <summary>对该角色造成体力值伤害，返回实际扣掉的数值（抗性/护盾/无敌帧会裁剪）；<paramref name="force"/> 无视这些判定。</summary>
         public int DamageHp(int amount, bool force = false)
         {
             EnsureUsable();
@@ -285,7 +265,7 @@ namespace Polaris.API
             }
         }
 
-        // ── 内部工具 ───────────────────────────────────────────────────────────
+        // ── 内部工具 ──────────────────
 
         /// <summary>只读访问的统一包装：失效或读取抛异常时给默认值，不把异常丢给调用方。</summary>
         private protected TValue Read<TValue>(Func<M2Attackable, TValue> read, TValue fallback)

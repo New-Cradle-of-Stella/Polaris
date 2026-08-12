@@ -3,10 +3,7 @@ using UnityEngine;
 namespace Polaris.API
 {
     /// <summary>
-    /// 二维坐标/速度。用自己的类型而不是直接暴露 <see cref="Vector2"/>，是为了让本层的公开签名
-    /// 与"游戏用什么引擎表示位置"解耦：地图坐标在游戏里是以格长 <c>rCLEN</c> 为单位的 float，
-    /// 换算规则属于兼容层的内部知识。与 <see cref="Vector2"/> 之间可以隐式转换，
-    /// 调用方需要做 Unity 侧的数学时不必写转换代码。
+    /// 二维坐标/速度，与引擎类型 <see cref="Vector2"/> 解耦并支持隐式互转。
     /// </summary>
     public readonly struct GameVector2
     {

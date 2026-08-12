@@ -4,12 +4,8 @@ using nel;
 namespace Polaris.API
 {
     /// <summary>
-    /// 一种物品的定义。取得实例的入口是 <c>PolarisAPI.Game.Items.Resolve(key)</c>。
-    /// <para>
-    /// 它代表的是<b>物品这一类东西</b>（"回复药"），不是背包里的某一格
-    /// （"我背包里那 3 瓶 2 级回复药"）——后者是 <see cref="GameStorage"/> 的事。
-    /// 因此物品实例的生命周期与存档、地图都无关，一局游戏里始终有效。
-    /// </para>
+    /// 一种物品的定义（"回复药"这一类，而非背包里具体的某一格，那是 <see cref="GameStorage"/> 的事）。
+    /// 取得实例的入口是 <c>PolarisAPI.Game.Items.Resolve(key)</c>；生命周期与存档、地图无关，一局游戏内始终有效。
     /// </summary>
     public sealed class GameItem : GameInstance
     {
@@ -34,8 +30,7 @@ namespace Polaris.API
 
             try
             {
-                // no_error: true——"这个物品在本版本有没有"是调用方的正常分支，
-                // 不该让游戏自己往日志里写一条错误。
+                // no_error: true——查无此物品是正常分支，不应产生日志错误。
                 return Wrap(NelItem.GetById(itemKey, true));
             }
             catch (Exception)
@@ -84,10 +79,7 @@ namespace Polaris.API
         /// <summary>判断该物品是否属于炸弹。</summary>
         public bool IsBomb => Read(static i => i.is_bomb, false);
 
-        /// <summary>
-        /// 获取该物品指定等级的本地化显示名称。跟随玩家当前语言，不缓存——
-        /// 玩家可以随时切语言，缓存下来的名字会一直是旧语言的。
-        /// </summary>
+        /// <summary>获取该物品指定等级的本地化显示名称，跟随玩家当前语言，不缓存。</summary>
         public string GetLocalizedName(int grade = 0)
         {
             if (item == null)

@@ -9,36 +9,16 @@ namespace Polaris
     public static partial class PolarisAPI
     {
         /// <summary>
-        /// 游戏能力层的入口。
-        /// <para>
-        /// 分工只有一条：<b>静态 API 只回答全局状态、提供入口和获取实例，其余一律由实例自己完成。</b>
-        /// 因此这里看不到"给某个角色加血"这类方法——先取到
-        /// <see cref="API.GamePlayer"/>/<see cref="API.GameCharacter"/> 实例，再在实例上调用。
-        /// 这样"这次操作作用在谁身上"永远写在调用点上，而不是藏在一个句柄参数里。
-        /// </para>
-        /// <para>
-        /// 典型路径：<c>PolarisAPI.Game.World.CurrentPlayer</c> → <c>GamePlayer.Hp</c> /
-        /// <c>GamePlayer.ChangeState(...)</c>；<c>PolarisAPI.Game.Items.Resolve(key)</c> →
-        /// <c>GameItem.Price</c>。
-        /// </para>
-        /// <para>
-        /// 三条贯穿全层的约定：查询不产生副作用、取不到就返回空值/零值、永远不抛异常给调用方；
-        /// 动作只在"对已失效实例写入"时抛（见 <see cref="API.InvalidGameInstanceException"/>）；
-        /// 公开签名里不出现任何游戏类型。
-        /// </para>
+        /// 游戏能力层的入口：静态 API 只回答全局状态、提供入口和获取实例，具体操作交给
+        /// <see cref="API.GamePlayer"/>/<see cref="API.GameCharacter"/> 等实例完成。
+        /// 查询无副作用、取不到返回空值/零值、不抛异常；公开签名不出现游戏类型。
         /// </summary>
         public static class Game
         {
             /// <summary>游戏循环。</summary>
             public static class Loop
             {
-                /// <summary>
-                /// 获取游戏当前累计运行的帧数。
-                /// <para>
-                /// 这是<b>游戏自己</b>的帧计数，不是 Unity 的：游戏在读档、演出与暂停期间不推进它，
-                /// 因此"游戏内经过了多久"的逻辑要用这个。
-                /// </para>
-                /// </summary>
+                /// <summary>获取游戏自己的帧计数（非 Unity 帧数），读档/演出/暂停期间不推进。</summary>
                 public static int FrameCount
                 {
                     get
@@ -71,13 +51,7 @@ namespace Polaris
                 }
             }
 
-            /// <summary>
-            /// 玩家输入的只读查询。
-            /// <para>
-            /// 只暴露<b>游戏动作</b>（跳跃、攻击、菜单……），不暴露 Windows 虚拟键码：
-            /// 按动作查天然跟着玩家自己的改键设置走，键盘和手柄也是同一份代码。
-            /// </para>
-            /// </summary>
+            /// <summary>玩家输入的只读查询：只暴露游戏动作而非虚拟键码，天然跟随改键设置，键鼠手柄同一套代码。</summary>
             public static class Input
             {
                 /// <summary>获取鼠标当前的屏幕坐标（游戏的 GUI 坐标系，1280×720 基准）。</summary>
@@ -115,13 +89,7 @@ namespace Polaris
                 /// <summary>判断指定输入动作当前是否正被按下。</summary>
                 public static bool IsHeld(GameInputAction action) => InputBinding.Value(action) > 0f;
 
-                /// <summary>
-                /// 判断指定输入动作是否在本帧或缓冲帧内刚刚按下。
-                /// <para>
-                /// <paramref name="bufferFrames"/> 是"输入缓冲"：玩家在动作可用前几帧就按下时
-                /// 仍然算数，这是动作游戏里手感的关键一环。传 1 表示只认严格的按下沿。
-                /// </para>
-                /// </summary>
+                /// <summary>判断指定输入动作是否在本帧或缓冲帧内刚刚按下；<paramref name="bufferFrames"/> 为输入缓冲窗口，传 1 表示仅严格按下沿。</summary>
                 public static bool WasPressed(GameInputAction action, int bufferFrames = 1)
                 {
                     float v = InputBinding.Value(action);
@@ -129,16 +97,12 @@ namespace Polaris
                     return v > 0f && v <= window;
                 }
 
-                /// <summary>
-                /// 判断指定输入动作是否在本帧刚刚释放。
-                /// <paramref name="heldFrames"/> 要求这次按住至少持续过这么多帧，
-                /// 用来把"轻点"和"长按后松开"区分开；传 0 表示不作要求。
-                /// </summary>
+                /// <summary>判断指定输入动作是否在本帧刚刚释放；<paramref name="heldFrames"/> 要求按住时长达标（区分轻点与长按），传 0 表示不限制。</summary>
                 public static bool WasReleased(GameInputAction action, int heldFrames = 0)
                 {
                     float v = InputBinding.Value(action);
 
-                    // 游戏用负值表示"刚松开"，绝对值是松开后的帧数；-1024 之外的极端值是未初始化。
+                    // 负值表示刚松开，绝对值为松开后帧数；超出 -1024 视为未初始化。
                     bool justReleased = v < 0f && v >= -1f && v > -1024f;
                     if (!justReleased)
                     {
@@ -156,11 +120,7 @@ namespace Polaris
                     return new GameVector2(x, y);
                 }
 
-                /// <summary>
-                /// 清除指定输入动作的当前按键状态，让游戏认为它没有被按下。
-                /// <paramref name="key"/> 是游戏内部的动作槽名；<paramref name="onlyPressDown"/>
-                /// 为真时只清掉"刚按下"这一沿，保留持续按住的状态。
-                /// </summary>
+                /// <summary>清除指定输入动作的当前按键状态；<paramref name="onlyPressDown"/> 为真时只清"刚按下"沿，保留持续按住状态。</summary>
                 public static void ClearState(string key, bool onlyPressDown = true)
                 {
                     if (string.IsNullOrEmpty(key))
@@ -183,16 +143,8 @@ namespace Polaris
             public static class Assets
             {
                 /// <summary>
-                /// 获取游戏资源当前的加载阶段。
-                /// <para>
-                /// 这是 <c>MTRX</c> 的内部阶段值，7 表示图标、Shader、私有初始化与音频 sheet 全部就绪。
-                /// 任何 PXLS 解析或图像注册都要等到那时才安全——在此之前碰
-                /// <c>MTRX.OMI</c>/<c>OMeshImages</c> 会直接 NullReferenceException。
-                /// </para>
-                /// <para>
-                /// 这里刻意读字段而不读 <c>MTRX.prepared</c> 属性：反编译确认那个 getter <b>有副作用</b>，
-                /// 读一下会把加载阶段推进并调用私有的 <c>init2()</c>。
-                /// </para>
+                /// 获取 <c>MTRX</c> 内部加载阶段值，7 表示全部就绪（之前访问 <c>MTRX.OMI</c> 等会 NullReferenceException）。
+                /// 刻意读字段而非 <c>MTRX.prepared</c> 属性，因为该 getter 有副作用会推进加载阶段。
                 /// </summary>
                 public static int LoadStage
                 {
@@ -291,21 +243,10 @@ namespace Polaris
                 /// </summary>
                 public static GameMap CurrentMap => GameMap.Wrap(GameBinding.CurrentMap);
 
-                /// <summary>
-                /// 取得当前玩家实例；玩家不在场时为 <c>null</c>。
-                /// 玩家的查询与操作在 <see cref="API.GamePlayer"/>（以及它继承的
-                /// <see cref="API.GameCharacter"/>）上。
-                /// </summary>
+                /// <summary>取得当前玩家实例；玩家不在场时为 <c>null</c>。查询/操作见 <see cref="API.GamePlayer"/>。</summary>
                 public static GamePlayer CurrentPlayer => GamePlayer.Wrap(GameBinding.Player);
 
-                /// <summary>
-                /// 切换到指定地图，返回新的地图实例。
-                /// <para>
-                /// 这是<b>高权限</b>动作：游戏的切图带着一整套事件、淡入淡出与存档时机。
-                /// 本版本没有这张图时抛 <see cref="ArgumentException"/>——返回 <c>null</c> 让调用方
-                /// 在下一行才炸，比在这里说清楚"没有这张图"要难查得多。
-                /// </para>
-                /// </summary>
+                /// <summary>切换到指定地图并返回新地图实例（高权限操作，触发事件/淡入淡出/存档时机）；本版本没有该地图时抛 <see cref="ArgumentException"/>。</summary>
                 public static GameMap ChangeMap(string mapKey)
                 {
                     if (string.IsNullOrEmpty(mapKey))
@@ -353,13 +294,7 @@ namespace Polaris
                 public static bool HasWeather(GameWeather weather)
                     => Night(n => n.hasWeather((WeatherItem.WEATHER)(uint)weather), false);
 
-                /// <summary>
-                /// 强制设置指定天气，返回是否设置成功。
-                /// <para>
-                /// 走的是游戏自己的"临时天气"通道：基础天气由日夜控制器推进，直接改写会在下一次
-                /// 推进时被抹掉，而临时天气是游戏留出来的那一格，能稳定生效到下一次天气变化。
-                /// </para>
-                /// </summary>
+                /// <summary>强制设置指定天气，返回是否设置成功；走游戏的"临时天气"通道，直接改写基础天气会在下次日夜推进时被抹掉。</summary>
                 public static bool SetWeather(GameWeather weather)
                 {
                     NightController night = GameBinding.Night;
@@ -380,10 +315,7 @@ namespace Polaris
                     }
                 }
 
-                /// <summary>
-                /// 获取当前危险等级。这是算敌人强度用的 0–10 浮点尺度，<b>不是</b>玩家在状态页上
-                /// 看到的那个数——显示值用 <see cref="GetDangerMeter"/>。
-                /// </summary>
+                /// <summary>获取当前危险等级：算敌人强度用的 0–10 浮点尺度，非玩家状态页显示值（那个用 <see cref="GetDangerMeter"/>）。</summary>
                 public static float DangerLevel => Night(static n => n.getDangerLevel(), 0f);
 
                 /// <summary>
@@ -393,11 +325,7 @@ namespace Polaris
                 public static int GetDangerMeter(bool real = true, bool raw = false)
                     => Night(n => n.getDangerMeterVal(real, raw), 0);
 
-                /// <summary>
-                /// 获取或设置手动附加的危险度（0–45，游戏内部会截断）。
-                /// 基础危险度由日夜推进、战斗次数与事件共同算出来，没有可以从外部安全改写的入口；
-                /// 附加值是游戏自己留出来的那一格。
-                /// </summary>
+                /// <summary>获取或设置手动附加的危险度（0–45，游戏内部会截断）；基础危险度无法从外部安全改写。</summary>
                 public static int DangerBonus
                 {
                     get => Night(static n => n.getDangerAddedVal(), 0);
@@ -458,13 +386,7 @@ namespace Polaris
                     }
                 }
 
-                /// <summary>
-                /// 设置游戏菜单打开时是否继续模拟世界。传 <c>false</c> 就是原版行为（菜单暂停世界）。
-                /// <para>
-                /// 这一项需要四个 Harmony 补丁全部生效才会真的改变行为：只跳过暂停调用而不改世界主循环
-                /// 的截断条件，会留下"暂停已跳过但世界仍然停着"的半启用状态。补丁没齐时本调用是空操作。
-                /// </para>
-                /// </summary>
+                /// <summary>设置游戏菜单打开时是否继续模拟世界（<c>false</c> 为原版暂停行为）；需要四个 Harmony 补丁全部生效才有效，否则是空操作。</summary>
                 public static void SetPauseSimulation(bool simulation) => GameMenuPauseRuntime.SetPolicy(!simulation);
 
                 /// <summary>设置夜晚系统记录的战斗次数。危险度的推进会参考它。</summary>
@@ -559,10 +481,7 @@ namespace Polaris
                     }
                 }
 
-                /// <summary>
-                /// 打开游戏菜单并返回 <see cref="API.GameMenu"/> 实例。菜单已经开着时返回当前实例，
-                /// 不会重复打开。
-                /// </summary>
+                /// <summary>打开游戏菜单并返回实例；菜单已开着时直接返回当前实例，不重复打开。</summary>
                 public static GameMenu Open()
                 {
                     nel.gm.UiGameMenu native = GameBinding.Menu;
@@ -734,10 +653,7 @@ namespace Polaris
                     return GetAmount(currency);
                 }
 
-                /// <summary>
-                /// 扣除指定货币并返回是否成功。余额不足时<b>一分不扣</b>并返回 <c>false</c>；
-                /// 先扣一部分再报失败会让调用方的事务无从回滚。
-                /// </summary>
+                /// <summary>扣除指定货币并返回是否成功；余额不足时一分不扣并返回 <c>false</c>，避免部分扣款无法回滚。</summary>
                 public static bool Spend(GameCurrency currency, int amount)
                 {
                     if (amount <= 0)
@@ -810,10 +726,7 @@ namespace Polaris
                     set => WriteVolume(GameVolumeChannel.Master, value, static v => SND.master_volume = v);
                 }
 
-                /// <summary>
-                /// 播放指定音效，返回可继续控制的 <see cref="API.GameAudioPlayback"/> 实例；
-                /// 播放失败或同时在播的音效已达上限时返回 <c>null</c>。
-                /// </summary>
+                /// <summary>播放指定音效并返回可控制的实例；播放失败或并发音效已达上限时返回 <c>null</c>。</summary>
                 public static GameAudioPlayback Play(string cue, bool loop = false)
                     => GameAudioRuntime.Play(cue, loop);
 
@@ -843,10 +756,7 @@ namespace Polaris
                     /// <summary>让当前背景音乐渐出停止。</summary>
                     public static void FadeOut(float seconds) => Guard("FadeOut", () => BGM.fadeout(0f, ToFrames(seconds), true));
 
-                    /// <summary>
-                    /// 把当前背景音乐替换为指定曲目。<paramref name="immediate"/> 为真时不做淡入淡出，
-                    /// 直接切过去。
-                    /// </summary>
+                    /// <summary>把当前背景音乐替换为指定曲目；<paramref name="immediate"/> 为真时不做淡入淡出，直接切换。</summary>
                     public static void Replace(string timing, string cue, bool immediate = false)
                     {
                         if (string.IsNullOrEmpty(cue))
@@ -940,12 +850,8 @@ namespace Polaris
             public static class Callbacks
             {
                 /// <summary>
-                /// 注册全局静态回调。返回的注册句柄既不依赖游戏实例，也不会被自动回收——
-                /// 请在模组卸载时显式 <see cref="GameCallbackRegistration.Dispose"/>。
-                /// <para>
-                /// <typeparamref name="TData"/> 与 <paramref name="kind"/> 不匹配时立即抛
-                /// <see cref="ArgumentException"/>，不会安静地注册一个永远收不到事件的回调。
-                /// </para>
+                /// 注册全局静态回调；返回的句柄不会自动回收，需在模组卸载时显式 <see cref="GameCallbackRegistration.Dispose"/>。
+                /// <typeparamref name="TData"/> 与 <paramref name="kind"/> 不匹配时抛 <see cref="ArgumentException"/>。
                 /// </summary>
                 public static GameCallbackRegistration Register<TData>(
                     GameStaticCallbackKind kind, Action<TData> callback, GameCallbackOptions options = default)

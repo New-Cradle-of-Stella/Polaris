@@ -1,17 +1,11 @@
 namespace Polaris.PUI
 {
     /// <summary>
-    /// 一份 <see cref="PUIGraphDefinition"/> 里的一条边：从某节点的某个触发键，指向另一个节点，
-    /// 以及这次跳转是否阻塞（阻塞 = 迁移“当前节点”并隐藏来源节点；非阻塞 = 仅显示目标节点，
-    /// 当前节点不变，对应今天 .puisln 里的“浮层”语义）。
+    /// <see cref="PUIGraphDefinition"/> 中的一条边：某节点的某个触发键指向另一节点；<see cref="Blocking"/> 决定是切换当前节点还是仅显示浮层。
     /// </summary>
     public readonly struct PUIEdge
     {
-        /// <summary>
-        /// 保留的目标节点 key：表示这条边不指向图里的任何节点，而是退出整个状态机
-        /// （<see cref="PUISolution.Fire"/> 命中时改为调用 <see cref="PUISolution.Stop"/>）。
-        /// 对应 .puisln 里连到固定"出口"节点的连线，见 <see cref="PUIGraphDefinitionBuilder.ExitEdge"/>。
-        /// </summary>
+        /// <summary>保留的目标 key，表示退出整个状态机（<see cref="PUISolution.Fire"/> 命中时改为调用 <see cref="PUISolution.Stop"/>）。</summary>
         public const string ExitNodeKey = "@Exit";
 
         public string SourceNodeKey { get; }

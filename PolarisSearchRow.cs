@@ -5,20 +5,9 @@ using XX;
 namespace Polaris
 {
     /// <summary>
-    /// 一行搜索栏：标签 + 输入框 + 右侧状态文字。设置界面底部那条
-    /// （<see cref="Settings.SettingsSearchBox"/>）和模组管理页列表上方那条
-    /// （<see cref="PolarisManagementUI"/>）是同一份实现的两个实例。
-    /// <para>
-    /// 输入走 <c>fnChangedDelay</c> 而不是 <c>fnChanged</c>，有两个原因：一是
-    /// <c>fnChanged</c> 触发时 <c>LabeledInputField.text</c> 还没写成新值（原版是先跑回调再赋值），
-    /// 拿到的是上一次的内容；二是它天然带防抖——把 <c>changed_delay_maxt</c> 调小到几帧，
-    /// 连打时只在停手后过滤一次，而不是每敲一个字就重排一遍整页。
-    /// </para>
-    /// <para>
-    /// <b>过滤回调里不要重建所在的 designer</b>：那会把正在输入的这个控件本身销毁掉，
-    /// 玩家打到一半焦点就没了。两个调用点都是就地拨块的显隐（见 <see cref="SetVisible"/>）
-    /// 再 <c>rowRemakeCheck</c>，控件原封不动。
-    /// </para>
+    /// 一行搜索栏：标签 + 输入框 + 右侧状态文字，被设置界面与模组管理页共用同一份实现。
+    /// 输入走 <c>fnChangedDelay</c>（带防抖，且拿到的是最新值而非 fnChanged 的旧值）。
+    /// 过滤回调里不要重建所在 designer，会把正在输入的控件销毁；只应就地拨块显隐（见 <see cref="SetVisible"/>）。
     /// </summary>
     internal sealed class PolarisSearchRow
     {
@@ -53,10 +42,7 @@ namespace Polaris
 
         /// <param name="name">控件在 designer 里的注册名，带 <c>plrs:</c> 前缀免得撞上原版的检索名。</param>
         /// <param name="hintKey">框空着时右侧显示的提示语，用 <see cref="SearchStrings"/> 上的常量。</param>
-        /// <param name="onQuery">
-        /// 查询变化时调用，参数是新的查询串，<b>返回命中条数</b>（用来写右侧的状态文字）。
-        /// 真正的过滤由它负责，本类不碰被搜的内容。
-        /// </param>
+        /// <param name="onQuery">查询变化时调用，返回命中条数（用于状态文字）；真正的过滤由它负责。</param>
         internal PolarisSearchRow(string name, string hintKey, Func<string, int> onQuery)
         {
             this.name = name;
@@ -67,23 +53,18 @@ namespace Polaris
         /// <summary>当前查询串（原始输入，未切词）。空串表示没有过滤。</summary>
         internal string Query { get; private set; } = "";
 
-        /// <summary>
-        /// 把搜索栏画进 <paramref name="box"/>。调用方负责保证这个 designer 已经 <c>init()</c> 过。
-        /// 重建界面时重画一遍即可，<see cref="Query"/> 会被带进新的输入框。
-        /// </summary>
+        /// <summary>把搜索栏画进 <paramref name="box"/>（须已 <c>init()</c> 过）；重建界面时重画即可，<see cref="Query"/> 会带入新输入框。</summary>
         internal void Build(Designer box)
         {
             SearchStrings.Register();
 
-            // 上一次画的那两个控件已经跟着旧 designer 一起没了，先松手再画，
-            // 免得中途出异常时留下指向已销毁对象的引用。
+            // 上一次的控件已跟着旧 designer 没了，先松手再画，避免中途异常留下悬空引用。
             field = null;
             status = null;
 
             box.alignx = ALIGN.LEFT;
 
-            // 必须在放下第一个块之前取：Designer.use_w 一旦当前行里有了内容，返回的就是
-            // "这一行还剩多宽"而不是"框内有多宽"，放到下面去算会把标签的宽度扣两遍。
+            // 须在放下第一个块之前取：一旦当前行有内容，use_w 返回的是剩余宽度而非框内总宽。
             float inner = box.use_w;
 
             box.addP(new DsnDataP(SearchStrings.Text(SearchStrings.Label), false)
@@ -139,10 +120,7 @@ namespace Polaris
             FineStatus();
         }
 
-        /// <summary>
-        /// 清空搜索并把所有行放回来。界面收起时调用——查询留到下次打开会让玩家对着一份
-        /// "缺了大半"的列表发懵，而搜索框那点内容不值得跨次保留。
-        /// </summary>
+        /// <summary>清空搜索并把所有行放回来；界面收起时调用，避免下次打开对着半过滤的列表发懵。</summary>
         internal void Reset()
         {
             if (Query.Length == 0)
@@ -150,11 +128,10 @@ namespace Polaris
                 return;
             }
 
-            // Unity 的假 null：控件可能已经随 designer 一起销毁了，必须用 != null 走重载。
+            // Unity 的假 null：控件可能已随 designer 销毁，须用 != null 走重载判断。
             if (field != null)
             {
-                // call_changed_delay: false——这里是"程序改的"，不该再绕一圈回调，
-                // 下面 Apply 已经直接把过滤撤销了。
+                // call_changed_delay: false——程序改的值不必再绕一圈回调，Apply 会直接撤销过滤。
                 field.setValue("", call_changed_delay: false);
             }
 
@@ -192,17 +169,7 @@ namespace Polaris
             return string.Format(SearchStrings.Text(SearchStrings.Result), matchCount);
         }
 
-        /// <summary>
-        /// 拨一个块的显隐——搜索过滤"收起一行"的统一做法。
-        /// <para>
-        /// <c>DsnMem.active</c> 置 false 的块在 <c>Remake()</c> 重排时不占位
-        /// （<c>DesignerRowMem.Add</c> 里 <c>PreVal.Push/Pop</c> 那一对就是干这个的），
-        /// 于是剩下的行会自动收拢上来。但那只管画不画：按钮还得额外 <c>hide()</c>/<c>bind()</c>
-        /// ——原版的方向键导航是按 <c>aBtn.isActive()</c> 跳过节点的
-        /// （见 <c>aBtn.simulateNaviTranslation</c>），而那个标志只有 <c>hide()</c>/<c>bind()</c>
-        /// 会动，光把 GameObject 关掉的话焦点还是会走进看不见的行里。
-        /// </para>
-        /// </summary>
+        /// <summary>拨一个块的显隐（搜索过滤收起一行的统一做法）；按钮还需额外 hide()/bind()，否则方向键导航仍会走进看不见的行。</summary>
         internal static void SetVisible(DesignerRowMem.DsnMem mem, bool visible)
         {
             if (mem == null || mem.active == visible)
@@ -217,8 +184,7 @@ namespace Polaris
                 return;
             }
 
-            // 收起时先 hide 再关 GameObject、放回时反过来：hide/bind 会去动 Skin 与焦点，
-            // 让它们跑在对象还活着的时候。
+            // 收起时先 hide、放回时反过来：让 hide/bind 操作 Skin 与焦点时对象还活着。
             if (!visible)
             {
                 button.hide();

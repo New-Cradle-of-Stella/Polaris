@@ -3,13 +3,7 @@ using System;
 namespace Polaris.API
 {
     /// <summary>
-    /// 输入动作到游戏内部按键槽的映射，以及"这次按住持续了多少帧"的记账。
-    /// <para>
-    /// 游戏为每个动作维护一个 float（<c>KEY.mv*</c>），语义是：<c>&gt; 0</c> 表示正被按住、
-    /// 数值等于已按住的帧数；<c>== 1</c> 就是"这一帧刚按下"；<c>&lt; 0</c> 表示刚松开、
-    /// 绝对值是松开后的帧数。松开之后按住时长就查不到了，所以这里每帧记一份，
-    /// 供 <c>WasReleased(action, heldFrames)</c> 判断"轻点还是长按后松开"。
-    /// </para>
+    /// 输入动作到游戏内部按键槽（<c>KEY.mv*</c>）的映射，并逐帧记录按住时长供松开时读取。
     /// </summary>
     internal static class InputBinding
     {
@@ -30,10 +24,7 @@ namespace Polaris.API
             return i >= 0 && i < lastHeld.Length ? lastHeld[i] : 0;
         }
 
-        /// <summary>
-        /// 取某个动作的原始 mv 值。取不到按键对象（游戏还没起来、正在重建键位）时返回 0，
-        /// 也就是"什么都没按"——这比抛异常合理：输入查询在任何时刻都应该能安全地问一句。
-        /// </summary>
+        /// <summary>取某个动作的原始 mv 值；键位对象不可用时返回 0（视为未按下）而不抛异常。</summary>
         internal static float Value(GameInputAction action)
         {
             XX.KEY ka = GameBinding.KeyAssign;
@@ -76,13 +67,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 每帧调用：记账按住时长，并发布按下/释放两条静态回调。
-        /// <para>
-        /// 走轮询而不是给输入系统打补丁：游戏把输入写进这些字段的位置不止一处（键盘、手柄、
-        /// 事件模拟按键），而读一遍字段就能得到最终结果。
-        /// </para>
-        /// </summary>
+        /// <summary>每帧调用：记账按住时长并发布按下/释放回调；用轮询而非打补丁，因为输入来源不止一处。</summary>
         internal static void Pump()
         {
             for (int i = 0; i < AllActions.Length; i++)

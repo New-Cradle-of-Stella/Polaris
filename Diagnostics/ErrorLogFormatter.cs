@@ -2,14 +2,7 @@ using System.Linq;
 
 namespace Polaris.Diagnostics
 {
-    /// <summary>
-    /// 把一条 <see cref="ErrorIncident"/> 写成 BepInEx 控制台里的几行结论。
-    /// <para>
-    /// 沿用仓库既有的两条日志约定：以 <c>[Polaris]</c> 开头，以及每条消息都要说清楚
-    /// <b>玩家因此失去了什么、接下来该做什么</b>（"它负责的功能本局不可用"那种从句）。
-    /// 完整堆栈不往控制台倒——那是报告文件的活儿，控制台只放结论。
-    /// </para>
-    /// </summary>
+    /// <summary>把一条 <see cref="ErrorIncident"/> 写成控制台里的几行结论；完整堆栈不往控制台倒，留给报告文件。</summary>
     internal static class ErrorLogFormatter
     {
         /// <summary>嫌疑人最多念几个，多了控制台就没法看了。</summary>
@@ -36,7 +29,7 @@ namespace Polaris.Diagnostics
                 Plugin.Logger.LogError($"[Polaris] Diagnosis: {verdict.Diagnosis}");
             }
 
-            // 主责已经点名时不再复述嫌疑人；只有"点不出主责"或"还有别的嫌疑人"才值得列。
+            // 已点名主责时不复述嫌疑人，仅在还有其他嫌疑人时列出。
             var others = verdict.Suspects.Where(s => s.Owner != verdict.Culprit).ToList();
             if (others.Count > 0)
             {

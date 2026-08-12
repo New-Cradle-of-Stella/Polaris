@@ -1,13 +1,6 @@
 namespace Polaris.API
 {
-    /// <summary>
-    /// 对敌人造成一次伤害的请求。
-    /// <para>
-    /// 体力与魔力分成两个字段而不是"一个带正负号的数"：它们在游戏里走不同的处理链
-    /// （体力伤害有护盾、抗性、击退与硬直，魔力伤害没有），混成一个字段会让调用方
-    /// 写出在其中一条链上不成立的假设。
-    /// </para>
-    /// </summary>
+    /// <summary>对敌人造成一次伤害的请求；体力与魔力分成两个字段，因为二者在游戏内走不同的处理链（体力有护盾/抗性/击退，魔力没有）。</summary>
     public readonly struct EnemyDamageRequest
     {
         public EnemyDamageRequest(int hpDamage, int mpDamage = 0, bool force = false)
@@ -25,11 +18,7 @@ namespace Polaris.API
         public bool Force { get; }
     }
 
-    /// <summary>
-    /// 追加击退速度的请求。<see cref="Velocity"/> 是初速度，方向由
-    /// <see cref="FromRight"/> 决定——直接给一个带符号的速度也能表达方向，
-    /// 但那样"速度大小"和"往哪边打"就绑死在一个数上，写内容时很容易漏掉负号。
-    /// </summary>
+    /// <summary>追加击退速度的请求；<see cref="Velocity"/> 是非负初速度，方向由 <see cref="FromRight"/> 单独决定，避免用带符号速度时漏写负号。</summary>
     public readonly struct KnockbackRequest
     {
         public KnockbackRequest(float velocity, bool fromRight = false)
@@ -89,11 +78,7 @@ namespace Polaris.API
         public override string ToString() => $"{Key} phase={Phase}{(Finished ? " (finished)" : string.Empty)}";
     }
 
-    /// <summary>
-    /// 任务列表表头的摘要视图。和 <see cref="GameQuestProgress"/> 分成两个类型，
-    /// 是因为它回答的是"玩家现在正盯着哪个任务"，而不是某个具体任务的进度——
-    /// 用同一个类型会让"取表头"看起来像"取某个任务的进度"。
-    /// </summary>
+    /// <summary>任务列表表头的摘要视图（当前重点任务），与 <see cref="GameQuestProgress"/>（某任务的具体进度）分开，避免语义混淆。</summary>
     public sealed class GameQuestProgressView
     {
         internal GameQuestProgressView(GameQuest quest, int phase, bool finished)

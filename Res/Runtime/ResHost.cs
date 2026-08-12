@@ -32,14 +32,5 @@ namespace Polaris.Res.Runtime
             Object.DontDestroyOnLoad(root);
             pump = root.AddComponent<ResPump>();
         }
-
-        /// <summary>在 <paramref name="name"/> 下面建一个常驻子物体，供各子系统挂自己的组件用。</summary>
-        internal static GameObject CreateChild(string name)
-        {
-            EnsureCreated();
-            GameObject child = new GameObject(name);
-            child.transform.SetParent(root.transform, worldPositionStays: false);
-            return child;
-        }
     }
 }

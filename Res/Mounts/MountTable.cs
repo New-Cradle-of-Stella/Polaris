@@ -10,17 +10,8 @@ namespace Polaris.Res.Mounts
         private readonly List<DirectoryMount> mounts = new List<DirectoryMount>();
         private int nextRegistrationOrder;
 
-        /// <summary>
-        /// 按 <see cref="DirectoryMount.Priority"/> 降序、同优先级按注册顺序降序排列——
-        /// 后注册的赢，所以开发期"额外挂一个源目录、优先级给高一点"的写法里，
-        /// 就算两个挂载优先级相同，后写的 <c>Mount(...)</c> 调用也会先被探测到。
-        /// </summary>
-        /// <remarks>
-        /// 同一个物理目录（<see cref="Path.GetFullPath(string)"/> 后大小写不敏感比较）重复挂载
-        /// 是幂等的，直接复用已有条目——<c>AutoBindScanner</c> 的自动挂载和模组自己手动调用
-        /// <c>MountDefault()</c> 算出来的是同一个目录，不应该真的挂两份，否则"找不到资源"的
-        /// 诊断信息里会把同一个目录重复列两次。
-        /// </remarks>
+        /// <summary>按 <see cref="DirectoryMount.Priority"/> 降序、同优先级按注册顺序降序排列（后注册的赢）。</summary>
+        /// <remarks>同一物理目录重复挂载是幂等的，直接复用已有条目，避免诊断信息里重复列出同一目录。</remarks>
         internal DirectoryMount Add(string absoluteRoot, int priority)
         {
             string fullPath;
@@ -55,17 +46,11 @@ namespace Polaris.Res.Mounts
 
         internal IReadOnlyList<DirectoryMount> Mounts => mounts;
 
-        /// <summary>
-        /// 挂载优先、扩展名次之，命中即停。未命中时 <paramref name="probeLog"/> 记录了
-        /// 每一个尝试过的候选，供调用方构造 <see cref="ResourceNotFoundException"/> 的消息。
-        /// </summary>
+        /// <summary>挂载优先、扩展名次之，命中即停；未命中时 <paramref name="probeLog"/> 记录了所有尝试过的候选。</summary>
         internal bool TryResolve(ResourceId id, out string absolutePath, out MountProbeLog probeLog) =>
             TryResolve(id, out absolutePath, out _, out probeLog);
 
-        /// <summary>
-        /// 同上，另外带出命中的那个挂载的根目录——<see cref="Import.ImportMetaResolver"/>
-        /// 需要知道"从哪个根开始逐层找 <c>_import.json</c>"，不能拿任意一个挂载的根来用。
-        /// </summary>
+        /// <summary>同上，另外带出命中的挂载根目录，供 <see cref="Import.ImportMetaResolver"/> 逐层查找 <c>_import.json</c> 用。</summary>
         internal bool TryResolve(ResourceId id, out string absolutePath, out string mountRoot, out MountProbeLog probeLog)
         {
             probeLog = new MountProbeLog(id);
@@ -106,10 +91,7 @@ namespace Polaris.Res.Mounts
             return false;
         }
 
-        /// <summary>
-        /// 如果 <see cref="ResourceId.Path"/> 已经以该 Kind 的某个候选扩展名结尾，只把它当唯一候选
-        /// （原样探测，不重复拼接扩展名）；否则依次尝试每个候选扩展名。
-        /// </summary>
+        /// <summary>若 <see cref="ResourceId.Path"/> 已带该 Kind 的候选扩展名，原样探测；否则依次尝试每个候选扩展名。</summary>
         private static IReadOnlyList<string> BuildCandidateSuffixes(ResourceId id)
         {
             IReadOnlyList<string> extensions = id.Kind.CandidateExtensions();

@@ -5,15 +5,8 @@ using BepInEx.Configuration;
 namespace Polaris
 {
     /// <summary>
-    /// <c>_polaris_notice.cfg</c> 的唯一 <see cref="ConfigFile"/> 实例，供标题画面的一次性
-    /// 告知页共用（目前是 <see cref="PolarisModWarning"/> 和 <see cref="PolarisErrorNotice"/>）。
-    /// <para>
-    /// 两个类必须共享同一个实例，不能各自 <c>new ConfigFile(同一路径)</c>：BepInEx 的
-    /// <see cref="ConfigFile"/> 只把"自己 Bind 过的键"当成活的，其它键只是构造那一刻读到的
-    /// 只读快照。如果两个实例各绑各的键，后保存的那个会把先保存的那个刚写的值覆盖回
-    /// 构造时的旧值——同样的坑 <see cref="Settings.SettingsStore"/> 按 <c>modId + ".cfg"</c>
-    /// 一模一样地存在过，这里用共享单例而不是再撞一次下划线文件名。
-    /// </para>
+    /// <c>_polaris_notice.cfg</c> 的唯一 <see cref="ConfigFile"/> 实例，供 <see cref="PolarisModWarning"/> 与
+    /// <see cref="PolarisErrorNotice"/> 共用；必须共享同一实例，否则后保存的会把先保存的值覆盖回旧值。
     /// </summary>
     internal static class PolarisNoticeStore
     {

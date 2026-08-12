@@ -10,16 +10,7 @@ namespace Polaris
         Japanese,
     }
 
-    /// <summary>
-    /// 把 <see cref="PolarisAPI.Game.Localization.CurrentLocale"/> 归到内置文案的三种语言之一。
-    /// <para>
-    /// 这几页告知一律内置 zh/ja/en 三份文案、未识别的语言退回英文，不走 <c>.plang</c>：
-    /// 它们是 Polaris 自己的界面，而且<b>致命错误页恰恰要在"某个模组的 <c>.plang</c> 撞了
-    /// key"时还能显示</b>——那时正是本地化机制自己出了问题。判定规则收在这里而不是各页各写
-    /// 一遍：<see cref="PolarisErrorNotice"/> 与 <see cref="PolarisFatalNotice"/> 对
-    /// "玩家现在算哪种语言"必须给出同一个答案。
-    /// </para>
-    /// </summary>
+    /// <summary>把 <see cref="PolarisAPI.Game.Localization.CurrentLocale"/> 归到内置 zh/ja/en 三种语言之一（不走 .plang，因为致命错误页恰恰要在本地化机制自身出问题时也能显示）。</summary>
     internal static class NoticeLocale
     {
         internal static NoticeLanguage Current
@@ -43,10 +34,7 @@ namespace Polaris
             }
         }
 
-        /// <summary>
-        /// 极早期（TX 的 family 表还没建好）读取语言可能抛异常，也可能拿到空值。
-        /// 告知页不该因为读不到语言就建不出来，一律按"未识别"处理、退回英文。
-        /// </summary>
+        /// <summary>极早期读取语言可能抛异常或拿到空值；一律按"未识别"处理、退回英文，不能因此建不出告知页。</summary>
         static string SafeLocale()
         {
             try

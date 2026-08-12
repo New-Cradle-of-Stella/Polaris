@@ -5,22 +5,8 @@ using Polaris.Localization;
 namespace Polaris.Settings
 {
     /// <summary>
-    /// 一个设置项的 UI 无关描述。渲染层（<see cref="SettingsRowRenderer"/>）和存储层
-    /// （<see cref="SettingsStore"/>）都只认这个模型，不认识 nel/XX 里的任何类型——
-    /// 换句话说，把设置项挪到别的界面去渲染不需要改模型。
-    /// <para>
-    /// 所有给玩家看的字符串（<see cref="Label"/>、<see cref="Description"/>、选项文案）都遵守
-    /// <see cref="LocalizedString"/> 的 <c>&amp;</c> 约定：以 <c>&amp;</c> 开头就是本地化键，
-    /// 显示时经 <see cref="LocalizationAPI.Text"/> 查表。模型层存的永远是<b>原始串</b>，
-    /// 求值一律推迟到 <c>Display*</c> 这几个属性，绝不在注册时算好存下来：设置项是在
-    /// <c>Plugin.Start</c> 注册的，那时游戏的语言表未必已经建好，算出来的多半是键本身。
-    /// </para>
-    /// <para>
-    /// 每次界面构造都会重新求值一遍，所以模组自己在运行中改了内置文案、或者语言在设置界面
-    /// 构造之前变了，下一次都能取到新的。<b>已经画出来的那一份不会自己变</b>——原版的
-    /// <c>UiCFG</c> 只 new 一次之后一直 <c>resume()</c> 复用，它自己的行也是同样的表现，
-    /// 这里不额外为此重建控件。
-    /// </para>
+    /// 一个设置项的 UI 无关描述，渲染层和存储层都只认这个模型。
+    /// <see cref="Label"/>/<see cref="Description"/> 存的是原始串，遵守 <see cref="LocalizedString"/> 的 <c>&amp;</c> 约定；求值推迟到 <c>Display*</c> 属性，因注册发生在 <c>Plugin.Start</c>，此时语言表未必已建好。
     /// </summary>
     public abstract class SettingDefinition
     {
@@ -30,10 +16,7 @@ namespace Polaris.Settings
         /// <summary>界面上的行标签（原始串，可能是 <c>&amp;</c> 开头的本地化键）。</summary>
         public string Label { get; }
 
-        /// <summary>
-        /// 悬停时显示在右侧说明框里的文字（原始串，可能是 <c>&amp;</c> 开头的本地化键）。
-        /// 为 null 或空串则说明框收起——与原版没有 <c>Config_desc_*</c> 条目的行表现一致。
-        /// </summary>
+        /// <summary>悬停说明框文字（原始串，可能是本地化键）；为 null/空串则说明框收起。</summary>
         public string Description { get; internal set; }
 
         /// <summary>按当前语言求值之后的行标签。</summary>
@@ -56,11 +39,7 @@ namespace Polaris.Settings
             Label = string.IsNullOrEmpty(label) ? id : label;
         }
 
-        /// <summary>
-        /// 控件在 Designer 里的注册名，同时用作 <c>DsnData.title</c>。
-        /// 必须带前缀：原版 <c>UiCFG.changeConfigValue</c> 与 <c>fnShowDesc</c> 都是按
-        /// <c>aBtn.title</c> 做 switch 的，不加前缀就有撞上原版分支的风险。
-        /// </summary>
+        /// <summary>控件注册名/<c>DsnData.title</c>；须带前缀以免撞上原版按 <c>aBtn.title</c> 做 switch 的分支。</summary>
         internal string RowKey => "plrs:" + Group?.ModId + ":" + Id;
     }
 
@@ -77,10 +56,7 @@ namespace Polaris.Settings
 
         public abstract Type ValueType { get; }
 
-        /// <summary>
-        /// 值的"真身"是模组自己的静态字段，<see cref="Entry"/> 只是它的存档，两边必须同步：
-        /// 加载时 Entry→字段，玩家改动时也要写回字段。由 <see cref="SettingsAttributeScanner"/> 挂上。
-        /// </summary>
+        /// <summary>值的真身是模组的静态字段，须与 <see cref="Entry"/> 同步；由 <see cref="SettingsAttributeScanner"/> 挂上。</summary>
         internal Action<object> FieldSetter;
 
         /// <summary>由 <see cref="SettingsStore"/> 在绑定时回填；未绑定时读写退化到默认值。</summary>
@@ -154,15 +130,12 @@ namespace Polaris.Settings
         internal override ConfigEntryBase BindTo(ConfigFile file, string section)
             => file.Bind(section, Id, (T)DefaultValue, ConfigComment);
 
-        /// <summary>
-        /// 写进 .cfg 的注释。必须压成一行：BepInEx 是按 <c>## &lt;文本&gt;</c> 逐行写注释的，
-        /// 文案里带换行会让第二行往后变成不合法的配置行，重启后解析直接出错。
-        /// </summary>
+        /// <summary>写进 .cfg 的注释，须压成一行——带换行会让 BepInEx 逐行写出的注释产生不合法配置行。</summary>
         string ConfigComment
         {
             get
             {
-                // 用求值后的文案：手改 .cfg 的玩家看到的应该是"严格模式"，不是"&polarisres.strict"。
+                // 用求值后的文案，手改 .cfg 的玩家应看到"严格模式"而非键名。
                 string text = string.IsNullOrEmpty(Description) ? DisplayLabel : DisplayDescription;
                 return text.Replace("\r\n", " ").Replace('\n', ' ').Replace('\r', ' ');
             }
@@ -191,10 +164,7 @@ namespace Polaris.Settings
         public float Step { get; internal set; } = 0.1f;
     }
 
-    /// <summary>
-    /// 整数滑条。与 <see cref="SliderSetting"/> 走同一个 meter 控件、<c>valintv</c> 固定为步长，
-    /// 原版的"窗口大小"就是这么做的——游戏里没有独立的数字输入框控件值得为此单开一条渲染路径。
-    /// </summary>
+    /// <summary>整数滑条，与 <see cref="SliderSetting"/> 走同一个 meter 控件，<c>valintv</c> 固定为步长。</summary>
     public sealed class IntSetting : ValueSettingDefinition<int>
     {
         internal IntSetting(string id, string label, int def) : base(id, label, def) { }
@@ -204,11 +174,7 @@ namespace Polaris.Settings
         public int Step { get; internal set; } = 1;
     }
 
-    /// <summary>
-    /// 多选一设置项的非泛型视角：渲染层只按"选项文案 + 当前下标"操作，不必关心值到底是
-    /// 下标本身还是枚举成员。<see cref="EnumSetting{TEnum}"/> 是泛型，<c>switch</c> 里穷举不了，
-    /// 靠这个接口才能和 <see cref="ChoiceSetting"/> 走同一条渲染路径。
-    /// </summary>
+    /// <summary>多选一设置项的非泛型视角，让渲染层只按"选项文案 + 当前下标"操作，与具体值类型（下标或枚举）无关。</summary>
     internal interface IChoiceSetting
     {
         string[] Choices { get; }
@@ -265,8 +231,7 @@ namespace Polaris.Settings
 
         int IChoiceSetting.SelectedIndex
         {
-            // 存的是枚举本身，界面按下标操作，两边在这里换算。配置文件被手改成
-            // 已删除的枚举名时 IndexOf 会给 -1，退回第一项而不是让界面画出空白。
+            // 手改配置为已删除的枚举名时 IndexOf 给 -1，退回第一项而非空白界面。
             get => Math.Max(0, Array.IndexOf(Values, Value));
             set
             {

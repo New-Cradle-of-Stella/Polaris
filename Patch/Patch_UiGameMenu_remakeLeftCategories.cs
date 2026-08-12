@@ -19,17 +19,14 @@ namespace Polaris.Patch
         {
             __instance.BxCategory.use_scroll = GameMenuAPI.ShouldScrollCategories;
 
-            // 原版只在 remaking=true 时才 Clear()+init()；这里强制做一次，保证刚设置的
-            // use_scroll 在本次重建里就生效，而不是等下一次语言切换之类的 remaking=true 调用。
+            // 强制 Clear()+init() 一次，让刚设置的 use_scroll 在本次重建里就生效。
             __instance.BxCategory.Clear();
             __instance.BxCategory.init();
         }
 
         /// <summary>
-        /// 追加自定义分类按钮。title 和原版一样用 "categ_" + 下标前缀，从而可以直接复用
-        /// 原版的 fnHoverCategory/fnClickCategory/fnOutCategory 三个回调——它们只按
-        /// title 解析整数，没有"必须在 0-9 之间"的检查，选中/悬停高亮、select_categ 同步、
-        /// waiting_categ_for 门控都天然正确，不需要额外补丁去修复状态不同步的问题。
+        /// 追加自定义分类按钮，title 沿用原版 "categ_" + 下标前缀，从而复用原版三个回调
+        /// （它们只按 title 解析整数，无范围检查），选中/高亮/状态同步都天然正确。
         /// </summary>
         [HarmonyPostfix]
         static void Postfix(UiGameMenu __instance)
@@ -59,10 +56,8 @@ namespace Polaris.Patch
         }
 
         /// <summary>
-        /// 原方法里分类行高的分母硬编码为 10（对应原版固定 10 个分类）；这里改为在运行时
-        /// 调用 GameMenuAPI.CategoryRowDivisor()，使行高跟随实际注册的分类总数（并在超过
-        /// 滚动阈值后不再继续压缩）。不改循环上界——原版 0..9 那 10 个按钮仍由原循环自己建，
-        /// 自定义分类只在 Postfix 里追加，不侵入这个循环。
+        /// 把行高计算里硬编码的分母 10 换成运行时的 GameMenuAPI.CategoryRowDivisor()，
+        /// 使行高跟随实际注册的分类总数；不改循环上界，原版 0..9 按钮仍由原循环自己建。
         /// </summary>
         [HarmonyTranspiler]
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)

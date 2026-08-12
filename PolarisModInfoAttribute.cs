@@ -3,21 +3,13 @@ using System;
 namespace Polaris
 {
     /// <summary>
-    /// 模组元信息特性：模组标注它来向 Polaris 声明作者、简介等展示用信息。
-    /// 可以标在 BepInEx 插件主类（<c>BaseUnityPlugin</c> 派生类）上：
+    /// 模组元信息特性：标在插件主类或程序集上，向 Polaris 声明作者、简介等展示信息（类级优先）。
     /// <code>
     /// [BepInPlugin("com.example.mymod", "MyMod", "1.0.0")]
     /// [PolarisModInfo("某某", "给爱丽丝加了一顶帽子。", Url = "https://example.com")]
     /// public class Plugin : BaseUnityPlugin { }
     /// </code>
-    /// 也可以直接标在程序集上：<c>[assembly: PolarisModInfo("某某", "……")]</c>。
-    /// 两者同时存在时以类级为准。
-    /// <para>
-    /// Polaris 在扫描 <c>plugins</c> 根目录时，
-    /// 会由 <see cref="PolarisModInfoResolver"/> 从已加载的插件上读取该特性，合成
-    /// <see cref="PolarisModInfo"/> 展示在模组管理页里。读取走的是已加载程序集的反射，
-    /// 因此被禁用（<c>.dll.disabled</c>）而没进入本次游戏的 dll 读不到信息，只会显示文件名。
-    /// </para>
+    /// 通过反射读取已加载程序集，故被禁用的 dll 读不到信息，只显示文件名。
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false, Inherited = false)]
     public sealed class PolarisModInfoAttribute : Attribute

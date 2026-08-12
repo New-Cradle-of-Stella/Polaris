@@ -9,17 +9,9 @@ using UnityEngine;
 namespace Polaris.Res.Loaders
 {
     /// <summary>
-    /// PXLS 复合加载的状态驱动器：一个实例对应一次 <c>ModResources.Pxls(...)</c> 调用。
-    /// <para>
-    /// 只有一段真正跨帧——等待 <c>PxlCharacter.isLoadCompleted()</c>/<c>errorOccured()</c> 翻转，
-    /// 因为 <c>PxlsLoader.loadCharacterASync</c> 内部自己起了协程，这是绕不开的（旧计划"已核实的
-    /// 关键事实 #1"）。其余步骤（读外置纹理字节、建 <c>Texture2D</c>、绑定、注册帧名）都在
-    /// 解析完成的那一帧内同步跑完——0～2 张小 PNG 不是性能问题，不值得为此再建一层跨帧调度。
-    /// </para>
-    /// <para>
-    /// 由 <see cref="Runtime.PxlsPump"/> 每帧调用一次 <see cref="Tick"/>；构造它的调用方
-    /// （<c>ModResources.Pxls</c>）负责把它注册进 <see cref="Runtime.PxlsPump"/>。
-    /// </para>
+    /// PXLS 复合加载的状态驱动器，一个实例对应一次 <c>ModResources.Pxls(...)</c> 调用。
+    /// 只有等待 <c>PxlCharacter</c> 解析完成这一段跨帧；解析完成后剩余步骤（建纹理、绑定、注册帧名）都同步跑完。
+    /// 由 <see cref="Runtime.PxlsPump"/> 每帧调用 <see cref="Tick"/>。
     /// </summary>
     internal sealed class PxlsLoadOperation
     {
@@ -77,9 +69,7 @@ namespace Polaris.Res.Loaders
 
             if (teardownRequested)
             {
-                // 租约在解析完成之前就被释放了：PxlsLoader 的协程没法干净取消（旧计划风险 #3），
-                // 只能让它跑完；跑完这一刻我们还没绑定任何外部状态（Finish 还没执行），
-                // 直接释放游戏自己的 title 槽位即可，不需要走完整的 Disposing 顺序。
+                // 租约在解析完成前就被释放了；协程无法干净取消，只能让它跑完，此时还未绑定任何外部状态，直接释放 title 槽位即可。
                 PxlsLoader.disposeCharacter(title, dispose_image: true);
                 IsDone = true;
                 return;
@@ -88,13 +78,7 @@ namespace Polaris.Res.Loaders
             Finish();
         }
 
-        /// <summary>
-        /// 由 <c>ResourceCache</c> 的卸载动作调用（引用计数归零时）。解析还没完成时只是打个标记，
-        /// 留给下一次 <see cref="Tick"/> 处理；已经 <see cref="PxlsCharacterHandle.Ready"/> 过的话
-        /// 立刻按 Disposing 顺序清理——这一步即使不做 M6 生命周期硬化也必须做对，否则会把脏数据
-        /// 留在 <c>MTRX.OMI</c>/<c>OMeshImages</c>/<c>PxlsLoader</c> 的全局 title 字典里，
-        /// 污染共享的游戏状态。
-        /// </summary>
+        /// <summary>由 <c>ResourceCache</c> 引用计数归零时调用。解析未完成时只打标记留给下次 <see cref="Tick"/>；已 Ready 则立刻按顺序清理，避免脏数据污染共享的游戏全局状态。</summary>
         internal void RequestDispose()
         {
             if (!IsDone)
@@ -139,15 +123,13 @@ namespace Polaris.Res.Loaders
                             throw new ResourceLoadException(handle.Id, $"Failed to read external texture #{i} of {title}: {path}", ex);
                         }
 
-                        // 复用现有 TextureLoader/ImportMetaResolver：这些外置贴图依然吃
-                        // _import.json/*.import.json，不用另写一套纹理构造代码。
+                        // 复用现有 TextureLoader/ImportMetaResolver：外置贴图同样吃 _import.json。
                         ResourceId textureId = new ResourceId(handle.Id.ModId, ResourceKind.Texture, handle.Id.Path + ".texture" + i);
                         TextureImportSettings textureSettings = ImportMetaResolver.ResolveTexture(mountRoot, path);
                         ownedTextures[i] = TextureLoader.FromBytes(bytes, textureId, textureSettings);
                     }
 
-                    // 必须是 ReplaceExternalPng，绝不是 AddExternalPng——理由见旧计划"已核实的
-                    // 关键事实 #3"：Add 是追加，在解析完成后调用会把占位槽翻倍，图集渲染全透明。
+                    // 必须用 ReplaceExternalPng，不能用 AddExternalPng：Add 是追加，会把占位槽翻倍，图集渲染全透明。
                     character.ReplaceExternalPng(ownedTextures, _do_not_destruct: true);
                     image = new XX.MImage(ownedTextures[0]) { dispose_texture = false };
                 }
@@ -163,8 +145,7 @@ namespace Polaris.Res.Loaders
                     image = new XX.MImage(embedded) { dispose_texture = false };
                 }
 
-                // assignMI 必须晚于 ReplaceExternalPng；帧名注册必须晚于 assignMI——顺序错了会
-                // 撞上 MTRX.getMI 的空纹理陷阱（旧计划"已核实的关键事实 #12"）。
+                // assignMI 必须晚于 ReplaceExternalPng；帧名注册必须晚于 assignMI，否则会撞上 MTRX.getMI 的空纹理陷阱。
                 XX.MTRX.assignMI(character, image);
                 registeredFrameKeys = PxlsRegistration.Register(character, framePolicy, framePrefix);
 
@@ -182,8 +163,7 @@ namespace Polaris.Res.Loaders
             }
             catch (Exception ex)
             {
-                // Finish 执行到一半就失败，可能已经建了几张纹理/绑了部分 MTRX 状态，
-                // 必须清理干净，不能就地放着——否则残留半初始化的 OMI/OMeshImages 条目或纹理泄漏。
+                // Finish 执行到一半失败时可能已建了部分纹理/绑定，必须清理干净，避免残留或泄漏。
                 CleanupPartialFinish();
                 Fail(ex as ResourceLoadException ?? new ResourceLoadException(handle.Id, $"{title} failed during the finish stage: {ex.Message}", ex));
             }
@@ -234,14 +214,11 @@ namespace Polaris.Res.Loaders
         private void TeardownReady()
         {
             PxlsRegistration.Unregister(registeredFrameKeys);
-            // disposing:false 保证不会把消费者仍持有引用的缓存 Material 销毁掉——MImage 由我们
-            // 自己紧接着按节奏释放；dispose_mti 恒为 false，反编译确认它只查一下 MTI 就丢弃，
-            // 什么也不释放，没必要为此拖入 MTI（旧计划"已核实的关键事实 #12"）。
+            // disposing:false 避免销毁消费者仍持有引用的缓存 Material；MImage 由我们自己紧接着释放。dispose_mti 恒为 false，因为它什么也不释放。
             XX.MTRX.releaseMI(character, disposing: false, dispose_mti: false);
             image.DisposeMaterial();
             image.Dispose();
-            // dispose_image:true 是安全的：我们的外置槽 do_not_destruct==true，PxlCharacter.Destroy
-            // 只会把槽位置空，纹理本体（归我们所有）安然无恙，接下来自己销毁。
+            // dispose_image:true 是安全的：外置槽 do_not_destruct==true，PxlCharacter.Destroy 只清空槽位，纹理本体归我们自己销毁。
             PxlsLoader.disposeCharacter(title, dispose_image: true);
             DestroyOwnedTextures();
         }

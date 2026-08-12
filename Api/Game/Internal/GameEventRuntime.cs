@@ -1,13 +1,7 @@
 namespace Polaris.API
 {
     /// <summary>
-    /// 当前事件的记账。
-    /// <para>
-    /// 游戏的事件系统是一个 <c>EvReader</c> 栈，栈顶那一层的名字没有稳定的公开读取口，
-    /// 所以这里不轮询，而是由 <c>EV.stack</c>/<c>EV.changeEvent</c>/<c>EV.evEnd</c>
-    /// 三个补丁把"现在在演哪一个"报进来。补丁没能应用时，
-    /// <see cref="Current"/> 恒为 <c>null</c>，而不是给出一个可能过期的答案。
-    /// </para>
+    /// 当前事件的记账；由 EV 补丁推送状态而非轮询，补丁未生效时 <see cref="Current"/> 恒为 null。
     /// </summary>
     internal static class GameEventRuntime
     {
@@ -59,8 +53,7 @@ namespace Polaris.API
                 return;
             }
 
-            // 用 Peek 而不是 Wrap：事件已经结束了，为一个没人拿过的 key 新建包装器毫无意义，
-            // 而且新建出来的那个立刻就是失效状态。
+            // 用 Peek 而非 Wrap：事件已结束，没必要为其新建一个立刻失效的包装器。
             GameEvent closed = GameEvent.Peek(key);
             if (closed == null)
             {

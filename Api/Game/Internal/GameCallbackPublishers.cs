@@ -4,12 +4,8 @@ using nel;
 namespace Polaris.API
 {
     /// <summary>
-    /// Harmony 补丁发布 v2 回调的唯一入口。
-    /// <para>
-    /// 补丁层刻意不直接碰 <see cref="GameCallbackHub"/>：补丁的职责是"认出这件事发生了"
-    /// （那是跟着游戏版本走的知识），把原生对象翻译成包装器、判断有没有人在听、构造负荷
-    /// 这些属于回调层，集中在这里一次就够。
-    /// </para>
+    /// Harmony 补丁发布 v2 回调的唯一入口，把"事件发生"（补丁职责）和"包装、构造负荷、发布"
+    /// （回调层职责）分开，集中在这里处理。
     /// </summary>
     internal static class GameCallbackPublishers
     {
@@ -93,8 +89,7 @@ namespace Polaris.API
 
         internal static void NewGameStarted()
         {
-            // 新游戏会把整个世界重建一遍：上一局的实例包装器全部作废，
-            // 否则玩家读了新档之后，旧包装器会安静地指向新世界里的对象。
+            // 新游戏重建整个世界，需作废上一局所有实例包装器，避免其指向新世界的对象。
             GameSessionRuntime.ResetWorld();
             GameCallbackHub.PublishStatic(
                 GameStaticCallbackKind.NewGameStarted, () => new NewGameStartedCallbackData());
@@ -133,8 +128,7 @@ namespace Polaris.API
         static void InventoryChange(
             GameInstanceCallbackKind kind, ItemStorage storage, NelItem item, int count, int grade)
         {
-            // Peek 而不是 Wrap：没人取过的存储容器不值得为一次内部变动新建包装器，
-            // 反正也没有订阅者挂在上面。
+            // Peek 而非 Wrap：没人取过的容器没有订阅者，不值得为一次内部变动新建包装器。
             GameStorage wrapper = GameStorage.Peek(storage);
             if (wrapper == null || count <= 0)
             {

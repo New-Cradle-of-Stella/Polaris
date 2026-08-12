@@ -6,15 +6,7 @@ using HarmonyLib;
 
 namespace Polaris.Diagnostics
 {
-    /// <summary>
-    /// 走堆栈，把每一帧标上归属，顺带查出沿途的原版方法被谁改过。
-    /// <para>
-    /// 两条来路都要支持，而且<b>字符串那条是主路不是兜底</b>：
-    /// <c>Application.logMessageReceived</c> 的回调签名是
-    /// <c>(string condition, string stackTrace, LogType type)</c>——根本没有
-    /// <see cref="Exception"/> 对象。全局兜底抓到的绝大多数异常都只有字符串堆栈。
-    /// </para>
-    /// </summary>
+    /// <summary>走堆栈把每一帧标上归属，并查出沿途原版方法被谁改过；同时支持异常对象与纯文本两种来路。</summary>
     internal static class StackAttribution
     {
         /// <summary>堆栈再深也没有分析价值，超过这个数就截断，免得报告变成裹脚布。</summary>
@@ -22,10 +14,7 @@ namespace Polaris.Diagnostics
 
         // ================== 有 Exception 对象的那条路 ==================
 
-        /// <summary>
-        /// 从异常对象走栈。信息最全：拿得到 <see cref="MethodBase"/>，能直接做补丁反查，
-        /// 也能让 Harmony 把 DMD 帧还原成原始方法。
-        /// </summary>
+        /// <summary>从异常对象走栈，信息最全，能直接做补丁反查与 DMD 帧还原。</summary>
         internal static List<ErrorFrame> FromException(Exception exception)
         {
             var frames = new List<ErrorFrame>();
@@ -77,11 +66,7 @@ namespace Polaris.Diagnostics
             return frames;
         }
 
-        /// <summary>
-        /// 把一帧解析成方法。Harmony 打过补丁的方法在栈上是一个动态方法（DMD），
-        /// 直接 <c>frame.GetMethod()</c> 拿到的是个匿名玩意儿，归属只会是"动态生成"——
-        /// 必须先请 Harmony 还原回原始方法，否则整条堆栈上被补丁过的原版方法全都不可读。
-        /// </summary>
+        /// <summary>把一帧解析成方法；打过 Harmony 补丁的帧须先还原成原始方法，否则归属只会是"动态生成"。</summary>
         static MethodBase ResolveMethod(StackFrame frame)
         {
             try
@@ -121,17 +106,7 @@ namespace Polaris.Diagnostics
 
         // ================== 只有字符串的那条路 ==================
 
-        /// <summary>
-        /// 解析 Unity / Mono 给的字符串堆栈。两种常见形状都要认：
-        /// <code>
-        ///   at nel.title.SceneTitleTemp.initButtons () [0x00000] in &lt;hash&gt;:0
-        ///   Foo.Bar () (at &lt;hash&gt;:0)
-        ///   UnityEngine.Debug:Log(Object)
-        /// </code>
-        /// 拿不到 <see cref="MethodBase"/>，所以归属只能靠命名空间反查
-        /// （<see cref="AssemblyOwnerIndex.OfTypeName"/>），补丁反查也退化成按名字找
-        /// （<see cref="PatchSuspects.FindPatched"/>）。
-        /// </summary>
+        /// <summary>解析 Unity/Mono 字符串堆栈；拿不到 <see cref="MethodBase"/>，归属靠命名空间/名字反查。</summary>
         internal static List<ErrorFrame> FromText(string stackTrace)
         {
             var frames = new List<ErrorFrame>();
@@ -170,8 +145,7 @@ namespace Polaris.Diagnostics
                 text = text.Substring(3).TrimStart();
             }
 
-            // 签名 = 第一个左括号之前的部分。泛型参数里也可能有括号，但方法名之前不会有，
-            // 取第一个就够。
+            // 签名是第一个左括号之前的部分。
             int paren = text.IndexOf('(');
             string signature = (paren > 0 ? text.Substring(0, paren) : text).Trim();
             if (signature.Length == 0)
@@ -182,7 +156,7 @@ namespace Polaris.Diagnostics
             string typeName;
             string methodName;
 
-            // "UnityEngine.Debug:Log" 这种冒号形式是 Unity 自己拼的，和 Mono 的点号形式混在一起出现。
+            // 冒号形式（Unity）和点号形式（Mono）混在一起出现。
             int colon = signature.LastIndexOf(':');
             int dot = signature.LastIndexOf('.');
 
@@ -218,10 +192,7 @@ namespace Polaris.Diagnostics
 
         // ================== 补丁标注 ==================
 
-        /// <summary>
-        /// 只给原版帧做补丁反查。模组自己的方法被别的模组打补丁也可能发生，但那属于
-        /// 模组之间的事；这里要解决的是"原版方法被改过，所以看起来像原版的锅"这个特定误判。
-        /// </summary>
+        /// <summary>只给原版帧做补丁反查，纠正"原版方法被改过却看起来像原版的锅"这类误判。</summary>
         static void Annotate(ErrorFrame frame, MethodBase method)
         {
             if (method == null || frame.Owner.Kind != OwnerKind.Vanilla)
@@ -239,10 +210,7 @@ namespace Polaris.Diagnostics
             frame.PatchNote = scan.Note;
         }
 
-        /// <summary>
-        /// 收集整条堆栈上的补丁嫌疑人。<see cref="Annotate"/> 只在帧上留了一句说明，
-        /// 定责需要的是去重之后的完整名单，所以这里再走一遍。
-        /// </summary>
+        /// <summary>收集整条堆栈上的补丁嫌疑人，去重后供定责使用。</summary>
         internal static List<ErrorSuspect> CollectSuspects(IReadOnlyList<ErrorFrame> frames)
         {
             var result = new List<ErrorSuspect>();

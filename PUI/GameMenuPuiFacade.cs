@@ -3,13 +3,8 @@ using System;
 namespace Polaris.PUI
 {
     /// <summary>
-    /// 把已注册的 PUI 内容直接接到 <see cref="GameMenuAPI"/> 的分类内容区上。与
-    /// <see cref="MainMenuPuiFacade"/> 不同：这里只接受 <see cref="IPUI"/>（纯内容定义），
-    /// 不接受 <see cref="PUIRuntime"/>/<see cref="PUISolution"/>——分类内容区
-    /// （<c>UiGMC.BxR</c>）是 <c>UiGameMenu</c> 自己建好的固定盒子，宽高由游戏菜单
-    /// 自己算，这条路径完全不调用 <see cref="IPUI.GetUIWindow"/>，因此 <see cref="IPUI"/>
-    /// 在 .pui 里声明的 Window 宽高对这里不生效：既没有独立窗口可言，也没有状态机图
-    /// 节点切换窗口这件事。
+    /// 把已注册的 PUI 内容直接接到 <see cref="GameMenuAPI"/> 的分类内容区上；只接受 <see cref="IPUI"/>，
+    /// 分类内容区尺寸固定，不调用 <see cref="IPUI.GetUIWindow"/>，.pui 里声明的 Window 宽高不生效。
     /// </summary>
     public sealed class GameMenuPuiFacade
     {

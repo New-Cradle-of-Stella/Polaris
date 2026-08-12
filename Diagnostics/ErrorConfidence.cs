@@ -1,9 +1,6 @@
 namespace Polaris.Diagnostics
 {
-    /// <summary>
-    /// 归因结论的可信程度。刻意做成四档而不是一个百分数：这个值最终是要念给玩家听的
-    /// （"疑似模组 X ——置信度：中"），三言两语说得清才有用，小数点后两位没有意义。
-    /// </summary>
+    /// <summary>归因结论的可信程度，四档而非百分数，方便直接展示给玩家。</summary>
     public enum ErrorConfidence
     {
         /// <summary>没有结论。</summary>

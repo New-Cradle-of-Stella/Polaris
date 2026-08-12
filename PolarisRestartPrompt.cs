@@ -6,29 +6,14 @@ using XX;
 
 namespace Polaris
 {
-    /// <summary>
-    /// 模组管理页的"需要重启"确认窗：一个与主面板同族、但独立摆在屏幕中央的
-    /// <see cref="UiBoxDesigner"/>，正文说明缓存的启停修改必须重启才会生效，下方两个按钮
-    /// 分别对应"保存并关闭游戏"与"退回列表"。它只挡在"确定"这条路上——放弃改动是页面底部
-    /// "取消"按钮的事，那一步无条件、不经过本窗。
-    /// <para>
-    /// 弹出期间 <see cref="PolarisManagementUI"/> 会把主列表整个 deactivate 掉——这一族里的
-    /// 按钮不存在"被上层窗口挡住就点不到"的说法，鼠标射线照样能打到列表上的启停按钮；
-    /// 只有把列表收起来，这个确认窗才是真正的模态。
-    /// </para>
-    /// </summary>
+    /// <summary>模组管理页的"需要重启"确认窗，独立摆在屏幕中央；仅拦在"确定"这条路上，"取消"无条件绕过它。管理页需把主列表整个 deactivate 才能让本窗真正模态。</summary>
     internal static class PolarisRestartPrompt
     {
         const string DesignerName = "PolarisRestartPrompt";
 
         const float PromptW = 480f;
 
-        /// <summary>
-        /// 窗口高度。按三种语言里<b>最长</b>的那一版正文定，而不是按中文定：正文块的高度是
-        /// <c>FillBlock</c> 按实测文本给的（<see cref="TextH"/> 只是下限），排不下时会把下面的
-        /// 按钮行顶出框外，而本窗 <c>use_scroll</c> 是关的，顶出去就再也点不到了。英文那版最长，
-        /// 约 8 行。
-        /// </summary>
+        /// <summary>窗口高度按最长语言版本（英文，约 8 行）定；本窗不滚动，排不下会把按钮顶出框外点不到。</summary>
         const float PromptH = 300f;
 
         /// <summary>正文占用的高度：面板内高（PromptH - margin_in_tb * 2 = 240）减去按钮行与留白。</summary>
@@ -51,12 +36,7 @@ namespace Polaris
         /// <summary>确认窗当前是否正显示；管理页据此把 ESC/关闭改派给本窗处理。</summary>
         internal static bool IsOpen { get; private set; }
 
-        /// <summary>
-        /// 首次调用时在 <paramref name="family"/> 里建出确认窗。必须在主面板与详情浮窗之后建，
-        /// 才会拿到这一族里最靠前的 z（<c>CreateT</c> 每建一个就把 <c>base_z</c> 往前推
-        /// 一个 <c>slip_z</c>）；建完立刻从自动激活位里摘掉并 deactivate，否则一打开管理页
-        /// 它就跟着亮起来了。
-        /// </summary>
+        /// <summary>首次调用时建出确认窗，须在主面板与详情浮窗之后建才能拿到最靠前的 z；建完立即隐藏。</summary>
         internal static void Ensure(UiBoxDesignerFamily family)
         {
             if (designer != null)
@@ -74,15 +54,12 @@ namespace Polaris
             designer.deactivate();
         }
 
-        /// <summary>
-        /// 弹出确认窗。<paramref name="confirm"/> 与 <paramref name="cancel"/> 在按钮点下时调用，
-        /// 调用前本窗已自行收起，回调里可以直接接着做关页面/退游戏这类动作。
-        /// </summary>
+        /// <summary>弹出确认窗；回调触发前本窗已自行收起，回调里可直接接着关页面/退游戏。</summary>
         internal static void Show(string message, Action confirm, Action cancel)
         {
             if (designer == null)
             {
-                // 建不出窗就别把玩家卡在"改了但没提示"的中间态，直接当作确认处理。
+                // 建不出窗就不把玩家卡在中间态，直接当作确认处理。
                 confirm?.Invoke();
                 return;
             }
@@ -112,8 +89,7 @@ namespace Polaris
         {
             designer.alignx = ALIGN.CENTER;
 
-            // html 保持 false：正文里会拼进模组文件名，第三方文件名带 '<' 会被富文本解析器吃掉。
-            // text_auto_wrap 必须显式设 true，它的默认值是 TX.isEnglishLang()，中文环境下为 false。
+            // html 保持 false：第三方文件名若带 '<' 会被富文本解析器吃掉；text_auto_wrap 须显式设 true。
             designer.addP(new DsnDataP(message, false)
             {
                 size = TextSize,

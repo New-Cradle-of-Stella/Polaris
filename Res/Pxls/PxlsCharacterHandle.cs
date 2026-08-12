@@ -4,17 +4,8 @@ using PixelLiner;
 namespace Polaris.Res.Pxls
 {
     /// <summary>
-    /// 模组代码唯一能拿到的 PXLS 句柄。和 <c>Texture</c>/<c>Image</c>/<c>Bytes</c> 不同，
-    /// 找不到文件之外的失败（PXLS 损坏、title 冲突）要等 <c>PxlsLoader</c> 自己的协程跑完
-    /// 几帧之后才能发现，任何调用点的 <c>try/catch</c> 都够不着——所以这里没有"拿到能用的
-    /// 对象或者异常"这种同步语义，天然是"立刻拿到一个 handle，订阅 <see cref="Ready"/>/
-    /// <see cref="Faulted"/>"。
-    /// <para>
-    /// <see cref="Character"/>/<see cref="Image"/> 在 <see cref="IsReady"/> 变 true 之前恒为
-    /// <c>null</c>——这是刻意的：解析完成前把 <c>PxlCharacter</c> 暴露出去，模组代码就有可能
-    /// 经 <c>getPF</c>/<c>getMI(PxlFrame)</c>/<c>getMI(PxlImage)</c> 间接触发
-    /// <c>XX.MTRX.getMI</c> 的空纹理陷阱（旧计划"已核实的关键事实 #12"）。
-    /// </para>
+    /// 模组代码唯一能拿到的 PXLS 句柄；因解析要跨帧完成，调用点没法用同步 try/catch，只能立刻拿到 handle 后订阅 <see cref="Ready"/>/<see cref="Faulted"/>。
+    /// <see cref="Character"/>/<see cref="Image"/> 在 <see cref="IsReady"/> 变 true 前恒为 <c>null</c>，避免提前暴露引发空纹理陷阱。
     /// </summary>
     public sealed class PxlsCharacterHandle
     {
@@ -51,11 +42,7 @@ namespace Polaris.Res.Pxls
         /// <summary>永远走当前 <see cref="Character"/>——不要跨帧缓存返回值。</summary>
         public PxlPose GetPose(string name) => Character?.getPoseByName(name);
 
-        /// <summary>
-        /// 按 <see cref="QualifiedFrameName"/> 从全局 <c>XX.MTRX.getPF</c> 里取当前注册的帧。
-        /// <see cref="FrameNamePolicy.None"/> 策略下什么都没注册，恒返回 <c>null</c>——
-        /// 用了 <c>None</c> 就意味着调用方打算自己走 <see cref="GetPose"/> 拿帧，不依赖这个。
-        /// </summary>
+        /// <summary>按 <see cref="QualifiedFrameName"/> 从全局 <c>XX.MTRX.getPF</c> 取当前注册的帧；<see cref="FrameNamePolicy.None"/> 下恒返回 <c>null</c>。</summary>
         public PxlFrame GetFrame(string frameName) => XX.MTRX.getPF(QualifiedFrameName(frameName));
 
         /// <summary>裸帧名 → 实际注册进 <c>OMeshImages</c> 的键。</summary>
@@ -75,7 +62,7 @@ namespace Polaris.Res.Pxls
             }
             catch (Exception ex)
             {
-                // 一个模组的 Ready 回调炸了，不该连累同一帧里其它在途 PXLS 的收尾。
+                // 一个模组的 Ready 回调炸了不该连累其它在途 PXLS 的收尾。
                 Plugin.Logger.LogError($"[PolarisRes] The Ready callback of {Title} threw an exception: {ex}");
             }
         }

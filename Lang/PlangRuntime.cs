@@ -5,16 +5,9 @@ using System.Reflection;
 namespace Polaris.Lang
 {
     /// <summary>
-    /// <c>.plang</c> 生成代码的运行时落脚点，取代旧版 <c>LangLoader</c> 的运行时目录扫描。
-    /// 生成的 <c>{File}_PlangRegistrar</c>（见 <see cref="PlangAutoRegistrationAttribute"/>）在
-    /// <see cref="PlangRegistryScanner.ScanAll"/> 时把每个 Key 的中性值/各语言文案
-    /// <see cref="Register"/> 进这里；生成的只读属性直接调 <see cref="Get"/> 取值，不再经过
-    /// <c>XX.TX.Get</c>/Harmony patch 那一整条链路。
-    /// <para>
-    /// 同时把 <see cref="Get"/> 注册进 <see cref="PolarisAPI.Localization"/>（见
-    /// <c>Plugin.Init</c>），这样任何直接调用原生 <c>XX.TX.Get(key)</c> 的代码（比如 PUI
-    /// 的 <c>&amp;key</c> 语法）也能查到同一份文案，两条路径结果始终一致。
-    /// </para>
+    /// <c>.plang</c> 生成代码的运行时落脚点：生成的注册类在 <see cref="PlangRegistryScanner.ScanAll"/> 时
+    /// 把各 Key 的文案 <see cref="Register"/> 进这里，生成的属性直接调 <see cref="Get"/> 取值。
+    /// 同时把 <see cref="Get"/> 注册进 <see cref="PolarisAPI.Localization"/>，让原生 <c>XX.TX.Get(key)</c> 路径也能查到同一份文案。
     /// </summary>
     public static class PlangRuntime
     {
@@ -23,22 +16,16 @@ namespace Polaris.Lang
             public string Neutral;
             public IReadOnlyDictionary<string, string> Values;
 
-            /// <summary>注册这个 Key 的插件程序集，用来判断"又有人注册同一个 Key"算不算冲突。</summary>
+            /// <summary>注册这个 Key 的插件程序集，用来判断重复注册算不算冲突。</summary>
             public Assembly Source;
         }
 
         static readonly Dictionary<string, Entry> table = new(StringComparer.Ordinal);
 
         /// <summary>
-        /// 注册一个 Key 的文案。<paramref name="values"/> 只应该包含编辑器里"启用"的语言——
-        /// 由生成代码保证，这里不做二次过滤。语言代码大小写不敏感（内部按
-        /// <see cref="StringComparer.OrdinalIgnoreCase"/> 存）。
-        /// <para>
-        /// 同一个 Key 被<b>另一个模组</b>再注册一次是致命错误：先注册的那份文案保留，冲突交给
-        /// <see cref="PlangConflictGuard"/>（最终会写出报告并请玩家退出游戏，理由见那里）。
-        /// 同一个程序集内部的重复注册不算冲突——那是同一个作者的两份 <c>.plang</c> 用了同一个
-        /// Key，只影响他自己的模组，照旧后者覆盖前者，记一行警告就够了。
-        /// </para>
+        /// 注册一个 Key 的文案（<paramref name="values"/> 应只含编辑器里启用的语言，语言代码大小写不敏感）。
+        /// 同一 Key 被<b>另一个模组</b>再注册是致命冲突，交给 <see cref="PlangConflictGuard"/> 处理；
+        /// 同程序集内部重复注册只是后者覆盖前者、记一行警告。
         /// </summary>
         public static void Register(string key, string neutralValue, IReadOnlyDictionary<string, string> values)
         {
@@ -47,8 +34,7 @@ namespace Polaris.Lang
                 return;
             }
 
-            // 扫描期间由 PlangRegistryScanner 点名（准确、且不受内联/优化影响）；有人绕过扫描
-            // 直接调这里时退回调用方程序集。
+            // 扫描期间由 PlangRegistryScanner 点名；绕过扫描直接调这里时退回调用方程序集。
             Assembly source = PlangConflictGuard.CurrentSource ?? Assembly.GetCallingAssembly();
 
             if (table.TryGetValue(key, out Entry existing))
@@ -77,13 +63,9 @@ namespace Polaris.Lang
         }
 
         /// <summary>
-        /// 按 <see cref="LangSettings.EffectiveLocale"/>（玩家指定的语言，或"自动"时的
-        /// <see cref="PolarisAPI.Game.CurrentLocale"/>，形如 <c>"zh-cn"</c>/<c>"en"</c>）取文案：
-        /// 先精确匹配语言代码，匹配不到再按 <c>-</c> 前缀退一级（<c>"zh-cn"</c> 退到 <c>"zh"</c>），
-        /// 再不行就把游戏的默认 family <c>"_"</c> 当日文试一次，最后用中性值兜底。
-        /// Key 整体没注册过返回 <c>null</c>（不是空串）——把"这个 key 不归 PlangRuntime 管"和
-        /// "这个 key 确实是空文案"区分开，好让 <see cref="Localization.LocalizationAPI"/> 的
-        /// resolver 链正确放行给下一个 resolver/原版查表。
+        /// 按 <see cref="LangSettings.EffectiveLocale"/> 取文案：先精确匹配语言代码，再退一级到 <c>-</c> 前缀，
+        /// 再把默认 family <c>"_"</c> 当日文试一次，最后用中性值兜底。Key 未注册过返回 <c>null</c>（非空串），
+        /// 以便 resolver 链正确放行给下一个 resolver。
         /// </summary>
         public static string Get(string key)
         {
@@ -106,10 +88,7 @@ namespace Polaris.Lang
                     return baseLang;
                 }
 
-                // "_" 是游戏默认语言（日文）的 family key，而 .plang 作者在编辑器里填的是语言
-                // 代码，日文那一列几乎都写成 "ja"。不在这里翻译一次的话，玩默认设置（也就是
-                // 绝大多数日文玩家）会拿到中性值，明明有日文译文却看不到。
-                // 排在精确匹配之后：作者真的用 "_" 当代码时，上面那一步已经命中了。
+                // "_" 是游戏默认语言（日文）的 family key，而 .plang 里日文文案通常写作 "ja"，需要在此转译一次。
                 if (locale == DefaultFamily && TryPick(entry, JapaneseCode, out string japanese))
                 {
                     return japanese;
@@ -124,10 +103,7 @@ namespace Polaris.Lang
 
         const string JapaneseCode = "ja";
 
-        /// <summary>
-        /// 取某个语言代码下的文案。空串按"没有这一份"处理：编辑器里留空的格子会照样生成进
-        /// 表里，采纳它等于把界面画成空白，还挡住了后面的候选。
-        /// </summary>
+        /// <summary>取某个语言代码下的文案；空串按"没有这一份"处理，避免采纳空白挡住后面的候选。</summary>
         static bool TryPick(Entry entry, string locale, out string value)
         {
             value = entry.Values.TryGetValue(locale, out string found) ? found : null;

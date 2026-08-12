@@ -3,23 +3,9 @@ using System;
 namespace Polaris.Settings
 {
     /// <summary>
-    /// 标在静态字段上，把它变成一个设置项。字段本身就是值的真身：Polaris 在游戏启动时
-    /// 把上次存的值写回字段，玩家在设置界面改动时也直接写字段，模组代码照常读字段即可。
-    /// <para>
-    /// 必须配合类上的 <see cref="PolarisSettingGroupAttribute"/> 使用。
-    /// 控件类型由字段类型推断：<c>bool</c>→开关，<c>float</c>/<c>double</c>→滑条，
-    /// <c>int</c>→整数滑条（给了 <see cref="Choices"/> 则是多选一），
-    /// <c>enum</c>→枚举选择器，<c>string</c>→文本输入。
-    /// </para>
-    /// <para>
-    /// <b>本地化</b>：<see cref="Label"/>、<see cref="Desc"/>、<see cref="Choices"/> 以及分区的
-    /// <see cref="PolarisSettingGroupAttribute.DisplayName"/> 都遵守 PUI 那套 <c>&amp;</c> 约定
-    /// （见 <see cref="Localization.LocalizedString"/>）：以 <c>&amp;</c> 开头就当成本地化键去查表，
-    /// 想显示字面的 <c>&amp;</c> 开头就写 <c>&amp;&amp;</c>。文案来源是 <c>.plang</c>、
-    /// <see cref="Localization.LocalizationAPI.Register(string, Localization.LocalizedText)"/>
-    /// 登记的内置表、或者游戏自带的 key，三者共用同一条查询链。
-    /// <b>写死的字面量照旧能用</b>，只是那样玩家换语言时它不会跟着变。
-    /// </para>
+    /// 标在静态字段上，把它变成一个设置项；字段本身就是值的真身，须配合类上的 <see cref="PolarisSettingGroupAttribute"/> 使用。
+    /// 控件类型由字段类型推断：<c>bool</c>→开关，<c>float</c>/<c>double</c>→滑条，<c>int</c>→整数滑条（有 <see cref="Choices"/> 则多选一），<c>enum</c>→选择器，<c>string</c>→文本输入。
+    /// <see cref="Label"/>/<see cref="Desc"/>/<see cref="Choices"/> 遵守 <c>&amp;</c> 本地化键约定（见 <see cref="Localization.LocalizedString"/>）。
     /// </summary>
     /// <example>
     /// <code>
@@ -62,11 +48,7 @@ namespace Polaris.Settings
         /// <summary>数值型的步长，缺省：浮点 0.1，整数 1。</summary>
         public double Step { get; set; } = double.NaN;
 
-        /// <summary>
-        /// 选项文案（逐条 <c>&amp;</c> 开头视为本地化键）。<c>int</c> 字段给了它就变成多选一
-        /// （值是下标）；<c>enum</c> 字段给了它就用它替换枚举名，长度必须和枚举成员数一致；
-        /// <c>bool</c> 字段给两条时用作关/开两态的文案，缺省是 "OFF"/"ON"。
-        /// </summary>
+        /// <summary>选项文案。<c>int</c> 字段变多选一（值为下标）；<c>enum</c> 字段替换枚举名（长度须与成员数一致）；<c>bool</c> 字段用作关/开两态文案。</summary>
         public string[] Choices { get; set; }
 
         /// <summary>文本型的最大长度，-1 为不限。</summary>
@@ -76,16 +58,8 @@ namespace Polaris.Settings
         public int Order { get; set; }
 
         /// <summary>
-        /// 值变化后要调的静态方法名（同一个类里找，public/private 都行）。用 <c>nameof</c> 写以免打错。
-        /// <para>
-        /// 两种签名都认：<c>static void M()</c>（自己读字段）或 <c>static void M(T value)</c>
-        /// （<c>T</c> 与字段类型兼容）。调用时字段已经是新值了。
-        /// </para>
-        /// <para>
-        /// 触发时机：玩家在设置界面改动的每一步（含拖动滑块的中间值），以及点"取消"回滚时。
-        /// <b>游戏启动加载配置时不触发</b>——那是初始化，用
-        /// <see cref="PolarisSettingGroupAttribute.OnLoaded"/>。
-        /// </para>
+        /// 值变化后调用的静态方法名（同类中查找，签名 <c>static void M()</c> 或 <c>static void M(T value)</c>）。
+        /// 触发于玩家改动的每一步及取消回滚，但启动加载配置时不触发——那用 <see cref="PolarisSettingGroupAttribute.OnLoaded"/>。
         /// </summary>
         public string OnChanged { get; set; }
     }
@@ -113,13 +87,7 @@ namespace Polaris.Settings
         public int Order { get; set; }
 
         /// <summary>
-        /// 这一组的值全部从配置文件加载完之后要调的静态方法名（签名 <c>static void M()</c>，
-        /// 同一个类里找，public/private 都行）。用 <c>nameof</c> 写以免打错。
-        /// <para>
-        /// 这是模组的设置初始化点：调到它的时候所有标了 <see cref="PolarisSettingAttribute"/>
-        /// 的字段都已经是上次退出时的值，可以放心地把它们应用到运行状态（挂补丁、建 UI、改参数）。
-        /// 调用发生在 <c>Plugin.Start</c> 阶段，此时所有插件的 <c>Awake</c> 都已完成。
-        /// </para>
+        /// 该组值全部从配置文件加载完后调用的静态方法名（签名 <c>static void M()</c>）；调用时机在 <c>Plugin.Start</c>，此时所有字段已是上次退出时的值，可安全应用到运行状态。
         /// </summary>
         public string OnLoaded { get; set; }
     }

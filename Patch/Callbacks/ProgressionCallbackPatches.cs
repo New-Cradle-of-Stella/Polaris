@@ -24,12 +24,7 @@ namespace Polaris.Patch
         }
     }
 
-    /// <summary>
-    /// <c>QuestTracker.updateQuest</c> 内部有一堆提前返回分支（阶段没推进、任务已完成、任务不存在……）。
-    /// 与其跟着每个分支判断，Prefix/Postfix 各查一次当前进度表，单纯比较 phase 前后值：
-    /// 没找到 → 找到是 <c>QuestStarted</c>，phase 变了是 <c>QuestUpdated</c>，
-    /// 落进已完成列表再补一条 <c>QuestCompleted</c>。
-    /// </summary>
+    /// <summary>不跟随内部分支，而是 Prefix/Postfix 各查一次进度表比较 phase 前后值：未找到到找到即 <c>QuestStarted</c>，phase 变化即 <c>QuestUpdated</c>，落入已完成列表则视为完成。</summary>
     [HarmonyPatch(typeof(QuestTracker), nameof(QuestTracker.updateQuest))]
     [PolarisPatchFeature("QuestStarted")]
     [PolarisPatchFeature("QuestUpdated")]

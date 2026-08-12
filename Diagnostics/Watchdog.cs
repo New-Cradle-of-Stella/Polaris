@@ -5,29 +5,9 @@ using System.Threading;
 namespace Polaris.Diagnostics
 {
     /// <summary>
-    /// 卡死看门狗：一条后台线程，盯着主线程还在不在推进帧（<see cref="MainThreadBeat"/>）。
-    /// <para>
-    /// 这是错误捕获那三条通道完全覆盖不到的一类问题。死循环、死锁、无限递归的等待——
-    /// 主线程再也不回来，于是<b>没有异常、没有日志、也不会有 <c>OnApplicationQuit</c></b>，
-    /// 三条通道一条都不会响。要发现它，只能有一个不在主线程上的东西负责数着秒。
-    /// </para>
-    /// <para>
-    /// 两级升级：到 <see cref="DiagnosticsConfig.WarnSeconds"/> 只在控制台记一行（很可能只是一次
-    /// 长加载，不值得为它写文件、更不值得下一局去打扰玩家）；到
-    /// <see cref="DiagnosticsConfig.ReportSeconds"/> 才写报告、并通过 <see cref="SessionSentinel"/>
-    /// 给下一局的标题画面上膛——那之后即使玩家是自己去任务管理器把游戏结束掉的，
-    /// 下次启动仍然说得清"上一局卡在哪"。
-    /// </para>
-    /// <para>
-    /// <b>默认不杀进程</b>（<see cref="DiagnosticsConfig.KillOnHang"/>）。一次误判就会让玩家丢掉
-    /// 这一局的进度，那比卡在那里更糟；而报告在判定的那一刻就已经落盘了，杀不杀进程都不影响
-    /// 玩家事后能拿到什么。
-    /// </para>
-    /// <para>
-    /// 这条线程<b>绝对不碰任何 Unity API</b>。Unity 的对象模型只允许主线程访问，而主线程此刻
-    /// 恰恰是卡住的那一个——在这里读一个 <c>Time.frameCount</c> 就足以把"发现卡死"变成
-    /// "跟着一起死"。所有 Unity 侧的量都由主线程采样进 <see cref="MainThreadBeat"/>，这里只读它。
-    /// </para>
+    /// 卡死看门狗：后台线程监视主线程是否还在推进帧（<see cref="MainThreadBeat"/>），弥补异常捕获无法
+    /// 发现死循环/死锁的缺口。两级升级：先警告，超阈值再写报告并上膛下一局告知；默认不杀进程。
+    /// 该线程绝不能访问 Unity API（主线程此刻可能正卡着），所有 Unity 侧数据都经主线程采样。
     /// </summary>
     internal static class Watchdog
     {
@@ -37,11 +17,7 @@ namespace Polaris.Diagnostics
         /// <summary>心跳落盘间隔。</summary>
         const int FlushMillis = 5000;
 
-        /// <summary>
-        /// <b>自己被饿到这个程度就不作判断。</b>这一轮循环距上一轮超过了它，说明卡住的不只是
-        /// 主线程——系统休眠/唤醒、整机换页、调试器断点、虚拟机被挂起都会让所有线程一起停摆。
-        /// 那种情况下"主线程停了 40 秒"是真的，但结论"游戏卡死了"是假的。
-        /// </summary>
+        /// <summary>看门狗自身被饿到这个程度就不作判断（系统休眠/挂起会让所有线程一起停摆）。</summary>
         const int SelfStarvationMillis = 5000;
 
         /// <summary>一局最多写几份卡死报告。反复卡住又反复恢复的情况下，第五份开始就没有新信息了。</summary>
@@ -62,17 +38,14 @@ namespace Polaris.Diagnostics
         static volatile string stallReason;
         static bool warnedAboutLeak;
 
-        // 当前这一轮"停摆事件"的状态。主线程一恢复就整体清零。
+        // 当前停摆事件的状态，主线程恢复后整体清零。
         static bool warned;
         static bool reported;
         static double episodePeakSeconds;
 
         static int hangReports;
 
-        /// <summary>
-        /// 判定疑似卡死时触发。<b>在后台线程上触发</b>，而且触发的那一刻主线程正卡着——
-        /// 订阅者在这里碰任何 Unity API 都是错的，能做的只有记日志、写文件、发网络请求这类事。
-        /// </summary>
+        /// <summary>判定疑似卡死时在后台线程触发；订阅者不能碰 Unity API。</summary>
         internal static event Action<HangReport> HangSuspected;
 
         internal static void Install()
@@ -88,8 +61,7 @@ namespace Polaris.Diagnostics
             {
                 thread = new Thread(Loop)
                 {
-                    // 后台线程：进程退出时不会因为它还在跑而卡住。看门狗的价值全在"发现问题"，
-                    // 不值得为它多留一个能拖住退出流程的东西。
+                    // 后台线程，避免拖住进程退出。
                     IsBackground = true,
                     Priority = ThreadPriority.BelowNormal,
                     Name = "Polaris.Watchdog",
@@ -104,11 +76,7 @@ namespace Polaris.Diagnostics
             }
         }
 
-        /// <summary>
-        /// 停掉看门狗。<b>退出流程一开始就要调</b>：<c>OnApplicationQuit</c> 之后 Unity 不再调
-        /// <c>Update</c>，而进程还要活一会儿（存档、淡出、资源释放），不停掉就会把正常的退出
-        /// 过程判成卡死，还顺手给下一局上一发误报。
-        /// </summary>
+        /// <summary>停掉看门狗；必须在退出流程一开始就调用，否则正常退出会被误判成卡死。</summary>
         internal static void Uninstall()
         {
             if (!installed)
@@ -125,23 +93,15 @@ namespace Polaris.Diagnostics
             }
             catch (Exception)
             {
-                // 打断失败也无所谓：IsBackground 的线程不会拖住进程退出。
+                // 打断失败无所谓，IsBackground 线程不会拖住进程退出。
             }
 
             thread = null;
         }
 
         /// <summary>
-        /// 由 <c>Plugin.OnApplicationFocus</c>/<c>OnApplicationPause</c> 调用。
-        /// <para>
-        /// 这是最大的一个误报来源：<c>Application.runInBackground</c> 为 false 时，窗口一失焦
-        /// Unity 就不再调 <c>Update</c>——主线程完全健康，只是没事干。玩家去泡杯茶回来，
-        /// 看门狗已经"发现"了一次五分钟的卡死。
-        /// </para>
-        /// <para>
-        /// 恢复时顺手把心跳基线抹平：这个回调在主线程上、且发生在同一帧的 <c>Update</c> 之前，
-        /// 不抹的话中间那一小段仍然带着失焦期间攒下的陈旧读数。
-        /// </para>
+        /// 由 <c>Plugin.OnApplicationFocus</c>/<c>OnApplicationPause</c> 调用，避免窗口失焦期间
+        /// 停止 <c>Update</c> 被误判为卡死；恢复时顺手重置心跳基线。
         /// </summary>
         internal static void SetPaused(bool value)
         {
@@ -153,11 +113,7 @@ namespace Polaris.Diagnostics
             paused = value;
         }
 
-        /// <summary>
-        /// 声明"接下来这段时间不推进帧是正常的"（读大存档、切场景、一次性解析一堆资源）。
-        /// 返回的对象释放时结束声明；<paramref name="seconds"/> 是硬上限，忘记释放也不会把看门狗
-        /// 永久关掉。
-        /// </summary>
+        /// <summary>声明接下来一段时间不推进帧是正常的；<paramref name="seconds"/> 是硬上限，防止忘记释放。</summary>
         internal static IDisposable ExpectStall(string reason, double seconds)
         {
             double clamped = seconds > 0d ? Math.Min(seconds, MaxExpectSeconds) : 1d;
@@ -216,8 +172,7 @@ namespace Polaris.Diagnostics
                     long sinceLastPoll = now - previous;
                     previous = now;
 
-                    // 心跳照刷：哪怕这一轮不做判定，"上一局最后活到什么时候"也得记下来，
-                    // 崩溃检测靠的就是它。
+                    // 心跳照刷，即使这一轮不做判定，崩溃检测需要这个记录。
                     if (now - lastFlush >= FlushMillis)
                     {
                         lastFlush = now;
@@ -226,7 +181,7 @@ namespace Polaris.Diagnostics
 
                     if (sinceLastPoll > SelfStarvationMillis)
                     {
-                        // 连我们自己都被停了这么久，这一轮的读数不能当证据。
+                        // 自己都被停了这么久，这一轮读数不能当证据。
                         ResetEpisode(silent: true);
                         continue;
                     }
@@ -241,8 +196,7 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    // 看门狗自己抛异常绝对不能让线程死掉——它一死，之后真的卡住了也没人看着了。
-                    // 这里同样不记日志：能走到这一步的异常多半会每轮都复现，一秒一行足以把日志埋掉。
+                    // 看门狗自己抛异常不能让线程死掉，也不记日志（避免每轮刷屏）。
                 }
             }
         }
@@ -255,7 +209,7 @@ namespace Polaris.Diagnostics
                 return false;
             }
 
-            // 挂着调试器时"主线程停了两分钟"通常意味着有人正在看某一行代码。
+            // 挂着调试器时停顿通常是有人在看某一行代码。
             if (Debugger.IsAttached)
             {
                 return false;
@@ -278,8 +232,7 @@ namespace Polaris.Diagnostics
                 return true;
             }
 
-            // 声明超时还没释放。多半是调用方在那段代码里抛了异常、把 Dispose 跳过去了。
-            // 不再顺着它——否则一次泄漏就等于把这一局的卡死检测整个关掉。
+            // 声明超时还没释放（可能是那段代码抛异常跳过了 Dispose），不再顺着它，避免检测被永久关掉。
             if (!warnedAboutLeak)
             {
                 warnedAboutLeak = true;
@@ -298,8 +251,7 @@ namespace Polaris.Diagnostics
 
             double reportAt = boot ? DiagnosticsConfig.BootReportSeconds : DiagnosticsConfig.ReportSeconds;
 
-            // 启动阶段的警告线跟着报告线一起抬。用游戏中的 10 秒去量启动，等于每局都在控制台
-            // 抱怨一次"启动慢"——而启动慢本来就是这游戏的常态。
+            // 启动阶段警告线跟着报告线一起抬，避免每局都误报"启动慢"。
             double warnAt = boot
                 ? Math.Max(DiagnosticsConfig.WarnSeconds, reportAt / 3d)
                 : DiagnosticsConfig.WarnSeconds;
@@ -324,7 +276,7 @@ namespace Polaris.Diagnostics
                     + $". Currently executing: {MainThreadBeat.ActivityChain() ?? "(not inside any Polaris instrumentation point)"}."
                     + $" Past {reportAt:0}s a hang report will be written.");
 
-                // 立刻落一次盘：这一刻的面包屑是最接近病根的，等下一次周期性心跳可能就没机会了。
+                // 立刻落盘，此刻的面包屑最接近病根，不等下一次周期性心跳。
                 SessionSentinel.Flush();
             }
 
@@ -367,14 +319,13 @@ namespace Polaris.Diagnostics
                 DuringBoot = boot,
             };
 
-            // 顺序和 ErrorRegistry / FatalRegistry 一致：先落盘，再打日志——日志最后一行要报出
-            // 报告文件的位置，写失败时不能对着玩家撒谎说"已写入"。
+            // 先落盘再打日志（与 ErrorRegistry/FatalRegistry 一致）。
             if (hangReports <= MaxHangReports)
             {
                 ErrorReportWriter.AppendHang(report);
             }
 
-            // 哨兵必须无条件更新，哪怕报告已经不写了：它是下一局唯一的信息来源。
+            // 哨兵无条件更新：即使报告不再写，它仍是下一局唯一的信息来源。
             SessionSentinel.MarkHung(report);
 
             if (hangReports <= MaxHangReports)
@@ -435,16 +386,12 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    // 一个订阅者写坏了不该连累其它订阅者，更不该把看门狗线程带走。
+                    // 订阅者写坏了不该连累其它订阅者或看门狗线程本身。
                 }
             }
         }
 
-        /// <summary>
-        /// 结束进程。走不了 <c>Application.Quit</c>——那是 Unity API，只能在主线程调，
-        /// 而主线程正是卡住的那一个；也不走 <c>Environment.Exit</c>，它要跑终结器和
-        /// AppDomain 卸载，那些同样可能要等主线程。剩下唯一确定能生效的就是直接杀自己。
-        /// </summary>
+        /// <summary>直接杀进程；不用 <c>Application.Quit</c>（Unity API，主线程卡着调不了）或 <c>Environment.Exit</c>（同样可能卡住）。</summary>
         static void Kill()
         {
             Plugin.Logger.LogError("[Polaris] KillOnHang is enabled; ending the game process.");

@@ -6,23 +6,8 @@ using XX;
 namespace Polaris.Patch
 {
     /// <summary>
-    /// 把 Polaris 的设置项渲染挂进原版设置界面。
-    /// <para>
-    /// <c>UiCFG</c> 的构造函数第 6 个参数 <c>FnCfgTabCreateAfter</c> 是原版自己留的扩展口：
-    /// 它被存进 <c>public readonly FnDesignerCreateAfter</c> 字段，并在
-    /// <c>createBoxDesignerContentMain</c> 的末尾（<c>MainBoxRelink()</c> 之前）以
-    /// <c>(CurTab, "MAIN")</c> 调用。所以这里只要在 Prefix 里改写这个 <c>ref</c> 参数即可，
-    /// 既不用 transpiler，也绕开了字段 readonly 的问题（Publicizer 只放宽可见性，不去掉 readonly）。
-    /// </para>
-    /// <para>
-    /// 必须是<b>链式</b>而不是替换：标题画面（<c>SceneTitleTemp</c>）传的是 null，
-    /// 但 ESC 菜单（<c>UiGMCCfg</c>）传了一个非 null 的委托，用来在主页尾部加"返回标题"按钮。
-    /// 顺序上 Polaris 排在原委托<b>之前</b>，否则设置项会跑到那个按钮下面去。
-    /// </para>
-    /// <para>
-    /// Prefix 里捕获 <c>__instance</c> 是安全的：构造函数先给 <c>BxOut</c>/<c>BxDesc</c> 赋值，
-    /// 之后才调用 <c>createBoxDesignerContentMain</c>，委托真正执行时这些字段已经就绪。
-    /// </para>
+    /// 把 Polaris 的设置项渲染挂进原版设置界面，通过改写构造函数的 <c>ref</c> 参数
+    /// <c>_FnDesignerCreateAfter</c>（原版扩展口）实现，链式调用而非替换，且排在原委托之前。
     /// </summary>
     [HarmonyPatch(typeof(UiCFG), MethodType.Constructor,
         typeof(UiBoxDesigner), typeof(UiBoxDesigner), typeof(Designer), typeof(bool), typeof(bool),
@@ -44,25 +29,20 @@ namespace Polaris.Patch
                 original?.Invoke(tab, key);
             };
 
-            // 界面即将建起来，此刻的值就是"取消"要回滚到的基准。
+            // 此刻的值即"取消"要回滚到的基准。
             SettingsStore.Snapshot();
 
-            // 标题画面的设置面板底部让出一条给搜索框。必须赶在构造函数<b>之前</b>：
-            // 构造函数里 BxOut.use_h 会被拿去给主标签页定高
-            // （addTab("_DsmInner", use_w, use_h, ...)），改晚了就是面板缩了、里面的滚动区没缩。
+            // 必须在构造函数用 BxOut.use_h 定高之前缩面板，否则滚动区不会跟着缩。
             if (SettingsSearchWindow.Wanted(_is_title))
             {
                 SettingsSearchWindow.ShrinkPanel(_Bx);
             }
         }
 
-        /// <summary>
-        /// 设置项这时已经画完（委托是在构造函数末尾跑的），
-        /// <see cref="SettingsSearchFilter"/> 的登记表是新鲜的，可以把搜索框摆出来了。
-        /// </summary>
+        /// <summary>设置项已画完，登记表是新鲜的，可以摆出搜索框了。</summary>
         static void Postfix(UiBoxDesigner _Bx, bool _is_title)
         {
-            // 条件与 Prefix 里那次缩短严格一致：缩了却不摆搜索框，面板底下就白空一条。
+            // 条件须与 Prefix 一致，否则缩了面板却不摆搜索框会留白。
             if (SettingsSearchWindow.Wanted(_is_title))
             {
                 SettingsSearchWindow.ShowUnder(_Bx);

@@ -1,22 +1,11 @@
 namespace Polaris.PUI
 {
-    /// <summary>
-    /// PUI 实例与 .puisln 图的注册/查询/显示控制，从 <see cref="PolarisUIAPI.Pui"/> 取。
-    /// <para>
-    /// 只做转发：真正的目录、根节点生命周期与热重载扇出仍在内部的 <c>PUIManager</c> 里。
-    /// 需要直接持有实例的场景走 <see cref="PUIRuntime.Create"/> 与
-    /// <see cref="PUIGraphDefinition.CreateSolution"/>，不必先按名字注册。
-    /// </para>
-    /// </summary>
+    /// <summary>PUI 实例与 .puisln 图的注册/查询/显示控制；只做转发，实际逻辑在内部 <c>PUIManager</c>。</summary>
     public sealed class PuiRegistry
     {
         internal PuiRegistry() { }
 
-        /// <summary>
-        /// 手动注册一个 PUI 实例为按名字的进程级共享实例（自动注册未覆盖的场景可用）。
-        /// 是否启用热重载由 <paramref name="pui"/> 所在程序集是否标了
-        /// <see cref="PUIHotFixEnabledAttribute"/> 决定。
-        /// </summary>
+        /// <summary>手动注册一个 PUI 实例为按名字的进程级共享实例。</summary>
         /// <exception cref="System.ArgumentException">同名 PUI 已注册</exception>
         public PUIRuntime Register(IPUI pui) => PUIManager.Register(pui);
 

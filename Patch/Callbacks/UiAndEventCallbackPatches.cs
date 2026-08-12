@@ -5,10 +5,7 @@ using Polaris.API;
 
 namespace Polaris.Patch
 {
-    /// <summary>
-    /// 纯通知，不改变任何行为——与 <c>Patch_UiGameMenu_activate_WorldPause</c>（世界暂停 transpiler）
-    /// 是两个独立的补丁类，Harmony 允许同一方法叠加多个 Prefix/Postfix/Transpiler。
-    /// </summary>
+    /// <summary>纯通知，不改变行为；与世界暂停的 transpiler 补丁类独立叠加在同一方法上。</summary>
     [HarmonyPatch(typeof(UiGameMenu), nameof(UiGameMenu.activate))]
     [PolarisPatchFeature("GameMenuOpened")]
     internal static class Patch_UiGameMenu_activate_Notify
@@ -26,10 +23,7 @@ namespace Polaris.Patch
         static void Postfix(UiGameMenu __instance) => GameCallbackPublishers.GameMenuClosed(__instance);
     }
 
-    /// <summary>
-    /// <c>EV.stack</c> 是事件被压入执行栈的唯一入口。事件系统没有把"栈顶事件的名字"暴露成
-    /// 稳定的公开成员，所以当前事件由这三个补丁记账，而不是每帧去猜。
-    /// </summary>
+    /// <summary>事件压栈的唯一入口；引擎未暴露稳定的"当前栈顶事件"成员，故靠这三个补丁记账。</summary>
     [HarmonyPatch(typeof(EV), nameof(EV.stack))]
     [PolarisPatchFeature("EventOpened")]
     internal static class Patch_EV_stack_Callbacks

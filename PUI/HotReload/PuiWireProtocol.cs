@@ -1,6 +1,4 @@
-// 这个文件被编进两个 nullable 设置不同的项目（Polaris 关、PolarisTools 开），
-// 所以自己固定语境，免得同一份源码在一边干净、在另一边刷一屏 CS8618/CS8625。
-// 载荷类型是线协议 DTO：字段由读写端逐个填充，"未赋值即 null/default" 本来就是预期语义。
+// 这个文件同时编进 nullable 关/开两个项目，DTO 字段留给读写端逐个填充，故禁用 nullable 警告。
 #nullable disable
 
 using System.Globalization;
@@ -8,39 +6,20 @@ using System.Globalization;
 namespace Polaris.PUI.Wire
 {
     // ============================================================================
-    //  PUI 热重载线协议 —— 编辑器（PolarisTools，net472 VSIX）与游戏进程
-    //  （Polaris，netstandard2.1）之间唯一的共享契约。
-    //
-    //  本文件是**唯一的一份定义**：PolarisTools 通过 <Compile Include Link="..."/>
-    //  把它链接进自己的编译（见 PolarisTools.csproj 与 Directory.Build.props 里的
-    //  $(PolarisDir)），因此两侧的 opcode 数值、载荷字段与字段顺序天然一致，
-    //  不再需要靠人眼比对两份手抄。
-    //
-    //  这也是它不能引用 UnityEngine / WPF 任何类型的原因——颜色因此用中立的
-    //  PuiColor，两侧各自提供到本框架类型的转换（游戏侧见 PuiColorExtensions）。
-    //
-    //  改动规则：
-    //   - PuiWireOpcode 只在末尾追加，永远不复用/挪动已有数值；
-    //   - 四个镜像枚举同样只在末尾追加（线上按 int 传输）；
-    //   - 任何会改变读写字节序列的改动，都必须同时 +1 PuiProtocol.Version。
-    //
-    //  可见性为 public 而不是 internal：编辑器侧的 PuiElement / PuiVisualEditorViewModel
-    //  是 WPF 数据绑定要求的 public 类型，它们的属性直接用这里的枚举，internal 会触发
-    //  CS0053。放在独立的 Polaris.PUI.Wire 命名空间下，`using Polaris.PUI;` 的模组作者
-    //  看不到这些类型；把线协议当作公开契约本身也说得通——第三方可以据此写自己的客户端。
+    //  PUI 热重载线协议：编辑器（PolarisTools）与游戏进程（Polaris）共享的唯一契约，
+    //  通过文件链接确保两侧 opcode/字段定义一致，故不引用 UnityEngine/WPF 类型。
+    //  改动规则：枚举只在末尾追加，不复用/挪动数值；改变字节序列需同时 +1 PuiProtocol.Version。
+    //  可见性为 public：编辑器侧 WPF 绑定要求这些枚举类型是 public。
     // ============================================================================
 
     /// <summary>线协议版本。握手时校验，不匹配就明确报错而不是静默按错误的字节序列解析。</summary>
     public static class PuiProtocol
     {
-        // v2：AddImage 载荷末尾追加了 PuiImageParams.ImageResource（资源字段引用）。
+        // v2：AddImage 载荷追加了 PuiImageParams.ImageResource。
         public const int Version = 2;
     }
 
-    /// <summary>
-    /// 线协议操作码：一份和 <c>IPuiEmitter</c> 方法一一对应的原语指令集，
-    /// 由编辑器写出、游戏进程读回并照单执行。
-    /// </summary>
+    /// <summary>线协议操作码：与 <c>IPuiEmitter</c> 方法一一对应，由编辑器写出、游戏进程读回执行。</summary>
     public enum PuiWireOpcode
     {
         CreateWindow = 0,
@@ -73,10 +52,7 @@ namespace Polaris.PUI.Wire
 
     public enum PuiLineAlign { Left, Center, Right }
 
-    /// <summary>
-    /// 解析后的 RGBA 颜色（已套用过默认值回退）。刻意不用 <c>UnityEngine.Color32</c> 或
-    /// WPF 的 <c>Color</c>：这个文件要能同时编进 netstandard2.1 与 net472 两侧。
-    /// </summary>
+    /// <summary>解析后的 RGBA 颜色；不用 Color32/WPF Color，因为本文件要跨 netstandard2.1 与 net472 编译。</summary>
     public readonly struct PuiColor
     {
         public readonly byte R, G, B, A;
@@ -97,10 +73,7 @@ namespace Polaris.PUI.Wire
             return new PuiColor(0, 0, 0, 255);
         }
 
-        /// <summary>
-        /// 解析 "RRGGBBAA"（注意不是 WPF 惯用的 AARRGGBB）。编辑器的色块预览与颜色选择控件
-        /// 都走这一份实现，保证"编辑时看到的颜色"跟"生成进代码/发上线的颜色"按同一套规则解析。
-        /// </summary>
+        /// <summary>解析 "RRGGBBAA"（不是 WPF 惯用的 AARRGGBB）。</summary>
         public static bool TryParse(string hex, out PuiColor color)
         {
             color = default;
@@ -129,11 +102,7 @@ namespace Polaris.PUI.Wire
             byte.TryParse(hex.Substring(offset, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
     }
 
-    // 注意：尺寸类字段一律用 double（而不是 nel 里实际的 float/int），并且直接原样传递
-    // PuiElement 的原始 double 值，不在这一层做取整/精度转换——是 float 还是 int、
-    // 要不要 Math.Round，属于"落地方式"的决定（CSharpTextEmitter 用 F()/I() 格式化成
-    // 对应字面量文本；热重载桥在真正调用 nel API 时再做 (float)/(int) 转换）。
-    // 早转换会让 CSharpTextEmitter 输出的字面量文本出现精度偏差。
+    // 尺寸类字段统一用 double（而非 nel 实际的 float/int），取整/精度转换留给各自的落地代码做。
 
     /// <summary>CreateWindow 的载荷。</summary>
     public sealed class PuiCreateWindowParams
@@ -189,19 +158,13 @@ namespace Polaris.PUI.Wire
         public double Height;
         public string OnClick;
 
-        /// <summary>
-        /// 非空表示这个按钮同时是某条状态连接点（PuiStateTransition，TriggerType==ButtonClick）
-        /// 的触发点，值即触发 key（目前就是按钮自身的 Name）。
-        /// </summary>
+        /// <summary>非空表示该按钮同时是状态连接点的触发点，值即触发 key。</summary>
         public string TransitionTriggerKey;
     }
 
     public sealed class PuiSeparatorParams
     {
-        /// <summary>
-        /// 竖线取元素的 Height；横线固定为 0，表示"让真机按当前行剩余可用宽度决定占位宽度"
-        /// （横线永远独占一整行，跟 Ratio 无关）。
-        /// </summary>
+        /// <summary>竖线取元素 Height；横线固定为 0（独占一整行，宽度由剩余可用空间决定）。</summary>
         public double Width;
         public bool Vertical;
         public double LineHeight;
@@ -365,21 +328,11 @@ namespace Polaris.PUI.Wire
         /// <summary>PolarisRes 挂载相对路径；空表示不走这条路径。见 <see cref="ImageResource"/>。</summary>
         public string ImageSource;
 
-        /// <summary>
-        /// <c>[PolarisResource]</c> <c>MImage</c> static 字段的引用，形如
-        /// <c>MyMod.Res.testImage</c>（编辑器的资源下拉框选出来的那个字段）。非空时优先于
-        /// <see cref="ImageSource"/>：字段的值由 PolarisRes 的 <c>AutoBindScanner</c> 在插件
-        /// 加载时就按 <c>[PolarisResourceFolder]</c> 挂载并回填好了，热重载侧只是反射把它读出来。
-        /// 两者都为空表示未设置图片来源，MI 保持 null。
-        /// </summary>
+        /// <summary><c>[PolarisResource]</c> static 字段引用（如 <c>MyMod.Res.testImage</c>），非空时优先于 <see cref="ImageSource"/>。两者皆空则不设置图片。</summary>
         public string ImageResource;
     }
 
-    /// <summary>
-    /// 一条热重载指令：操作码 + 载荷。载荷类型跟 <see cref="PuiWireOpcode"/> 一一对应
-    /// （见 PuiWireWriter / PuiWireReader 的 switch）；SetFocusable/Br/SetDefaultLineAlign
-    /// 没有载荷（Payload 为 null）。
-    /// </summary>
+    /// <summary>一条热重载指令：操作码 + 载荷；SetFocusable/Br/SetDefaultLineAlign 没有载荷（Payload 为 null）。</summary>
     public sealed class PuiWireCommand
     {
         public PuiWireOpcode Opcode;

@@ -8,14 +8,7 @@ using XX;
 
 namespace Polaris.PUI.HotReload
 {
-    /// <summary>
-    /// 热重载的"debug 桥"：逐条执行 <see cref="PuiWireCommand"/>，直接调用对应的 nel API
-    /// （family.Create / designer.addP / designer.addButton / ...）——不做任何"这个 XML
-    /// 属性是什么意思、默认值该是多少"的判断，这些判断已经在编辑器侧的 PuiTreeWalker 做完了。
-    /// 回调方法名（OnClick/OnChanged/...）通过反射解析到 <paramref name="handler"/>
-    /// 已经编译好的方法上；解析失败（方法不存在/签名不匹配）会抛出异常，调用方
-    /// （<see cref="PUIHotReloadRuntime"/>）负责在临时对象上捕获它并回滚，不影响当前显示的 UI。
-    /// </summary>
+    /// <summary>逐条执行 <see cref="PuiWireCommand"/>，直接调用对应 nel API；回调名通过反射绑定到 handler，解析失败则抛异常交调用方回滚。</summary>
     internal static class PuiHotReloadBridge
     {
         public static UiBoxDesigner Apply(UiBoxDesignerFamily family, IReadOnlyList<PuiWireCommand> commands, IPUI handler)
@@ -55,9 +48,7 @@ namespace Polaris.PUI.HotReload
                         var data = new DsnDataP
                         {
                             name = p.Name ?? "",
-                            // 显示用字符串统一过 PuiText.Resolve（& 开头查 TX.Get、&& 脱转义）。
-                            // 编译期那条路径由 CSharpTextEmitter 静态展开，两边共用
-                            // PuiLocalizedString 的判定，生成的窗口和热重载推上去的窗口文案一致。
+                            // 显示文本统一过 PuiText.Resolve，跟编译期路径的本地化规则保持一致。
                             text = PuiText.Resolve(p.Text),
                             alignx = ToAlign(p.Align),
                             swidth = (float)p.Width,
@@ -79,16 +70,12 @@ namespace Polaris.PUI.HotReload
                         var p = (PuiButtonParams)cmd.Payload;
                         var data = new DsnDataButton { w = (float)p.Width, h = (float)p.Height };
                         if (!string.IsNullOrEmpty(p.Name)) data.name = p.Name;
-                        // 判空判的仍是**原始串**，不是解析后的结果：编译期
-                        // CSharpTextEmitter.AddButton 也是"原始串非空才发 title"，
-                        // 这样即使某个键解析出空文案，两条路径的行为也还是一样的。
+                        // 判空判原始串（跟编译期路径一致），非空才发 title。
                         if (!string.IsNullOrEmpty(p.Title)) data.title = PuiText.Resolve(p.Title);
                         if (!string.IsNullOrEmpty(p.Skin)) data.skin = p.Skin;
                         if (!string.IsNullOrEmpty(p.TransitionTriggerKey))
                         {
-                            // 同时是状态连接点触发点：不能再直接把 fnClick 指向用户 OnClick——
-                            // 包一层闭包，先调用原 OnClick（如果有），再喊 PUIRuntime.RaiseEvent，
-                            // 跟编译期 codegen（CSharpTextEmitter.ResolveFnClick）的语义保持一致。
+                            // 同时是状态连接点触发点：包一层闭包，先调用原 OnClick 再触发 RaiseEvent。
                             FnBtnBindings userClick = string.IsNullOrEmpty(p.OnClick)
                                 ? null
                                 : (FnBtnBindings)Delegate.CreateDelegate(typeof(FnBtnBindings), handler, p.OnClick);
@@ -177,8 +164,7 @@ namespace Polaris.PUI.HotReload
                             navi_loop = p.NaviLoop,
                             def = p.DefMask,
                         };
-                        // descs 是显示给玩家的说明文字，过 Resolve；同结构里的 keys 是回调
-                        // 返回值用的标识符，保持原样不解析。
+                        // descs 是显示文字过 Resolve；keys 是回调标识符，不解析。
                         if (p.Descs != null) data.descs = PuiText.ResolveAll(p.Descs);
                         SetDelegateField(data, "fnClick", handler, p.OnClick);
                         designer.addChecks(data);
@@ -204,8 +190,7 @@ namespace Polaris.PUI.HotReload
                             all_function_same = p.AllFunctionSame,
                             navi_loop = p.NaviLoop,
                         };
-                        // descs 是显示给玩家的说明文字，过 Resolve；同结构里的 keys 是回调
-                        // 返回值用的标识符，保持原样不解析。
+                        // descs 是显示文字过 Resolve；keys 是回调标识符，不解析。
                         if (p.Descs != null) data.descs = PuiText.ResolveAll(p.Descs);
                         SetDelegateField(data, "fnClick", handler, p.OnClick);
                         SetDelegateField(data, "fnChanged", handler, p.OnChanged);
@@ -220,8 +205,7 @@ namespace Polaris.PUI.HotReload
                         var data = new DsnDataSlider
                         {
                             name = p.Name ?? "",
-                            // title 是滑条标题（显示用），过 Resolve；同结构的 Adesc_keys
-                            // 名字即 keys，不在本地化范围内。
+                            // title 是显示用标题，过 Resolve；Adesc_keys 是标识符，不解析。
                             title = PuiText.Resolve(p.Title),
                             skin = p.Skin ?? "",
                             skin_title = p.SkinTitle ?? "",
@@ -247,8 +231,7 @@ namespace Polaris.PUI.HotReload
                         var data = new DsnDataInput
                         {
                             name = p.Name ?? "",
-                            // def 是输入框初始值（数据，不是标签），保持原样；
-                            // label 才是显示给玩家的那行字。
+                            // def 是初始值数据，不解析；label 才是显示文字。
                             def = p.Def ?? "",
                             label = PuiText.Resolve(p.Label),
                             skin = p.Skin ?? "",
@@ -329,9 +312,7 @@ namespace Polaris.PUI.HotReload
                             stencil_lessequal = p.StencilLessEqual,
                         };
 
-                        // UvRect / scale 不在初始化器里直接填：那两个字段的语义（像素矩形、
-                        // 绘制尺寸与 swidth/sheight 无关）都要换算，统一交给 PuiImage.Assign，
-                        // 和编译期生成的代码走同一份实现。
+                        // UvRect/scale 需要换算，统一交给 PuiImage.Assign（与编译期同一份实现）。
                         MImage image = null;
                         if (!string.IsNullOrEmpty(p.ImageResource))
                         {
@@ -391,11 +372,7 @@ namespace Polaris.PUI.HotReload
             _ => ALIGN.LEFT,
         };
 
-        /// <summary>
-        /// 把 data 上名为 fieldName 的委托字段指向 handler 身上名为 methodName 的方法；
-        /// 用反射读字段类型再 CreateDelegate，不需要在这里写死每个 hook 对应的具体委托类型名。
-        /// methodName 为空表示这个 hook 未绑定，什么都不做。
-        /// </summary>
+        /// <summary>把 data 上 fieldName 委托字段绑定到 handler 的 methodName 方法；methodName 为空则不做任何事。</summary>
         private static void SetDelegateField(object data, string fieldName, IPUI handler, string methodName)
         {
             if (string.IsNullOrEmpty(methodName))
@@ -422,28 +399,14 @@ namespace Polaris.PUI.HotReload
             field.SetValue(data, del);
         }
 
-        /// <summary>
-        /// 把 <c>.pui</c> 里的图片来源解析成 <c>MImage</c>，走资源子系统。
-        /// modId 取 <paramref name="handler"/>（生成的 partial class 实例）所在程序集的名字，
-        /// 和 <c>AutoBindScanner</c> 用 <c>assembly.GetName().Name</c> 当 modId 的约定一致。
-        /// </summary>
+        /// <summary>把 <c>.pui</c> 里的图片来源解析成 <c>MImage</c>；modId 取 handler 所在程序集名。</summary>
         private static MImage ResolveImage(string imageSource, IPUI handler)
         {
             string modId = handler.GetType().Assembly.GetName().Name;
             return Polaris.Res.PolarisResAPI.For(modId).Own.Image(imageSource);
         }
 
-        /// <summary>
-        /// 把编辑器选中的资源字段引用（形如 <c>MyMod.Res.testImage</c>）解析成 <c>MImage</c>：
-        /// 在 <paramref name="handler"/> 所在程序集里找到那个类型，反射读它的 static 字段。
-        /// 编译期路径（<c>CSharpTextEmitter.AddImage</c>）生成的是同一个字段的直接引用，
-        /// 两条路径拿到的是同一个由 <c>AutoBindScanner</c> 回填的 <c>MImage</c> 实例——热重载
-        /// 不会重新挂载目录、也不会重复解码图片。
-        /// <para>
-        /// 解析不出来一律抛异常：调用方（<c>PUIHotReloadRuntime</c>）会在临时对象上捕获并回滚，
-        /// 作者能立刻看到是哪个引用的问题，比静默画一个空图好。
-        /// </para>
-        /// </summary>
+        /// <summary>把资源字段引用（如 <c>MyMod.Res.testImage</c>）反射解析成 <c>MImage</c>；解析失败一律抛异常，交调用方回滚。</summary>
         private static MImage ResolveImageField(string reference, IPUI handler)
         {
             Assembly assembly = handler.GetType().Assembly;
@@ -489,10 +452,7 @@ namespace Polaris.PUI.HotReload
             return image;
         }
 
-        /// <summary>
-        /// 反射里嵌套类型用 <c>'+'</c> 分隔（<c>MyMod.Outer+Inner</c>），编辑器给的是 C# 源码写法的
-        /// <c>'.'</c>，所以从右往左逐个把 <c>'.'</c> 换成 <c>'+'</c> 再试一次，直到找到或试完。
-        /// </summary>
+        /// <summary>反射嵌套类型用 <c>'+'</c> 分隔而编辑器给的是 <c>'.'</c>，故从右往左尝试替换直到找到。</summary>
         private static Type ResolveNestedType(Assembly assembly, string typeName)
         {
             string candidate = typeName;

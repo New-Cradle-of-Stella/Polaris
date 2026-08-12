@@ -9,39 +9,21 @@ using UnityEngine;
 namespace Polaris.Diagnostics
 {
     /// <summary>
-    /// 把错误写成一份玩家可以直接交出去的纯文本报告，落在
-    /// <see cref="Infra.PathsAPI.ReportsDir"/>。
-    /// <para>
-    /// <b>一局一个文件、追加写</b>，不是一事件一文件：同一局里的几个错误往往互为因果，
-    /// 散在几十个文件里反而看不出名堂，玩家也不知道该交哪一个。
-    /// </para>
-    /// <para>
-    /// <b>纯文本而非 JSON。</b>这份东西的读者是玩家和模组作者，玩家要能直接整段贴进 issue
-    /// 或群里。<c>Newtonsoft.Json</c> 虽然躺在游戏的 Managed 目录里，但那是<i>游戏的</i>程序集，
-    /// 依赖它等于凭空给自己加一条随游戏版本漂移的耦合，换来的只是一个没人想读的格式。
-    /// </para>
+    /// 把错误写成纯文本报告（落在 <see cref="Infra.PathsAPI.ReportsDir"/>），玩家可直接整段贴出去。
+    /// 一局一个文件、追加写，不按事件分文件。
     /// </summary>
     internal static class ErrorReportWriter
     {
         /// <summary>报告目录里最多留几份，超出的按修改时间从旧到新删。</summary>
         const int KeepReports = 20;
 
-        /// <summary>
-        /// 串行化所有写入。<see cref="ErrorRegistry"/> 那边已经有自己的锁，但它保护的是它自己的表，
-        /// 而这里的 <see cref="path"/>/<see cref="headerWritten"/>/<see cref="disabled"/> 与
-        /// <c>File.AppendAllText</c> 是另一份共享状态——<see cref="Watchdog"/> 从后台线程写卡死报告
-        /// 之后，这份状态就有了两个不同的写入方：不锁的下场是文件头写两遍、两条记录交错成半行、
-        /// 或者一次偶发的写失败把 <c>disabled</c> 永久置上。
-        /// </summary>
+        /// <summary>串行化所有写入：主线程与看门狗线程（写卡死报告）都会写这份共享状态。</summary>
         static readonly object Gate = new object();
 
         static string path;
         static bool headerWritten;
 
-        /// <summary>
-        /// 写盘失败过一次就不再尝试。目录只读、磁盘满、被杀毒锁住这类问题不会自己好，
-        /// 每条错误都重试一次只会让日志里多几十条同样的抱怨。
-        /// </summary>
+        /// <summary>写盘失败过一次就不再尝试（目录只读/磁盘满这类问题不会自己好）。</summary>
         static bool disabled;
 
         /// <summary>最近一次写入成功的报告路径；从没写成功过为 null。</summary>
@@ -63,10 +45,7 @@ namespace Polaris.Diagnostics
             }
         }
 
-        /// <summary>
-        /// 进程启动时间。取一次就固定住：报告文件名与文件头都用它，中途重算会让同一局
-        /// 写出两个文件名。
-        /// </summary>
+        /// <summary>进程启动时间，固定取一次；报告文件名与文件头都用它，避免中途重算出两个文件名。</summary>
         static readonly DateTime ProcessStart = DateTime.Now;
 
         // ================== 写入 ==================
@@ -74,11 +53,7 @@ namespace Polaris.Diagnostics
         internal static void Append(ErrorIncident incident)
             => Write(() => BuildIncident(incident));
 
-        /// <summary>
-        /// 写一条致命错误（见 <see cref="FatalError"/>）。排版与
-        /// <see cref="BuildIncident"/> 那种"事件 #N"刻意不同：致命错误决定的是这一局能不能
-        /// 继续，玩家打开报告第一眼就该看到它，而不是在一串异常堆栈里翻找。
-        /// </summary>
+        /// <summary>写一条致命错误（见 <see cref="FatalError"/>），排版与普通事件不同，突出显示。</summary>
         internal static void AppendFatal(FatalError fatal)
         {
             if (fatal == null)
@@ -89,10 +64,7 @@ namespace Polaris.Diagnostics
             Write(() => BuildFatal(fatal));
         }
 
-        /// <summary>
-        /// 写一次疑似卡死（见 <see cref="HangReport"/>）。<b>由看门狗线程调用</b>——
-        /// 这是这个类唯一一个不来自主线程的入口，也是 <see cref="Gate"/> 存在的原因。
-        /// </summary>
+        /// <summary>写一次疑似卡死（见 <see cref="HangReport"/>），由看门狗线程调用。</summary>
         internal static void AppendHang(HangReport report)
         {
             if (report == null)
@@ -115,12 +87,7 @@ namespace Polaris.Diagnostics
         }
 
         /// <summary>
-        /// 写一段"关于上一局"：上一局没有正常结束时，由本局启动时调用一次。
-        /// <para>
-        /// 写进<b>本局</b>的报告而不是去追上一局那份文件，是因为上一局很可能根本没写出过报告
-        /// （崩溃前一个异常都没抛的情况很常见），那就没有文件可追。写在这里，玩家手上永远只有
-        /// 一份"最新的报告"要交，而里面清楚地标着哪一段说的是上一局。
-        /// </para>
+        /// 写一段"关于上一局"，本局启动时调用一次；写进本局报告而非追溯上一局文件（后者可能不存在）。
         /// </summary>
         internal static void AppendPreviousSession(LastSessionInfo info)
         {
@@ -132,10 +99,7 @@ namespace Polaris.Diagnostics
             Write(() => BuildPreviousSession(info));
         }
 
-        /// <summary>
-        /// 所有写入的唯一出口：补文件头、追加正文、记住路径，全程持锁。
-        /// <paramref name="body"/> 是延迟求值的——拿不到锁之前不该先去拼一大段字符串。
-        /// </summary>
+        /// <summary>所有写入的唯一出口：补文件头、追加正文、记住路径，全程持锁；<paramref name="body"/> 延迟求值。</summary>
         static void Write(Func<string> body)
         {
             if (disabled)
@@ -166,9 +130,7 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    // 这里绝对不能记日志：日志会被自己的 BepInEx 监听器抓到，绕回
-                    // ErrorRegistry 再写一次报告，再失败，再记日志……ErrorRegistry 的 inside
-                    // 闸门拦得住，但根本不该走到那一步。
+                    // 不能记日志：会被自己的监听器抓到，绕回来再写一次报告、再失败、再记日志。
                     disabled = true;
                     LastWrittenPath = null;
                 }
@@ -193,7 +155,7 @@ namespace Polaris.Diagnostics
             }
             catch (Exception)
             {
-                // 清不掉旧报告不影响写新报告，忽略。
+                // 清不掉旧报告不影响写新报告。
             }
         }
 
@@ -205,13 +167,8 @@ namespace Polaris.Diagnostics
         static string playerLog;
 
         /// <summary>
-        /// 在主线程上把文件头要用的几个 Unity 属性先取好，由 <c>Plugin.Awake</c> 调一次。
-        /// <para>
-        /// 必须提前取：<see cref="AppendHang"/> 走在看门狗线程上，而 <c>Application.version</c>
-        /// 这类属性只允许主线程访问——真到了写卡死报告那一刻现取，拿到的只会是一串"读取失败"，
-        /// 偏偏那是最需要知道游戏版本的时候。<see cref="Safe"/> 兜底仍然留着：万一这个方法
-        /// 没被调到，行为就退回原来的样子，而不是留一片空白。
-        /// </para>
+        /// 在主线程预取文件头要用的 Unity 属性，由 <c>Plugin.Awake</c> 调一次
+        /// （<see cref="AppendHang"/> 跑在看门狗线程，无法直接读取 Unity API）。
         /// </summary>
         internal static void PrimeEnvironment()
         {
@@ -270,8 +227,7 @@ namespace Polaris.Diagnostics
 
         static IEnumerable<string> ModLines()
         {
-            // yield return 不能出现在 catch 子句体内，只能先把结果/失败状态存起来，
-            // 出了 try/catch 之后再决定 yield 什么。
+            // yield return 不能出现在 catch 内，先存结果/失败状态，出 try/catch 后再 yield。
             List<AssemblyOwner> mods = null;
             bool failed = false;
             try
@@ -321,8 +277,7 @@ namespace Polaris.Diagnostics
 
                 yield return line.ToString();
 
-                // 完整路径单独另起一行：同名 dll 放在不同目录（比如玩家手动拷贝了两份）
-                // 只看文件名分不清是哪一个，这是唯一能定位到具体文件的信息。
+                // 完整路径单独一行，区分同名但不同目录的 dll。
                 if (mod.FullPath != null)
                 {
                     yield return $"      path={mod.FullPath}";
@@ -330,10 +285,7 @@ namespace Polaris.Diagnostics
             }
         }
 
-        /// <summary>
-        /// 被改名成 <c>.dll.disabled</c> 的那些。列出来是有意义的：玩家排查时最常问的就是
-        /// "我上次到底关了哪个"。
-        /// </summary>
+        /// <summary>列出被改名成 <c>.dll.disabled</c> 的模组，方便玩家回忆上次关了哪个。</summary>
         static IEnumerable<string> DisabledLines()
         {
             List<UserModRecord> disabledMods = null;
@@ -428,10 +380,7 @@ namespace Polaris.Diagnostics
             return b.ToString();
         }
 
-        /// <summary>
-        /// 按主责分叉的行动建议。这一段才是整份报告存在的理由——
-        /// <see cref="PolarisModWarning"/> 那三段正文向玩家承诺的就是它。
-        /// </summary>
+        /// <summary>按主责类别分叉的行动建议，是整份报告最有价值的部分。</summary>
         static string Advice(ErrorVerdict verdict)
         {
             var b = new StringBuilder();
@@ -552,10 +501,7 @@ namespace Polaris.Diagnostics
             + "  a combination that plays correctly.\n"
             + "* Then send this report to their authors -- this kind of conflict is usually only fixable by them.";
 
-        /// <summary>
-        /// 致命错误的"涉及的模组"段。<see cref="ErrorIncident"/> 那边只有一个主责，这里天生
-        /// 可能有多个（两个模组撞了同一个 key，谁都不算无辜），所以每个都把联系方式带上。
-        /// </summary>
+        /// <summary>致命错误的"涉及的模组"段；可能有多个责任方，每个都带联系方式。</summary>
         static IEnumerable<string> CulpritLines(FatalError fatal)
         {
             if (fatal.Culprits.Count == 0)
@@ -578,7 +524,7 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    // 查不出归属不影响这一段的价值，退回程序集名。
+                    // 查不出归属退回程序集名。
                 }
 
                 if (owner == null)

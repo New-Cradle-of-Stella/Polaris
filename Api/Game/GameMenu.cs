@@ -4,13 +4,8 @@ using nel.gm;
 namespace Polaris.API
 {
     /// <summary>
-    /// 游戏内 ESC 菜单的一次打开。入口是 <c>PolarisAPI.Game.Menu</c> 与
-    /// <see cref="GameStaticCallbackKind.GameMenuOpened"/> 回调。
-    /// <para>
-    /// 注意与 <c>PolarisAPI.GameMenu</c> 区分：那个是 Polaris 自己的<b>菜单分类扩展</b>注册表
-    /// （给菜单加一页），而这里是<b>菜单本身这一次打开</b>的实例（关掉它、问它在不在编辑某个分类）。
-    /// 两者名字接近但不是一回事。
-    /// </para>
+    /// 游戏内 ESC 菜单的一次打开。入口是 <c>PolarisAPI.Game.Menu</c> 与 <see cref="GameStaticCallbackKind.GameMenuOpened"/> 回调。
+    /// 注意区分 <c>PolarisAPI.GameMenu</c>（菜单分类扩展注册表）：名字接近但不是一回事。
     /// </summary>
     public sealed class GameMenu : GameInstance
     {
@@ -44,8 +39,7 @@ namespace Polaris.API
 
                 try
                 {
-                    // OFFLINE 就是"这个菜单已经不在了"。用状态而不是 Unity 的销毁判定：
-                    // 菜单对象本身是复用的，销毁判定要等到很久以后才会为真。
+                    // 用状态而不是 Unity 销毁判定：菜单对象会被复用，销毁判定要等很久才为真。
                     return menu.state != UiGameMenu.STATE.OFFLINE;
                 }
                 catch (Exception)
@@ -72,12 +66,8 @@ namespace Polaris.API
         }
 
         /// <summary>
-        /// 获取或设置该菜单的输入处理开关。
-        /// <para>
-        /// 这一项在游戏里是<b>全局</b>的（菜单类型上的一个静态开关），不是每个菜单实例各自一份。
-        /// 放在实例上是因为同一时刻只会有一个游戏菜单；关掉之后记得开回来，
-        /// 否则下一次打开的菜单也会不响应输入。
-        /// </para>
+        /// 获取或设置该菜单的输入处理开关。实际是游戏里的全局静态开关，关掉后记得开回来，
+        /// 否则下一次打开的菜单也不响应输入。
         /// </summary>
         public bool IsInputHandlingEnabled
         {
@@ -123,11 +113,7 @@ namespace Polaris.API
         /// <summary>判断该菜单是否处于长椅菜单状态。</summary>
         public bool IsBenchMenuActive() => Read(static m => m.isBenchMenuActive(false), false);
 
-        /// <summary>
-        /// 判断该菜单是否正在编辑指定分类。<paramref name="categoryKey"/> 用游戏的分类名
-        /// （<c>STAT</c>/<c>ITEM</c>/<c>MAGIC</c>/<c>SKILL</c>/<c>ENHANCER</c>/<c>MAP</c>/
-        /// <c>SCENARIO</c>/<c>BENCH</c>/<c>CONFIG</c>），不分大小写；名字不认识时返回 <c>false</c>。
-        /// </summary>
+        /// <summary>判断该菜单是否正在编辑指定分类；<paramref name="categoryKey"/> 为游戏分类名，不分大小写，不认识时返回 <c>false</c>。</summary>
         public bool IsEditingCategory(string categoryKey)
         {
             UiGameMenu m = Native;

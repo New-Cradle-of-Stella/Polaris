@@ -1,16 +1,8 @@
 namespace Polaris.Localization
 {
     /// <summary>
-    /// 搜索栏（<see cref="PolarisSearchRow"/>）的界面文案。设置界面底部那条和模组管理页列表上方
-    /// 那条共用一张表，只有提示语各用各的。
-    /// <para>
-    /// 单独一张表而不是并进 <see cref="PolarisStrings"/>：那边装的是 Polaris 自己那几条<b>设置项</b>
-    /// 的标签与说明，必须赶在 <c>Plugin.Awake</c> 的配置绑定之前登记；这几条是界面外壳，
-    /// 要到玩家打开界面才第一次被查到，登记时机宽松得多（同 <see cref="ModManagerStrings"/>）。
-    /// </para>
-    /// <para>
-    /// 语言取舍同 <see cref="PolarisStrings"/>：中性值填英文，中文/日文各覆盖一份，其余语言退回英文。
-    /// </para>
+    /// 搜索栏（<see cref="PolarisSearchRow"/>）的界面文案；设置界面和模组管理页共用一张表，仅提示语各用各的。
+    /// 独立于 <see cref="PolarisStrings"/>，因登记时机宽松得多——玩家打开界面才第一次查到。
     /// </summary>
     internal static class SearchStrings
     {
@@ -60,8 +52,7 @@ namespace Polaris.Localization
                 ["ja"] = "検索",
             });
 
-            // 两条提示语和下面的状态文字都得压在状态文字那一行里（宽度约 130px、字号 12），
-            // 别往长里写。
+            // 提示语与状态文字须压在同一行内（宽度约 130px），译文别写长。
             loc.Register(P + HintSettings, new LocalizedText("mod name or setting")
             {
                 ["zh"] = "模组名或设置项",

@@ -1,24 +1,8 @@
 namespace Polaris.Localization
 {
     /// <summary>
-    /// 模组管理页（<see cref="PolarisManagementUI"/>、<see cref="PolarisModDetailPopup"/>、
-    /// <see cref="PolarisRestartPrompt"/>）全部界面文案的内置翻译。
-    /// <para>
-    /// 走内置表而不是 <c>.plang</c>，理由和 <see cref="PolarisStrings"/> 那几条设置项一样：
-    /// 这是 Polaris 自己的界面，不该由某个模组的 <c>.plang</c> 顶掉；更要紧的是这一页正是
-    /// 玩家<b>关掉出问题的模组</b>的地方——真让它的文案依赖模组提供的语言包，就会出现
-    /// "某个模组把这页的 key 撞坏了，玩家反而没法进来把它关掉"。内置表在
-    /// <see cref="LocalizationAPI.Resolve"/> 里排在 resolver 链前面，天然免疫这种情况。
-    /// </para>
-    /// <para>
-    /// 取值一律走 <see cref="Text"/>（每次显示时现查），不缓存成静态字段：标题画面上玩家
-    /// 随时可以换语言，页面下次打开时必须跟着变。
-    /// </para>
-    /// <para>
-    /// 语言取舍同 <see cref="PolarisStrings"/>：中性值填英文，中文/日文各覆盖一份，其余语言
-    /// 退回英文；<c>"zh"</c> 一条同时覆盖 <c>zh-cn</c> 与 <c>zh-tc</c>，<c>"ja"</c> 也会被游戏
-    /// 默认语言 <c>"_"</c> 命中（见 <see cref="LocalizedText.Pick"/>）。
-    /// </para>
+    /// 模组管理页（<see cref="PolarisManagementUI"/>、<see cref="PolarisModDetailPopup"/>、<see cref="PolarisRestartPrompt"/>）全部界面文案的内置翻译。
+    /// 走内置表而非 <c>.plang</c>，确保玩家在此关闭出问题的模组时该页文案不会被那个模组顶掉；取值一律走 <see cref="Text"/> 现查，不缓存，以跟随玩家实时切换语言。
     /// </summary>
     internal static class ModManagerStrings
     {
@@ -59,18 +43,13 @@ namespace Polaris.Localization
 
         static bool registered;
 
-        /// <summary>
-        /// 查一条本页文案。<paramref name="key"/> 用本类上的常量，不要写字面量。
-        /// </summary>
+        /// <summary>查一条本页文案；<paramref name="key"/> 请用本类常量，不要写字面量。</summary>
         internal static string Text(string key)
         {
             return PolarisAPI.Localization.Text(LocalizedString.Sigil + P + key);
         }
 
-        /// <summary>
-        /// 由 <see cref="PolarisManagementUI.RegisterButton"/> 调一次。不像设置项那几张表必须
-        /// 赶在 <c>Plugin.Awake</c>——这一页的文案要到玩家点开它时才第一次被查到。
-        /// </summary>
+        /// <summary>由 <see cref="PolarisManagementUI.RegisterButton"/> 调一次；不必赶在 <c>Plugin.Awake</c>，玩家打开此页时才首次查到。</summary>
         internal static void Register()
         {
             if (registered)
@@ -119,15 +98,14 @@ namespace Polaris.Localization
                        + "まだ適用していない変更はそのまま保持されます。",
             });
 
-            // 行尾的失败标记。前面那两个空格是排版的一部分，翻译时请保留。
+            // 前导两个空格是排版所需，翻译时请保留。
             loc.Register(P + RowFailed, new LocalizedText("  (failed)")
             {
                 ["zh"] = "  (操作失败)",
                 ["ja"] = "  (失敗)",
             });
 
-            // 这一行由 PolarisManagementUI.Muted 画，不自动换行、高度固定，所以三种语言都得
-            // 压在一行之内（面板内宽约 460px，字号 13）。别往长里写。
+            // 不自动换行、高度固定，三种语言译文都须压在一行内（面板宽约 460px）。
             loc.Register(P + PendingNote, new LocalizedText(
                 "*  {0} change(s) pending — OK applies them on restart, Cancel discards them.")
             {
@@ -153,8 +131,7 @@ namespace Polaris.Localization
                 ["ja"] = "戻る",
             });
 
-            // 确认窗正文。窗口高度（PolarisRestartPrompt.PromptH）是按这里最长的一版定的，
-            // 大幅加长请连同那个常量一起调。
+            // 窗口高度 PolarisRestartPrompt.PromptH 按此处最长译文定的，大幅加长需同步调整。
             loc.Register(P + PromptMessage, new LocalizedText(
                 "{0} mod enable/disable change(s) are not applied yet.\n"
                 + "They take effect only when BepInEx rescans the plugins folder on the next "

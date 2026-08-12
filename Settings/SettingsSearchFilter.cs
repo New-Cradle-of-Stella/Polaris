@@ -6,29 +6,8 @@ using XX;
 namespace Polaris.Settings
 {
     /// <summary>
-    /// 设置界面的搜索过滤：记住 <see cref="PolarisSettingsScreen.Append"/> 画出来的每一个块属于
-    /// 哪个分区/哪个设置项，然后按查询串把不匹配的行整行收起来。
-    /// <para>
-    /// 收起靠的是原版行管理器自己的机制，不是"把控件挪到屏幕外"也不是重建界面：
-    /// <c>DesignerRowMem.DsnMem.active</c> 置 false 的块在
-    /// <c>Remake()</c> 重排时<b>不占位</b>（<c>DesignerRowMem.Add</c> 里 <c>PreVal.Push/Pop</c> 那一对
-    /// 就是干这个的），于是剩下的行会自动收拢上来，滚动范围也跟着 <c>rowRemakeCheck</c> 重算。
-    /// 换句话说，过滤这件事原版本来就支持，这里只是把开关拨到位。
-    /// </para>
-    /// <para>
-    /// <b>为什么不重建界面</b>：主标签页里绝大多数行是原版自己画的（窗口模式、音量、自动存档……），
-    /// 重建就得连它们一起重跑 <c>createBoxDesignerContentMain</c>，那是一大堆带副作用的初始化。
-    /// 只拨可见性则完全不碰原版那些行。
-    /// </para>
-    /// <para>
-    /// 过滤范围<b>只含 Polaris 注册的设置项</b>：原版那些行始终原样留在上面。原版的标签与控件之间
-    /// 没有任何显式关联（全靠 <c>P("Config_Xxx").addSliderCT(...)</c> 的书写顺序），要过滤就得靠
-    /// 猜哪个标签配哪个控件，猜错的代价是把一行拆散在界面上。
-    /// </para>
-    /// <para>
-    /// 全局单例：同一时刻只可能有一个设置界面立着（标题画面与 ESC 菜单不会同时开），
-    /// 每次 <see cref="Begin"/> 都把上一次的登记整个丢掉。
-    /// </para>
+    /// 设置界面的搜索过滤：记住每个块属于哪个分区/设置项，按查询串把不匹配的行收起来（置 <c>DsnMem.active = false</c>，靠原版行管理器的重排机制不占位，不重建界面）。
+    /// 过滤范围只含 Polaris 注册的设置项，原版行始终原样保留。全局单例，同一时刻只有一个设置界面立着。
     /// </summary>
     internal static class SettingsSearchFilter
     {
@@ -78,15 +57,7 @@ namespace Polaris.Settings
         static Designer tab;
 
         /// <summary>
-        /// 主标签页的行管理器。显隐开关就挂在它的 <c>DsnMem</c> 上，所以登记时就把
-        /// <c>DsnMem</c> 取出来存好，之后不再回头查。
-        /// <para>
-        /// <b>不能事后靠 <c>Designer.getDesignerBlockMemory</c> 现查</b>：那张表
-        /// （<c>OBlockMem</c>）在 <c>BxOut</c> 身上，而游戏内每次切换菜单分类
-        /// <c>UiGameMenu.BxRRemake</c> 都会 <c>BxR.Clear()</c> 一次，把它整个清空——
-        /// 重新登记回去的只有标签页自己，不含标签页<b>里面</b>的这些块。
-        /// 反过来标签页的行管理器是安全的：被清的是 <c>BxR.Row</c>，不是它。
-        /// </para>
+        /// 主标签页的行管理器，登记时取出 <c>DsnMem</c> 存好，不事后现查——那张表在游戏内切换菜单分类时会被清空，标签页自己的行管理器则安全。
         /// </summary>
         static DesignerRowMem rows;
 
@@ -94,12 +65,7 @@ namespace Polaris.Settings
         internal static int MatchCount { get; private set; }
 
         /// <summary>
-        /// 开始一轮登记。由 <see cref="PolarisSettingsScreen.Append"/> 在往主标签页里画东西之前调用。
-        /// <para>
-        /// 这里必须取 <c>CurrentAttachTarget</c> 而不是 <paramref name="cfg"/><c>.BxOut</c> 本身：
-        /// 调用点在 <c>addTab</c>/<c>endTab</c> 之间，块进的是那个 tab 的行管理器，
-        /// 而 <c>BxOut.Row</c> 里躺着的是 tab 自己。重排要对持有块的那一个调才有意义。
-        /// </para>
+        /// 开始一轮登记，由 <see cref="PolarisSettingsScreen.Append"/> 在画东西之前调用；取 <c>CurrentAttachTarget</c> 而非 <c>BxOut</c> 本身，因块实际进的是那个 tab 的行管理器。
         /// </summary>
         internal static void Begin(UiCFG cfg)
         {
@@ -109,10 +75,7 @@ namespace Polaris.Settings
             rows = tab?.getRowManager();
         }
 
-        /// <summary>
-        /// 把一个刚画出来的块记进 <paramref name="into"/>。存的是它在行管理器里的
-        /// <c>DsnMem</c>——那才是显隐开关本身，理由见 <see cref="rows"/>。
-        /// </summary>
+        /// <summary>把一个刚画出的块记进 <paramref name="into"/>，存的是它在行管理器里的 <c>DsnMem</c>（显隐开关本身）。</summary>
         static void Remember(List<DesignerRowMem.DsnMem> into, IDesignerBlock block)
         {
             if (block == null || rows == null)
@@ -134,11 +97,7 @@ namespace Polaris.Settings
             return recorder;
         }
 
-        /// <summary>
-        /// 界面关掉了：丢掉登记表。<b>不</b>在这里恢复可见性——块可能已经被 <c>Clear</c> 掉了，
-        /// 而且下次打开会重新 <see cref="Begin"/>。"关掉时把过滤撤销"是搜索栏自己的事
-        /// （<see cref="PolarisSearchRow.Reset"/>）。
-        /// </summary>
+        /// <summary>界面关掉时丢掉登记表；不在此恢复可见性，撤销过滤是搜索栏自己的事（<see cref="PolarisSearchRow.Reset"/>）。</summary>
         internal static void Forget()
         {
             groups.Clear();
@@ -148,11 +107,7 @@ namespace Polaris.Settings
         }
 
         /// <summary>
-        /// 按查询串重算每一行的显隐并重排。空串等于"全部显示"。
-        /// <para>
-        /// 分区标题命中时该分区下<b>所有</b>设置项都显示——按模组名搜就是要看那个模组的全部设置。
-        /// 分区的头部（分隔线 + 标题）只在这个分区至少留下一行时才显示，否则会剩下一串空标题。
-        /// </para>
+        /// 按查询串重算每行显隐并重排（空串=全部显示）；分区标题命中时该分区全显，分区头部仅在留有可见行时显示。
         /// </summary>
         internal static void Apply(string query)
         {
@@ -195,14 +150,12 @@ namespace Polaris.Settings
                     }
                 }
 
-                // force：块的尺寸一个都没变，row_remake_flag 不会自己立起来，
-                // 而"哪些块参与排版"变了恰恰只有重排一遍才看得出来。
+                // force：块尺寸未变，row_remake_flag 不会自动立起，须强制重排才能反映可见性变化。
                 tab.rowRemakeCheck(force: true);
             }
             catch (Exception e)
             {
-                // 过滤画崩了不能把设置界面一起带走——最坏的结果是界面停在半过滤的样子，
-                // 玩家清掉搜索框就能恢复。
+                // 过滤画崩不能带垮整个设置界面；最坏情况是停在半过滤状态，清空搜索框可恢复。
                 PolarisAPI.Errors.Report(e, "filtering the settings screen");
                 Plugin.Logger.LogError($"[Polaris.Settings] Failed to apply the search filter \"{query}\".");
             }

@@ -3,9 +3,8 @@ using System;
 namespace Polaris.Event
 {
     /// <summary>
-    /// 扫描-隔离-冲突模式照抄 <c>Lang\PlangRegistryScanner.cs</c>：一次性开关防重复扫描、只看
-    /// <c>PolarisAPI.Types.InPluginsWith</c>（不是全 AppDomain）、每个 registrar 单独 try/catch 隔离、
-    /// 扫描结束统一 <see cref="PolarisEventRegistry.Seal"/>。
+    /// Scans plugin types once for auto-registration attributes, isolating each registrar with its own try/catch,
+    /// then seals the registry via <see cref="PolarisEventRegistry.Seal"/>.
     /// </summary>
     internal static class PolarisEventRegistryScanner
     {

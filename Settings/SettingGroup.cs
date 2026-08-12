@@ -20,7 +20,7 @@ namespace Polaris.Settings
                 throw new ArgumentException("ModId cannot be empty", nameof(modId));
             }
 
-            // ModId 直接拼进文件路径，非法字符会让 ConfigFile 在写盘时炸在很远的地方。
+            // ModId 会拼进文件路径，须提前拒绝非法字符。
             foreach (char c in Path.GetInvalidFileNameChars())
             {
                 if (modId.IndexOf(c) >= 0)
@@ -38,11 +38,7 @@ namespace Polaris.Settings
         /// <summary>分区标题的原始串，可能是 <c>&amp;</c> 开头的本地化键。</summary>
         public string DisplayName { get; internal set; }
 
-        /// <summary>
-        /// 按当前语言求值之后的分区标题。求值推迟到这里而不是 <see cref="DisplayName"/> 赋值时，
-        /// 理由与 <see cref="SettingDefinition"/> 的 <c>Display*</c> 一致：注册发生在启动阶段，
-        /// 那时游戏的语言表未必已经建好。
-        /// </summary>
+        /// <summary>按当前语言求值之后的分区标题；求值推迟到此处，理由同 <see cref="SettingDefinition"/> 的 <c>Display*</c>。</summary>
         public string DisplayTitle => PolarisAPI.Localization.Text(DisplayName);
 
         /// <summary>分区之间的排序权重，小的在前；相同则按注册先后。</summary>

@@ -2,11 +2,7 @@ using System;
 
 namespace Polaris.Res
 {
-    /// <summary>
-    /// 资源在所有已注册挂载点下都找不到。<see cref="Exception.Message"/> 会枚举每一个
-    /// 探测过的候选（挂载路径 + 每个扩展名 + 是否存在），这是本库里最有价值的一条诊断信息，
-    /// 构造方式见 <see cref="Mounts.MountProbeLog.BuildMessage"/>。
-    /// </summary>
+    /// <summary>资源在所有已注册挂载点下都找不到；<see cref="Exception.Message"/> 列出了每个探测过的候选路径。</summary>
     public sealed class ResourceNotFoundException : Exception
     {
         public ResourceId Id { get; }

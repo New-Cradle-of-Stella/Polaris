@@ -2,15 +2,7 @@ using System;
 
 namespace Polaris.Diagnostics
 {
-    /// <summary>
-    /// 按异常"形状"给出诊断。有些异常自己就带着完整的故事，比归因结论更有用——
-    /// 一个 <c>MissingMethodException</c> 基本就等于"某个模组是照着另一个版本的游戏编译的"，
-    /// 这句话对玩家的价值远超过"堆栈第三帧属于某模组"。
-    /// <para>
-    /// 判定只看异常类型名（字符串），不看 <see cref="Exception"/> 实例：全局兜底抓到的异常
-    /// 大多只有 Unity 给的文本，没有对象。两条来路必须得出同样的诊断。
-    /// </para>
-    /// </summary>
+    /// <summary>按异常类型名（不看实例，兼容纯文本来源）给出更具体的诊断，补充归因结论。</summary>
     internal static class ExceptionShapes
     {
         internal sealed class Shape

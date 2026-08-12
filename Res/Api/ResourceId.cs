@@ -4,18 +4,8 @@ namespace Polaris.Res
 {
     /// <summary>
     /// 一个资源的逻辑身份：模组命名空间 + 种类 + 挂载相对路径。
-    /// <para>
-    /// <see cref="Path"/> 在构造时就会被规范化：反斜杠转正斜杠、去掉首尾多余的斜杠、
-    /// 折叠连续斜杠，并整体转小写。转小写是刻意的——原版 <c>XX.MTI</c> 的构造函数只把
-    /// 路径最后一段转小写，在大小写敏感的文件系统上会因为字典键大小写不同而把同一个
-    /// 物理资源缓存两次；<see cref="ResourceId"/> 作为 <c>ResourceCache</c> 的字典键，
-    /// 从根上避免这个问题。真实磁盘上的大小写由 <c>Mounts.DirectoryMount</c> 的大小写
-    /// 不敏感索引兜底解析，与这里的比较语义无关。
-    /// </para>
-    /// <para>
-    /// 扩展名可写可不写：不写时由 <see cref="Mounts.ResourceKindExtensions.CandidateExtensions"/>
-    /// 按 <see cref="Kind"/> 探测候选扩展名。
-    /// </para>
+    /// <see cref="Path"/> 构造时会被规范化（斜杠统一、去除多余斜杠、整体转小写），以避免同一物理资源因大小写不同被缓存两次。
+    /// 扩展名可省略，省略时由 <see cref="Mounts.ResourceKindExtensions.CandidateExtensions"/> 按 <see cref="Kind"/> 探测。
     /// </summary>
     public readonly struct ResourceId : IEquatable<ResourceId>
     {

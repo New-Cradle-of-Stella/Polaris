@@ -6,17 +6,12 @@ using UnityEngine;
 
 namespace Polaris.PUI.HotReload
 {
-    /// <summary>
-    /// <see cref="PuiWireWriter"/>（PolarisSourceCodeGenerator 项目）写出的字节流的读取端。
-    /// 字段顺序、类型必须逐条对应；改一边务必同步改另一边。
-    /// 每种载荷都用单个对象初始化器一次读完：C# 保证对象初始化器里的赋值按书写顺序求值，
-    /// 因此下面每个初始化器里字段自上而下的顺序就是线协议的字节顺序，可以直接跟写入端对读。
-    /// </summary>
+    /// <summary><see cref="PuiWireWriter"/> 写出字节流的读取端；字段顺序/类型须与写入端逐条对应。</summary>
     internal static class PuiWireReader
     {
         public static (string puiName, List<PuiWireCommand> commands) Read(BinaryReader r)
         {
-            // 版本号是帧里的第一个字段，先校验再解析，别拿错误的字节布局去填载荷。
+            // 先校验版本号，避免用错误的字节布局解析载荷。
             int version = r.ReadInt32();
             if (version != PuiProtocol.Version)
             {
@@ -269,7 +264,7 @@ namespace Polaris.PUI.HotReload
                         payload = new PuiMethodNameParams { MethodName = r.ReadString() };
                         break;
 
-                    // 无载荷的操作码；未知操作码（新版编辑器 + 旧版游戏）同样只能当作无载荷跳过。
+                    // 无载荷操作码；未知操作码同样当无载荷跳过。
                     case PuiWireOpcode.SetFocusable:
                     case PuiWireOpcode.Br:
                     case PuiWireOpcode.SetDefaultLineAlign:

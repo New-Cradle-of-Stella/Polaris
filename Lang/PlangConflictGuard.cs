@@ -5,20 +5,9 @@ using Polaris.Diagnostics;
 namespace Polaris.Lang
 {
     /// <summary>
-    /// key 冲突的收集与处置：<b>只要有一个 key 被两个模组重复注册，这一局就不再继续</b>——
-    /// 交给 <see cref="PolarisAPI.Errors"/> 的致命错误通道写出报告，并在标题
-    /// 画面拦住菜单、请玩家退出游戏。
-    /// <para>
-    /// 为什么这么重：key 撞车的后果不是"少了一句文案"，而是<b>界面上出现另一个模组的文字</b>，
-    /// 而且哪一份生效取决于模组加载顺序——换一次加载顺序表现就变一次。玩家看到的是"某个
-    /// 模组的界面串台了"，几乎不可能自己追回到"两份 <c>.plang</c> 用了同一个 key"，报到哪个
-    /// 作者那里都会被当成"我这边没问题"。这种问题必须在它产生第一份错误截图之前就停下来。
-    /// </para>
-    /// <para>
-    /// 处置只做一次：扫描期间收集，扫描结束时汇总成一条致命错误（<see cref="Seal"/>）——
-    /// 十个冲突弹十次页面毫无意义，一条里列全反而看得清。扫描结束之后才出现的冲突
-    /// （有人在运行期直接调 <see cref="PlangRuntime.Register"/>）当场单独报一条。
-    /// </para>
+    /// key 冲突的收集与处置：一旦有 key 被两个模组重复注册就致命报错、拦在标题画面，因为哪份文案生效取决于
+    /// 加载顺序，会在界面上串出另一个模组的文字且几乎无法从表象追查。扫描期间收集，结束时汇总成一条错误（<see cref="Seal"/>）；
+    /// 扫描结束后出现的冲突当场单独上报。
     /// </summary>
     internal static class PlangConflictGuard
     {
@@ -28,33 +17,19 @@ namespace Polaris.Lang
         static bool scanFinished;
 
         /// <summary>
-        /// 当前正在执行注册的那个生成类所属的程序集，由 <see cref="PlangRegistryScanner"/>
-        /// 在调用 <see cref="IPlangRegistrar.Register"/> 前后设置/清空。
-        /// <para>
-        /// 用环境变量式的传递、而不是给 <see cref="PlangRuntime.Register"/> 加一个 assembly 参数：
-        /// 那个方法的调用方是 PolarisTools 生成的代码，改它的签名等于要求所有下游模组重新生成
-        /// 一遍代码才能升级 Polaris。<see cref="PlangRuntime.Register"/> 在这里为空时会退回
-        /// <c>Assembly.GetCallingAssembly()</c>，两条路都指向同一个答案。
-        /// </para>
+        /// 当前正在执行注册的那个生成类所属的程序集，由 <see cref="PlangRegistryScanner"/> 在调用
+        /// <see cref="IPlangRegistrar.Register"/> 前后设置/清空。用这种环境变量式的传递而不加方法参数，
+        /// 是为了不破坏 PolarisTools 生成代码的既有签名。
         /// </summary>
         internal static Assembly CurrentSource { get; set; }
 
-        /// <summary>本局记录到的冲突，按发现顺序。</summary>
-        internal static IReadOnlyList<PlangConflict> Conflicts => conflicts;
-
-        /// <summary>
-        /// 记一次冲突。<paramref name="kept"/> 是先注册、文案被保留的一方——
-        /// 保留先来的那一份而不是让后来者覆盖，是为了让"哪一份生效"至少在同一次启动内是稳定的，
-        /// 不至于在退出游戏之前的这段时间里再多一种表现。
-        /// </summary>
+        /// <summary>记一次冲突；<paramref name="kept"/> 是先注册、文案被保留的一方，保证同一次启动内结果稳定。</summary>
         internal static void Record(string key, Assembly kept, Assembly ignored)
         {
             var conflict = new PlangConflict(key, kept, ignored);
             conflicts.Add(conflict);
 
-            // 用 LogError 而不是 LogFatal：LogFatal 会被 Polaris 的日志监听器当成
-            // "插件报出的严重错误"再建一条普通错误档，同一件事在报告里出现两遍——
-            // 这件事的权威记录是下面 Errors.Fatal 写出的那一段。
+            // 用 LogError 而非 LogFatal：LogFatal 会被日志监听器再建一条重复错误档，权威记录是下面的 Errors.Fatal。
             Plugin.Logger.LogError($"[PolarisLang] key conflict: {conflict.Describe()}");
 
             if (scanFinished)
@@ -63,9 +38,7 @@ namespace Polaris.Lang
             }
         }
 
-        /// <summary>
-        /// 扫描结束时调用一次：有冲突就汇总成一条致命错误上报。
-        /// </summary>
+        /// <summary>扫描结束时调用一次：有冲突就汇总成一条致命错误上报。</summary>
         internal static void Seal()
         {
             scanFinished = true;
@@ -96,7 +69,7 @@ namespace Polaris.Lang
 
         static void AddCulprit(FatalError fatal, Assembly assembly)
         {
-            // 一个模组和好几个模组分别撞车时会被带进来多次，报告里只该出现一次。
+            // 一个模组和多个模组分别撞车时会被带进来多次，报告里只该出现一次。
             if (assembly != null && !fatal.Culprits.Contains(assembly))
             {
                 fatal.Culprits.Add(assembly);

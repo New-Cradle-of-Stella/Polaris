@@ -7,24 +7,7 @@ using XX;
 
 namespace Polaris
 {
-    /// <summary>
-    /// 标题画面的致命错误页：本局被 <see cref="Infra.ErrorsAPI.Fatal"/> 判定为不能继续时，
-    /// 把原因摆到玩家面前，并且只给一个出口——退出游戏。
-    /// <para>
-    /// 与 <see cref="PolarisErrorNotice"/>（讲"上一局出了什么问题"）相反，这一页讲的是"这一局
-    /// 现在就到此为止"：致命错误几乎都在模块初始化阶段被发现（比如两个模组撞了同一个本地化
-    /// key），那时标题场景还没建出来，直接退进程玩家只会看到"点了启动，游戏闪一下没了"。
-    /// 所以判定与展示分开：<see cref="FatalRegistry"/> 在发现的那一刻就把日志和报告落好，
-    /// 这一页等标题画面起来之后再告诉玩家发生了什么。
-    /// </para>
-    /// <para>
-    /// 建页方式、闸门写法、淡入动画都照抄 <see cref="PolarisModWarning"/>，并和它一起挂在
-    /// <see cref="TitleOverlays"/> 上；本页排在最前面——一个已经判死刑的环境，没必要再问玩家
-    /// "上一局的错误看没看过"。唯一的实质区别是<b>永远不会被确认掉</b>：
-    /// <see cref="Gate"/> 只要还有致命错误就一直返回 true，玩家碰不到"开始游戏 / 读取"
-    /// 那一排按钮，按钮点下去走的是 <see cref="MainMenuAPI.QuitGame"/>。
-    /// </para>
-    /// </summary>
+    /// <summary>标题画面的致命错误页：本局被判定不能继续时展示原因，唯一出口是退出游戏；<see cref="Gate"/> 只要还有致命错误就一直返回 true，永不能被确认掉。</summary>
     internal static class PolarisFatalNotice
     {
         internal static readonly ITitleOverlay Overlay = new OverlayAdapter();
@@ -42,10 +25,7 @@ namespace Polaris
 
         const float HeadingH = 44f;
 
-        /// <summary>
-        /// 原因与"该怎么办"两段的高度按<b>最长的那门语言</b>留：文案由调用方给，日文和英文
-        /// 往往比中文长出一两行，按中文的行数留会让另外两种语言撞出框外。
-        /// </summary>
+        /// <summary>按最长语言（通常日/英文比中文长）留出的高度，避免其它语言撞出框外。</summary>
         const float ReasonH = 66f;
 
         const float DetailH = 24f;
@@ -71,13 +51,10 @@ namespace Polaris
         /// <summary>单条明细的字数上限，超出截断。明细是 key 名/dll 名，长的那种撑破一行也没意义。</summary>
         const int DetailClip = 78;
 
-        /// <summary>z 与另外两页相同：<see cref="TitleOverlays"/> 保证同一刻只有一页在拦，不会叠。</summary>
+        /// <summary>z 与另外两页相同；<see cref="TitleOverlays"/> 保证不会叠。</summary>
         const float OverlayZ = -3f;
 
-        /// <summary>
-        /// 底板比另外两页更实（0xF8 对 0xF0）：那两页确认完游戏照常玩，透出后面的 logo 是
-        /// 一种"马上就回去"的暗示；这一页之后没有"回去"，不该再给这个暗示。
-        /// </summary>
+        /// <summary>底板比另外两页更实（0xF8 对 0xF0），因为这一页没有"确认后照常玩"的回去可能。</summary>
         const uint BackdropColor = 0xF8000000u;
 
         static readonly Color32 HeadingColor = new Color32(255, 196, 196, 255);
@@ -110,7 +87,7 @@ namespace Polaris
 
             public string Heading { get; }
 
-            /// <summary>{0} = 报出这条致命错误的模块名。</summary>
+            /// <summary>{0} 为报出致命错误的模块名。</summary>
             public string SourceFormat { get; }
 
             public string MoreDetailsFormat { get; }
@@ -172,21 +149,13 @@ namespace Polaris
         static Designer designer;
         static float fade;
 
-        /// <summary>建页失败过一次就不再重试，并且直接退出游戏（理由见 <see cref="Gate"/>）。</summary>
+        /// <summary>建页失败过一次就不再重试，直接退出游戏。</summary>
         static bool buildFailed;
 
         /// <summary>已经发出过退出请求，避免每帧重复请求。</summary>
         static bool quitRequested;
 
-        /// <summary>
-        /// 每帧从原版闸门问过来一次。有致命错误就一直返回 true——这一页没有"确认"，
-        /// 玩家在标题画面唯一能做的事就是退出。
-        /// <para>
-        /// 建不出来时的处置和另外两页相反：那两页放行（少看一页提示远好过把玩家锁在菜单外），
-        /// 这一页改为直接退出游戏。已经判定"这一局不能继续"，却因为自己画不出一个提示框就
-        /// 让玩家进游戏，是把两个错误叠在一起。
-        /// </para>
-        /// </summary>
+        /// <summary>每帧问一次；有致命错误就一直返回 true，没有确认可言。建页失败时（与另两页相反）直接退出游戏，而不是放行。</summary>
         internal static bool Gate(SceneTitleTemp scene)
         {
             if (!FatalRegistry.Any)
@@ -327,8 +296,7 @@ namespace Polaris
             fade = 0f;
             designer.alpha = 0f;
 
-            // 玩家在 logo 淡入期间按下的确定键此刻还没消费掉，不清掉的话退出按钮会在同一帧
-            // 被这次按下直接点掉——那就等于没让人看见这一页（同 PolarisModWarning）。
+            // 清掉尚未消费的按键，否则退出按钮会在同一帧被直接点掉，等于没让人看见这一页。
             IN.clearPushDown(strong: true);
         }
 
@@ -364,11 +332,7 @@ namespace Polaris
 
         // ================== 退出 ==================
 
-        /// <summary>
-        /// 走 <see cref="MainMenuAPI.QuitGame"/>（也就是原版"退出游戏"那条路：淡出、存档收尾、
-        /// <c>IN.quitGame()</c>），不自己拆 <c>Application.Quit</c>。页面留在原地不销毁——
-        /// 淡出的那几十帧里玩家应该还能看到自己为什么被赶出来。
-        /// </summary>
+        /// <summary>走原版"退出游戏"路径（<see cref="MainMenuAPI.QuitGame"/>），页面留在原地不销毁，让玩家在淡出期间看清原因。</summary>
         static void RequestQuit()
         {
             if (quitRequested)
@@ -384,7 +348,7 @@ namespace Polaris
             }
             catch (Exception e)
             {
-                // 走不了原版流程也必须退出去，否则玩家被永久锁在标题菜单之外，还不知道为什么。
+                // 走不了原版流程也必须退出，否则玩家被永久锁在标题菜单外，还不知道为什么。
                 Plugin.Logger.LogError($"[Polaris] Failed to use the vanilla quit path; terminating the process directly: {e}");
                 Application.Quit();
             }

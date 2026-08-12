@@ -6,12 +6,7 @@ using System.Reflection;
 
 namespace Polaris
 {
-    /// <summary>
-    /// 管理 <c>plugins</c> 根目录下 dll 的启停——不区分该 dll 是否消费了 <see cref="PolarisAPI"/>，
-    /// 只要是根目录（不含 <c>Polaris</c> 子目录）下的 dll 就一律记录、一律可启停。启停没有任何
-    /// 当场生效的部分：启用/禁用只是把文件在 <c>.dll</c> 与 <c>.dll.disabled</c> 两种后缀之间改名，
-    /// 下一次游戏启动时 BepInEx 的插件目录扫描才会（或不会）发现它。
-    /// </summary>
+    /// <summary>管理 plugins 根目录下 dll 的启停：改名在 .dll 与 .dll.disabled 之间切换，下次启动才会生效。</summary>
     internal static class UserModToggleManager
     {
         const string DisabledSuffix = ".disabled";
@@ -65,10 +60,7 @@ namespace Polaris
             return byDisplayName.Values.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
-        /// <summary>
-        /// 把 <paramref name="record"/> 对应的文件改名到目标启停状态；已经处于目标状态直接返回成功。
-        /// 失败（文件被占用、权限不足等）会记录到 <see cref="UserModRecord.Error"/> 并记日志，不抛异常。
-        /// </summary>
+        /// <summary>把文件改名到目标启停状态；已在目标状态直接返回成功，失败记到 <see cref="UserModRecord.Error"/> 并记日志，不抛异常。</summary>
         internal static bool SetEnabled(UserModRecord record, bool enabled)
         {
             if (record.Enabled == enabled)

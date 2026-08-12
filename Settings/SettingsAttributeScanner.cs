@@ -7,14 +7,8 @@ using BepInEx.Unity.Mono.Bootstrap;
 namespace Polaris.Settings
 {
     /// <summary>
-    /// 扫描已加载插件程序集里标了 <see cref="PolarisSettingGroupAttribute"/> 的类，
-    /// 把其中 <see cref="PolarisSettingAttribute"/> 字段注册成设置项。
-    /// 作用域用 <see cref="Infra.TypesAPI.InPluginsWith{TAttr}"/>（只看 BepInEx 真正加载了的
-    /// 插件程序集）——遍历整个 AppDomain 意味着要把 5MB 的 Assembly-CSharp 也翻一遍，不值得。
-    /// <para>
-    /// 这里只做"字段 → <see cref="SettingsGroupBuilder"/> 调用"的翻译，外加挂上字段读写委托，
-    /// 让模组的静态字段成为值的真身；取值范围校验之类的规则一概留在 Builder 那一层。
-    /// </para>
+    /// 扫描已加载插件程序集里标了 <see cref="PolarisSettingGroupAttribute"/> 的类，把 <see cref="PolarisSettingAttribute"/> 字段注册成设置项。
+    /// 只看 BepInEx 真正加载的插件程序集（<see cref="Infra.TypesAPI.InPluginsWith{TAttr}"/>），避免遍历整个 AppDomain。
     /// </summary>
     internal static class SettingsAttributeScanner
     {
@@ -40,7 +34,7 @@ namespace Polaris.Settings
                 }
             }
 
-            // 分区数与类数不一定相等：一个模组可以把设置项分散在几个类里，界面上还是一个分区。
+            // 分区数与类数不一定相等：一个模组的设置项可分散在多个类中。
             if (typeCount > 0)
             {
                 Plugin.Logger.LogMessage(
@@ -51,7 +45,7 @@ namespace Polaris.Settings
         /// <summary>返回是否真的注册了至少一个设置项。</summary>
         static bool ScanType(Type type, PolarisSettingGroupAttribute groupAttr)
         {
-            // 按 Order 再按声明顺序排；MetadataToken 在同一个类型里单调递增，是声明顺序的可靠代理。
+            // 按 Order 再按声明顺序排（MetadataToken 同类型内单调递增，代理声明顺序）。
             List<(FieldInfo Field, PolarisSettingAttribute Attr)> fields =
                 type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
                     .Select(f => (Field: f, Attr: (PolarisSettingAttribute)Attribute.GetCustomAttribute(
@@ -105,9 +99,7 @@ namespace Polaris.Settings
                     continue;
                 }
 
-                // 字段读写委托与变更回调都必须在 Register 之前挂上：Register 会立刻绑定配置文件
-                // 并把上次存的值回灌回来，那一步就要靠 FieldSetter 写进模组的静态字段。
-                // （回灌走的是 notify: false，所以不会误触发 OnChanged——初始化是 OnLoaded 的活。）
+                // 须在 Register 前挂好：Register 会立刻绑定配置并靠 FieldSetter 回灌上次存的值（notify: false，不触发 OnChanged）。
                 Type fieldType = field.FieldType;
                 setting.FieldSetter = v => field.SetValue(null, ConvertTo(v, fieldType));
 
@@ -130,7 +122,7 @@ namespace Polaris.Settings
 
             builder.Register();
 
-            // 到这里这一组的值已经全部落进字段了，模组可以放心地把它们应用到运行状态。
+            // 此时该组的值已全部落进字段，可安全应用到运行状态。
             if (!string.IsNullOrEmpty(groupAttr.OnLoaded))
             {
                 InvokeLoaded(type, groupAttr.OnLoaded);
@@ -139,11 +131,7 @@ namespace Polaris.Settings
             return true;
         }
 
-        /// <summary>
-        /// 解析 <see cref="PolarisSettingAttribute.OnChanged"/>：优先取 <c>M(T value)</c>，
-        /// 没有就退回 <c>M()</c>（模组自己读字段）。找不到只记错误不抛——
-        /// 一个模组把方法名打错了不该让其余模组的设置项一起注册不上。
-        /// </summary>
+        /// <summary>解析 <see cref="PolarisSettingAttribute.OnChanged"/>：优先 <c>M(T value)</c>，否则 <c>M()</c>；找不到只记错误不抛，避免拖垮其它模组注册。</summary>
         static Action<object> ResolveChangeHandler(Type owner, string methodName, Type valueType)
         {
             MethodInfo noArg = null;
@@ -170,7 +158,7 @@ namespace Polaris.Settings
             if (oneArg != null)
             {
                 Type paramType = oneArg.GetParameters()[0].ParameterType;
-                // 事件带的是"存储类型"（double 字段实际存的是 float），按形参类型转一次再传。
+                // 事件带的是存储类型（如 double 字段实际存 float），需按形参类型转一次。
                 return v => Invoke(oneArg, [ConvertTo(v, paramType)]);
             }
 
@@ -201,10 +189,7 @@ namespace Polaris.Settings
             Invoke(m, null);
         }
 
-        /// <summary>
-        /// 调模组的回调。反射调用会把异常包成 TargetInvocationException，这里拆开再记，
-        /// 否则日志里只看得到一层没有信息量的包装。
-        /// </summary>
+        /// <summary>调模组的回调；反射调用把异常包成 TargetInvocationException，这里拆开再记以保留有效堆栈。</summary>
         static void Invoke(MethodInfo method, object[] args)
         {
             try
@@ -213,8 +198,6 @@ namespace Polaris.Settings
             }
             catch (TargetInvocationException e)
             {
-                // 责任人就是这个方法本身所在的程序集，不必走堆栈推断；拆开包装是为了不让
-                // 报告里的堆栈只剩一层没有信息量的 TargetInvocationException。
                 PolarisAPI.Errors.Report(e.InnerException ?? e, $"calling {method.DeclaringType?.FullName}.{method.Name}", method.DeclaringType?.Assembly);
                 Plugin.Logger.LogError(
                     $"[Polaris.Settings] {method.DeclaringType?.FullName}.{method.Name} threw an exception; ignored.");
@@ -267,8 +250,7 @@ namespace Polaris.Settings
 
             if (t == typeof(string))
             {
-                // 文本行用的 DsnDataInput 没有 fnHover 字段，说明框永远弹不出来。
-                // 不吭声的话模组作者会以为自己写的 Desc 丢了。
+                // 文本行的 DsnDataInput 无 fnHover 字段，说明框弹不出来，须警告避免作者以为 Desc 丢了。
                 if (!string.IsNullOrEmpty(attr.Desc))
                 {
                     Plugin.Logger.LogWarning(
@@ -285,10 +267,7 @@ namespace Polaris.Settings
             return null;
         }
 
-        /// <summary>
-        /// 只有 <c>double</c> 需要转：它走的是 float 滑条，存进去的值比字段窄一档。
-        /// 其余类型（bool / int / string / enum）存的就是字段自己的类型，原样回写。
-        /// </summary>
+        /// <summary>只有 <c>double</c> 需要转换（走 float 滑条，存值窄一档）；其余类型原样回写。</summary>
         static object ConvertTo(object value, Type target)
         {
             if (value == null || target.IsInstanceOfType(value))

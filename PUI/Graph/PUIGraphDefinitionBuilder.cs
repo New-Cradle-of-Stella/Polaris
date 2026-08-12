@@ -65,11 +65,7 @@ namespace Polaris.PUI
             return this;
         }
 
-        /// <summary>
-        /// 一条退出边：sourceKey 上名为 triggerKey 的连接点触发时退出整个状态机
-        /// （<see cref="PUISolution.Fire"/> 改为调用 <see cref="PUISolution.Stop"/>），而不是跳到某个节点。
-        /// 对应 .puisln 里连到固定"出口"节点的连线。退出没有"目标节点"可显示，因此总是阻塞的。
-        /// </summary>
+        /// <summary>一条退出边：触发时调用 <see cref="PUISolution.Stop"/> 退出整个状态机，而非跳到某个节点。</summary>
         public PUIGraphDefinitionBuilder ExitEdge(string sourceKey, string triggerKey)
             => Edge(sourceKey, triggerKey, PUIEdge.ExitNodeKey, blocking: true);
 

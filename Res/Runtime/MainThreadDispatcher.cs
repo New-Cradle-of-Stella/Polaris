@@ -3,18 +3,7 @@ using System.Collections.Concurrent;
 
 namespace Polaris.Res.Runtime
 {
-    /// <summary>
-    /// 后台线程 → 主线程的唯一桥梁。
-    /// <para>
-    /// 会往这里排队的调用方：<see cref="Core.Lease{T}"/> 的终结器（绝不能在终结器线程上
-    /// 直接触碰引用计数或 Unity 对象）、<c>Runtime.IoScheduler</c> 完成的后台 I/O
-    /// 任务、<c>HotReload.FileWatchService</c> 的 <c>FileSystemWatcher</c> 回调。
-    /// </para>
-    /// <para>
-    /// 用 <see cref="ConcurrentQueue{T}"/> 而不是锁：入队方只有"排进去"这一个操作，
-    /// 出队只在 <see cref="ResPump"/> 的 <c>Update()</c> 里单线程执行，不需要更重的同步原语。
-    /// </para>
-    /// </summary>
+    /// <summary>后台线程到主线程的唯一桥梁（终结器、后台 I/O、文件监听回调等排队用）；用 <see cref="ConcurrentQueue{T}"/> 而非锁，因为出队仅在主线程单线程执行。</summary>
     internal static class MainThreadDispatcher
     {
         private static readonly ConcurrentQueue<Action> queue = new ConcurrentQueue<Action>();
@@ -29,8 +18,7 @@ namespace Polaris.Res.Runtime
         /// <summary>只应由 <see cref="ResPump"/> 在主线程 <c>Update()</c> 里调用。</summary>
         internal static void Drain()
         {
-            // 用计数上限而不是"一直 while 到空"：万一某个排队动作又排了新动作
-            // （理论上不该发生，但防御一下），也不会在一帧内无限循环。
+            // 用计数上限而非无限循环，防止排队动作又排新动作导致死循环。
             int budget = 4096;
             while (budget-- > 0 && queue.TryDequeue(out Action action))
             {

@@ -4,11 +4,7 @@ using System.Text;
 
 namespace Polaris.Diagnostics
 {
-    /// <summary>
-    /// 一类错误在本局游戏里的完整记录。<b>一类</b>不是一次：<c>Update()</c> 里抛的异常
-    /// 一秒钟来 60 次，按次建档只会把日志和报告冲垮，所以按
-    /// <see cref="Fingerprint"/> 归并，同一指纹只留一条、累加 <see cref="Count"/>。
-    /// </summary>
+    /// <summary>一类错误在本局的完整记录；按 <see cref="Fingerprint"/> 归并同类错误，累加 <see cref="Count"/>。</summary>
     public sealed class ErrorIncident
     {
         internal ErrorIncident() { }
@@ -28,15 +24,7 @@ namespace Polaris.Diagnostics
         /// <summary>累计发生次数。</summary>
         public int Count { get; internal set; }
 
-        /// <summary>
-        /// 这一类错误是否已经被判定为<b>持续性故障</b>（"异常风暴"）：短时间内反复发生，
-        /// 通常意味着它长在 <c>Update</c> 这类每帧都会走的地方，游戏实际上已经不能玩了。
-        /// <para>
-        /// 单独判一次是有必要的：去重机制让"启动时抛了一次"和"每帧抛 60 次"在报告里长得
-        /// 一模一样（都是一条记录），只有 <see cref="Count"/> 不同——而后者对玩家的意义完全不同，
-        /// 不该指望玩家自己去读那个数字。判定见 <see cref="ErrorRegistry"/>。
-        /// </para>
-        /// </summary>
+        /// <summary>是否已判定为持续性故障（异常风暴）：短时间内反复发生，游戏实际已不可玩。判定见 <see cref="ErrorRegistry"/>。</summary>
         public bool IsStorm { get; internal set; }
 
         /// <summary>被判定为持续性故障的时刻；没判定过为 <see cref="DateTime.MinValue"/>。</summary>
@@ -55,11 +43,7 @@ namespace Polaris.Diagnostics
         /// <summary>异常消息。</summary>
         public string Message { get; internal set; }
 
-        /// <summary>
-        /// 上报时的上下文，例如 <c>PUI子系统初始化</c>。由 Polaris 自己的 catch 点
-        /// 或模组通过 <see cref="Infra.ErrorsAPI.Report(Exception, string)"/> 提供；
-        /// 全局兜底抓到的异常没有上下文，为 null。
-        /// </summary>
+        /// <summary>上报时的上下文（如 "PUI子系统初始化"）；全局兜底抓到的异常没有，为 null。</summary>
         public string Context { get; internal set; }
 
         /// <summary>归因结论。</summary>
@@ -68,22 +52,13 @@ namespace Polaris.Diagnostics
         /// <summary>标注好归属的堆栈帧。</summary>
         public IReadOnlyList<ErrorFrame> Frames { get; internal set; } = new List<ErrorFrame>();
 
-        /// <summary>
-        /// 原始堆栈文本。归属标注是我们的解读，可能解读错；原文必须原样留在报告里，
-        /// 模组作者拿到报告后要能自己判断。
-        /// </summary>
+        /// <summary>原始堆栈文本，原样保留供模组作者自行核实归属判断。</summary>
         public string RawStackTrace { get; internal set; }
 
-        /// <summary>
-        /// 完整异常链的文本（含 InnerException）。定责只看最内层，但展示要给全——
-        /// <c>TypeInitializationException</c> 这类外壳异常本身就携带"哪个静态构造函数炸了"的信息。
-        /// </summary>
+        /// <summary>完整异常链文本（含 InnerException），展示用，定责仅看最内层。</summary>
         public string ExceptionChain { get; internal set; }
 
-        /// <summary>
-        /// 控制台与标题告知页共用的一行摘要，例如 <c>NullReferenceException — 疑似模组「WeNeedMoreNoels」</c>。
-        /// 只留异常类名（不带命名空间），一行放不下 <c>System.NullReferenceException</c> 那种全名。
-        /// </summary>
+        /// <summary>控制台与告知页共用的一行摘要，如 <c>NullReferenceException — 疑似模组「WeNeedMoreNoels」</c>。</summary>
         internal string OneLine()
         {
             string type = ExceptionType;
@@ -106,15 +81,8 @@ namespace Polaris.Diagnostics
         // ================== 指纹 ==================
 
         /// <summary>
-        /// 指纹 = 异常类型 + 最内 <see cref="FingerprintFrames"/> 个可归属帧的"类型.方法"。
-        /// <para>
-        /// 不含异常消息：消息里常带坐标、对象名、帧号这类每次都不同的东西，算进去等于没去重。
-        /// 不含行号：Release 构建下本来就没有。
-        /// </para>
-        /// <para>
-        /// 用 FNV-1a 而不是 <c>string.GetHashCode</c>：后者不保证跨进程稳定，而这个值要写进
-        /// 配置文件跨启动比对（告知页要认出"上次那条错误"）。
-        /// </para>
+        /// 指纹 = 异常类型 + 最内 <see cref="FingerprintFrames"/> 个可归属帧的"类型.方法"，不含消息/行号。
+        /// 用 FNV-1a 而非 <c>string.GetHashCode</c>，因为该值要跨启动写入配置文件比对，须保证稳定。
         /// </summary>
         internal const int FingerprintFrames = 5;
 

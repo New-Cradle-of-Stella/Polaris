@@ -1,10 +1,6 @@
 namespace Polaris.API
 {
-    /// <summary>
-    /// 所有回调负荷的公共基类。存在的意义有两个：让回调注册表能在编译期把
-    /// <c>TData</c> 约束成"确实是一种回调数据"，以及给每一条事件带上统一的帧号，
-    /// 免得每个订阅者各自去读 <c>Time.frameCount</c> 再猜自己读到的是不是事件发生的那一帧。
-    /// </summary>
+    /// <summary>所有回调负荷的公共基类，用于约束 <c>TData</c> 并统一携带事件发生时的帧号。</summary>
     public abstract class GameCallbackData
     {
         private protected GameCallbackData()

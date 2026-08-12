@@ -3,10 +3,7 @@ using System.Text;
 
 namespace Polaris.Infra
 {
-    /// <summary>
-    /// 每个订阅者的耗时与异常统计。只在主线程写（派发本身就是主线程独占的），不需要锁。
-    /// 默认只记录，不自动禁用任何订阅——一次慢调用不代表这个模组坏了。
-    /// </summary>
+    /// <summary>每个订阅者的耗时与异常统计；只在主线程写，无需加锁，只记录不自动禁用订阅。</summary>
     internal static class CallbackDiagnostics
     {
         const double SlowWarnMillis = 8.0;

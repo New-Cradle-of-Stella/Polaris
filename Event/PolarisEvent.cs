@@ -6,11 +6,8 @@ using Polaris.API;
 namespace Polaris.Event
 {
     /// <summary>
-    /// PolarisEvent 的公开门面。<see cref="Start"/>/<see cref="Change"/> 不复用
-    /// <c>PolarisAPI.Game.Events.Start/Change</c>（<c>Api\Game\PolarisGameAPI.cs:594-642</c>）——
-    /// 那两个方法不检查 <c>EV.stack</c>/<c>EV.changeEvent</c> 的返回值、也不支持传参，这里直接对接
-    /// 底层 <c>EV</c>，按实现计划 §5.3 的时序：解析 -> 查 registry -> 确保内容已安装 -> 调用 ->
-    /// 判空/判 false -> 仅成功后才 <c>EV.evStart()</c> -> 返回 <see cref="GameEvent"/> 包装。
+    /// Public facade for starting/changing PolarisEvents by logical id; calls into <c>EV</c> directly
+    /// (rather than <c>PolarisAPI.Game.Events</c>) so it can check return values and pass args.
     /// </summary>
     public static class PolarisEvent
     {

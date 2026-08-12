@@ -3,14 +3,7 @@ using m2d;
 
 namespace Polaris.API
 {
-    /// <summary>
-    /// 一张已经加载的地图。取得实例的入口是 <see cref="PolarisAPI.Game"/> 的
-    /// <c>World.CurrentMap</c>，以及 <see cref="GameStaticCallbackKind.MapOpened"/> 回调。
-    /// <para>
-    /// 地图实例的生命周期就是这张图从打开到关闭的那一段。切图之后旧实例失效，
-    /// 挂在它上面的回调随之停止——上一张图的订阅者不会收到新图的同类事件。
-    /// </para>
-    /// </summary>
+    /// <summary>一张已加载的地图，生命周期是从打开到关闭的这一段；切图后旧实例失效，回调随之停止。</summary>
     public sealed class GameMap : GameInstance
     {
         static readonly InstanceTable<Map2d, GameMap> Table = new();
@@ -46,8 +39,7 @@ namespace Polaris.API
 
                 try
                 {
-                    // closed 是游戏自己的关闭标记；它比"还是不是 curMap"准确——
-                    // 子地图（submap）本来就不是 curMap，但它确实还活着。
+                    // 用游戏自己的关闭标记，比"是不是 curMap"更准确——子地图本来就不是 curMap。
                     return !map.closed;
                 }
                 catch (Exception)
@@ -62,13 +54,7 @@ namespace Polaris.API
         /// <summary>获取该地图实例的唯一键名。</summary>
         public string Key => SafeKey();
 
-        /// <summary>
-        /// 获取该地图实例累计运行的游戏时间（秒）。
-        /// <para>
-        /// 用的是游戏自己的帧计数（60 帧 = 1 秒），不是墙上时间：读档、演出与暂停期间
-        /// 游戏不推进自己的计数，这个值也就不会走——这正是"地图运行了多久"该有的语义。
-        /// </para>
-        /// </summary>
+        /// <summary>获取该地图累计运行的游戏时间（秒），基于游戏帧计数而非墙上时间，暂停/读档/演出期间不走。</summary>
         public float Time
         {
             get
@@ -154,11 +140,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 判断该地图中的指定矩形是否位于摄像机可见范围内。
-        /// <paramref name="marginPixels"/> 会把判定范围向外扩一圈，
-        /// 用来实现"快进入画面时就提前准备"这类逻辑。
-        /// </summary>
+        /// <summary>判断该地图中的指定矩形是否位于摄像机可见范围内；<paramref name="marginPixels"/> 把判定范围向外扩一圈。</summary>
         public bool IsInCamera(float x, float y, float width, float height, float marginPixels = 0)
         {
             Map2d m = Native;
@@ -177,11 +159,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 按名字从该地图取出通用角色实例；找不到时返回 <c>null</c>。
-        /// 取到的对象如果实际上是玩家或敌人，会直接给出更具体的
-        /// <see cref="GamePlayer"/>/<see cref="GameEnemy"/>。
-        /// </summary>
+        /// <summary>按名字从该地图取出角色实例（若实际是玩家/敌人会给出对应的具体子类）；找不到返回 <c>null</c>。</summary>
         public GameCharacter FindCharacter(string key)
         {
             M2Mover mover = FindMover(key);
@@ -205,7 +183,7 @@ namespace Polaris.API
 
             try
             {
-                // no_error: true——查不到是调用方的正常分支，不该让游戏自己往日志里写一条错误。
+                // no_error: true——查不到是正常分支，不该让游戏往日志里写错误。
                 return m.getMoverByName(key, true);
             }
             catch (Exception)

@@ -4,13 +4,8 @@ using evt;
 namespace Polaris.API
 {
     /// <summary>
-    /// 一次正在执行的游戏事件（剧情演出）。入口是 <c>PolarisAPI.Game.Events</c> 与
-    /// <see cref="GameStaticCallbackKind.EventOpened"/> 回调。
-    /// <para>
-    /// 游戏的事件系统是一个<b>栈</b>：事件里可以再压入事件。这里的实例代表"某个 key 的事件
-    /// 这一次在栈上的存在"，因此 <see cref="GameInstance.IsValid"/> 问的是"它还在栈顶吗"，
-    /// 而不是"事件系统还在跑吗"。
-    /// </para>
+    /// 一次正在执行的游戏事件（剧情演出）。事件系统是<b>栈</b>式的，实例代表某 key 的事件
+    /// 在栈上的这一次存在，<see cref="GameInstance.IsValid"/> 问的是"还在栈顶吗"。
     /// </summary>
     public sealed class GameEvent : GameInstance
     {
@@ -44,8 +39,7 @@ namespace Polaris.API
 
                 try
                 {
-                    // check_only_front: true——只有在栈顶才算"这一次执行"，
-                    // 被别的事件压住的那一层不接受控制操作。
+                    // 只有栈顶才算"这一次执行"，被压住的那一层不接受控制操作。
                     return EV.isActive(key, true);
                 }
                 catch (Exception)
@@ -60,10 +54,7 @@ namespace Polaris.API
         /// <summary>获取该事件的键名。</summary>
         public string Key => key;
 
-        /// <summary>
-        /// 停止该事件实例。<paramref name="immediate"/> 为真时连同压在它下面的整个事件栈一起收掉，
-        /// 否则只结束当前这一层。
-        /// </summary>
+        /// <summary>停止该事件实例；<paramref name="immediate"/> 为真时连同下方整个事件栈一起收掉，否则只结束当前层。</summary>
         public void Stop(bool immediate = false)
         {
             EnsureUsable();
@@ -88,8 +79,7 @@ namespace Polaris.API
 
             try
             {
-                // 直接读事件系统的内容表，而不是 EV.getEventContent——后者返回的是"查到没有"，
-                // 内容被写进它收到的那个 EvReader 里，拿不到值本身。
+                // 直接读内容表，而不是 EV.getEventContent——它只返回"查到没有"，值本身拿不到。
                 return EV.Oevt_content != null && EV.Oevt_content.TryGetValue(contentKey, out string value)
                     ? value
                     : null;

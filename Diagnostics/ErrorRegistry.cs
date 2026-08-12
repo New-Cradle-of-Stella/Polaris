@@ -5,20 +5,12 @@ using System.Reflection;
 namespace Polaris.Diagnostics
 {
     /// <summary>
-    /// 本局所有错误的登记处：去重、限流、存档，然后把新事件推给三个出口
-    /// （BepInEx 日志 / 报告文件 / 下游订阅者）。
-    /// <para>
-    /// <b>整套系统的保命逻辑都在这里。</b>错误分析跑在"已经出事了"的现场，它自己再出问题
-    /// 就是雪上加霜——所以这里有防重入闸、有并发锁、有硬上限、有限流，并且每一层都宁可
-    /// 少记一条也不肯把游戏拖下水。
-    /// </para>
+    /// 本局所有错误的登记处：去重、限流、存档，推给日志/报告文件/下游订阅者。
+    /// 有防重入闸、并发锁、硬上限与限流，宁可少记一条也不拖累游戏本体。
     /// </summary>
     internal static class ErrorRegistry
     {
-        /// <summary>
-        /// 本局最多归档多少<b>种</b>错误。到顶之后只累计一个计数，不再分析新的种类——
-        /// 一旦某个模组开始每帧抛不同的异常，无上限的表会把内存和日志一起吃光。
-        /// </summary>
+        /// <summary>本局最多归档多少种错误，超出后只计数，防止无上限吃掉内存和日志。</summary>
         const int MaxDistinctIncidents = 64;
 
         /// <summary>每秒最多分析多少<b>新</b>指纹。挡的是启动期成片失败造成的雪崩。</summary>
@@ -29,11 +21,7 @@ namespace Polaris.Diagnostics
             new Dictionary<string, ErrorIncident>(StringComparer.Ordinal);
         static readonly List<ErrorIncident> incidents = new List<ErrorIncident>();
 
-        /// <summary>
-        /// 防重入。写报告失败会记一条 error，那条 error 又会被 BepInEx 日志监听器抓到，
-        /// 于是又走一遍这里——不拦就是死循环。<c>ThreadStatic</c> 而不是普通静态字段：
-        /// 后台线程的异常不该被主线程正在处理的那一条挡掉。
-        /// </summary>
+        /// <summary>防重入：写报告失败会被自己的日志监听器再次抓到。用 ThreadStatic 避免跨线程互相挡住。</summary>
         [ThreadStatic]
         static bool inside;
 
@@ -49,10 +37,7 @@ namespace Polaris.Diagnostics
         /// <summary>纯原版错误的累计次数。只计数不建档，退出时汇总成一行。</summary>
         internal static long VanillaOnly { get; private set; }
 
-        /// <summary>
-        /// <c>Debug.LogError</c> / 插件 <c>LogError</c> 这类"报了个错但没抛异常"的次数。
-        /// 同样只计数：把它们当异常对待会把报告淹掉，但完全不提又会让玩家以为一切正常。
-        /// </summary>
+        /// <summary>Debug.LogError / 插件 LogError 这类无异常错误的次数，只计数不建档。</summary>
         internal static long LoggedErrors { get; private set; }
 
         /// <summary>记一次非异常的错误日志。</summary>
@@ -90,8 +75,7 @@ namespace Polaris.Diagnostics
             }
             catch (Exception)
             {
-                // 分析本身炸了。这里绝对不能再往外抛，也不能记日志（会绕回监听器）——
-                // 静默放弃这一条，比让错误系统把游戏一起带走要好。
+                // 分析本身炸了：不能再往外抛或记日志（会绕回监听器），静默放弃这一条。
             }
             finally
             {
@@ -134,8 +118,7 @@ namespace Polaris.Diagnostics
                 return;
             }
 
-            // 已经见过这一类：只累加。日志和报告都不再重复——Update() 里的异常一秒 60 次，
-            // 每次都写一遍等于把真正有用的信息埋掉。
+            // 已见过这一类：只累加，不重复写日志/报告。
             if (byFingerprint.TryGetValue(incident.Fingerprint, out ErrorIncident existing))
             {
                 existing.Count++;
@@ -144,8 +127,7 @@ namespace Polaris.Diagnostics
                 return;
             }
 
-            // 和模组无关的错误只计数。这就是"全局兜底 + 智能过滤"里的过滤：原版自己的毛病
-            // 不归 Polaris 管，把它摆到玩家面前只会让人误以为是模组坏了。
+            // 和模组无关的错误只计数，不归档给玩家看。
             if (!incident.Verdict.IsModRelated)
             {
                 VanillaOnly++;
@@ -162,27 +144,16 @@ namespace Polaris.Diagnostics
             byFingerprint[incident.Fingerprint] = incident;
             incidents.Add(incident);
 
-            // 先落盘再打日志：日志最后一行要报出报告文件的位置，而报告写失败时
-            // 不能对着玩家撒谎说"已写入"。
+            // 先落盘再打日志：日志要报告文件路径，写失败也不能撒谎说"已写入"。
             ErrorReportWriter.Append(incident);
             ErrorLogFormatter.Log(incident);
             Raise(incident);
         }
 
         /// <summary>
-        /// 一条已归档的错误又来了一次：看它是不是已经变成<b>持续性故障</b>——同一类错误在
-        /// <see cref="DiagnosticsConfig.StormWindowSeconds"/> 的窗口内发生超过
-        /// <see cref="DiagnosticsConfig.StormThreshold"/> 次。
-        /// <para>
-        /// 这是"游戏还能玩吗"和"有个功能坏了"之间的分界线。去重机制把两者压成了同一条记录，
-        /// 差别只剩下 <see cref="ErrorIncident.Count"/> 里那个数字——每帧都在抛的异常意味着那个
-        /// 模组的这条代码路径已经彻底不工作了，而这件事不该指望玩家自己去读一个计数。
-        /// </para>
-        /// <para>
-        /// 一类错误只判一次（<see cref="ErrorIncident.IsStorm"/> 一旦为 true 就再不进来）：
-        /// 风暴的定义就是"次数极多"，每次都重新判定等于每帧写一次报告。调用方已经持有
-        /// <see cref="Gate"/>，且 <c>inside</c> 为 true，所以这里记日志绕不回自己。
-        /// </para>
+        /// 判断已归档错误是否升级为持续性故障：同一类错误在
+        /// <see cref="DiagnosticsConfig.StormWindowSeconds"/> 窗口内超过 <see cref="DiagnosticsConfig.StormThreshold"/> 次。
+        /// 每类错误只判一次，<see cref="ErrorIncident.IsStorm"/> 一旦为 true 就不再重判。
         /// </summary>
         static void NoteRepeat(ErrorIncident existing)
         {
@@ -249,20 +220,14 @@ namespace Polaris.Diagnostics
                 }
                 catch (Exception)
                 {
-                    // 订阅者写坏了不该连累其它订阅者，更不该反过来再触发一次归档
-                    // （inside 此刻还是 true，就算它调 Report 也进不来）。
+                    // 订阅者写坏了不该连累其它订阅者。
                 }
             }
         }
 
         // ================== 快照 ==================
 
-        /// <summary>
-        /// 本局错误情况的一份不可变快照。存在的理由只有一个：
-        /// <see cref="SessionSentinel"/> 在<b>看门狗线程</b>上刷心跳，而
-        /// <see cref="incidents"/> 是主线程在 <see cref="Gate"/> 保护下增删的列表——
-        /// 后台线程直接遍历它，迟早会撞上一次正在扩容的 <c>List</c>。
-        /// </summary>
+        /// <summary>不可变快照，供看门狗线程读取，避免直接遍历主线程正在改动的 <c>incidents</c> 列表。</summary>
         internal sealed class Snapshot
         {
             internal int Kinds;
@@ -294,18 +259,13 @@ namespace Polaris.Diagnostics
 
         // ================== 汇总 ==================
 
-        /// <summary>
-        /// 退出时的一行汇总。没有任何模组相关错误时返回 null——<b>没出错的一局，
-        /// 错误系统必须一个字都不说</b>。
-        /// </summary>
+        /// <summary>退出时的一行汇总；没有模组相关错误时返回 null（一字不提）。</summary>
         internal static string Summary()
         {
             lock (Gate)
             {
                 if (incidents.Count == 0)
                 {
-                    // 没有任何模组相关的错误：一个字都不说。哪怕原版自己刷了几百条 LogError，
-                    // 那也不是 Polaris 该在控制台里替它嚷嚷的事。
                     return null;
                 }
 

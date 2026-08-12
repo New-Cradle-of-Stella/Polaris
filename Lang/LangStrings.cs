@@ -3,14 +3,8 @@ using Polaris.Localization;
 namespace Polaris.Lang
 {
     /// <summary>
-    /// 本地化子系统设置项文案的内置翻译。
-    /// <para>
-    /// 这里有点自指：本子系统正是 <c>.plang</c> 的运行时，自己的设置却写死在代码里。
-    /// 理由和 <c>Polaris.Localization.PolarisStrings</c> 一样——设置项要在
-    /// <c>Plugin.Start</c> 绑定配置文件时就能查到文案，而那时 <c>.plang</c> 的注册与
-    /// resolver 挂载才刚跑完；更要紧的是，让"选哪种语言"这一行本身依赖那套还没生效的机制，
-    /// 坏起来会连玩家改回去的入口一起坏掉。
-    /// </para>
+    /// 本地化子系统设置项文案的内置翻译。本子系统就是 <c>.plang</c> 的运行时，但设置项文案写死在代码里，
+    /// 因为设置要在 <c>.plang</c> 注册与 resolver 挂载完成前就可用，避免"选语言"这行依赖它自己还没生效的机制。
     /// </summary>
     internal static class LangStrings
     {

@@ -6,16 +6,8 @@ using Newtonsoft.Json.Linq;
 namespace Polaris.Res.Import
 {
     /// <summary>
-    /// 旁路 JSON 导入元数据的继承解析：内置默认值 → 挂载根到文件所在目录逐层的
-    /// <c>_import.json</c> → 该文件自己的 <c>&lt;file&gt;.import.json</c>，就近覆盖。
-    /// <para>
-    /// 两级缓存：<see cref="directoryChains"/> 按目录缓存"内置默认值 + 到这一层为止的全部
-    /// <c>_import.json</c>"的合并结果（同一目录下 N 个文件共享同一份链，不用各自重新遍历
-    /// 目录树）；<see cref="textureResults"/> 按文件绝对路径缓存最终反序列化结果。
-    /// M8 热重载接入时，watcher 检测到 <c>_import.json</c>/<c>*.import.json</c> 变化后调用
-    /// <see cref="Invalidate"/> 使两级缓存失效。TODO(M8)：watcher 落地后由它调用；
-    /// 在那之前没有调用方，缓存只增不减（导入设置在一次游戏会话内不会变）。
-    /// </para>
+    /// 旁路 JSON 导入元数据的继承解析：内置默认值 → 挂载根到文件目录逐层的 <c>_import.json</c> → 文件自己的 <c>.import.json</c>，就近覆盖。
+    /// 两级缓存（按目录、按文件路径）只增不减，需要失效时调用 <see cref="Invalidate"/>。
     /// </summary>
     internal static class ImportMetaResolver
     {
@@ -30,19 +22,11 @@ namespace Polaris.Res.Import
         private static readonly Dictionary<string, PxlsImportSettings> pxlsResults =
             new Dictionary<string, PxlsImportSettings>(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>
-        /// 解析某个纹理文件最终生效的导入设置。<paramref name="mountRoot"/> 必须是命中这个文件的
-        /// 那个挂载的根目录（不是随便哪个挂载）——目录链只应该从这个根往下走，不能越界
-        /// 走到挂载根以外的祖先目录去找 <c>_import.json</c>。
-        /// </summary>
+        /// <summary>解析某个纹理文件最终生效的导入设置；<paramref name="mountRoot"/> 必须是命中该文件的挂载根目录，目录链不会越界到根以外查找。</summary>
         internal static TextureImportSettings ResolveTexture(string mountRoot, string absoluteFilePath) =>
             ResolveSection(textureResults, "texture", mountRoot, absoluteFilePath);
 
-        /// <summary>
-        /// 解析某个 PXLS 文件最终生效的导入设置。<paramref name="over"/> 非空时整体替换 JSON 解析
-        /// 结果（不做字段级合并——这个不对称是有意的简化，见调用方 <c>ModResources.Pxls</c> 的说明），
-        /// 此时也不参与缓存，因为返回值就是调用方自己传入的对象。
-        /// </summary>
+        /// <summary>解析某个 PXLS 文件最终生效的导入设置；<paramref name="over"/> 非空时整体替换 JSON 结果（不做字段级合并），且不参与缓存。</summary>
         internal static PxlsImportSettings ResolvePxls(string mountRoot, string absoluteFilePath, PxlsImportSettings over)
         {
             if (over != null)
@@ -53,12 +37,7 @@ namespace Polaris.Res.Import
             return ResolveSection(pxlsResults, "pxls", mountRoot, absoluteFilePath);
         }
 
-        /// <summary>
-        /// 各资源种类共用的解析流程：按文件绝对路径查 <paramref name="cache"/>，未命中则走
-        /// "目录链 → 该文件自己的 <c>&lt;file&gt;.import.json</c>"合并，再反序列化出
-        /// <paramref name="sectionName"/> 节。每加一个资源种类只需要多一个缓存字典 + 一个节名，
-        /// 不用把这一整套流程再抄一遍。
-        /// </summary>
+        /// <summary>各资源种类共用的解析流程：查缓存，未命中则合并目录链与文件级覆盖，再反序列化出 <paramref name="sectionName"/> 节。</summary>
         private static T ResolveSection<T>(
             Dictionary<string, T> cache, string sectionName, string mountRoot, string absoluteFilePath)
             where T : new()
@@ -84,7 +63,7 @@ namespace Polaris.Res.Import
             }
             catch (Exception ex)
             {
-                // 拼错键 / 类型不匹配：报错但不让这一个文件的手滑拖垮整次加载，回退到内置默认值。
+                // 拼错键/类型不匹配：报错但回退到内置默认值，不拖垮整次加载。
                 Plugin.Logger.LogError(
                     $"[PolarisRes] Section \"{sectionName}\" in the import metadata is malformed (used for {absoluteFilePath}): {ex.Message}. Falling back to built-in defaults.");
                 settings = new T();
@@ -94,11 +73,7 @@ namespace Polaris.Res.Import
             return settings;
         }
 
-        /// <summary>
-        /// 递归构造"挂载根 → <paramref name="directory"/>"这一路上逐层应用 <c>_import.json</c>
-        /// 后的合并文档。递归顺序保证祖先目录先算（内置默认值打底），子目录的 <c>_import.json</c>
-        /// 后应用，天然实现"就近覆盖"。
-        /// </summary>
+        /// <summary>递归构造挂载根到 <paramref name="directory"/> 逐层应用 <c>_import.json</c> 的合并文档，祖先目录先算，实现就近覆盖。</summary>
         private static JObject BuildDirectoryChain(string mountRoot, string directory)
         {
             string normalizedDirectory = NormalizeDirectory(directory);
@@ -115,8 +90,7 @@ namespace Polaris.Res.Import
 
             if (atOrAboveRoot)
             {
-                // 到达挂载根（或者传入的目录出乎意料地在根之外，防御性地当作根处理，
-                // 不越界去遍历挂载范围以外的目录）：从内置默认值开始。
+                // 到达挂载根（或目录意外在根之外，防御性当作根处理）：从内置默认值开始。
                 parentChain = (JObject)ImportMetaJson.BuiltInDefaults.DeepClone();
                 normalizedDirectory = normalizedRoot;
             }
@@ -139,7 +113,7 @@ namespace Polaris.Res.Import
         private static string NormalizeDirectory(string directory) =>
             directory == null ? null : Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar);
 
-        /// <summary>清空全部缓存，供 M8 热重载在 <c>_import.json</c>/<c>*.import.json</c> 变化时调用。</summary>
+        /// <summary>清空全部缓存，供 <c>_import.json</c>/<c>*.import.json</c> 变化时调用。</summary>
         internal static void Invalidate()
         {
             directoryChains.Clear();

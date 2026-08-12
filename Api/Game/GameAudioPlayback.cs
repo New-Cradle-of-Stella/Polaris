@@ -4,20 +4,13 @@ using XX;
 namespace Polaris.API
 {
     /// <summary>
-    /// 一次音效播放。取得实例的入口是 <c>PolarisAPI.Game.Audio.Play</c> 与
-    /// <see cref="GameStaticCallbackKind.SoundPlayed"/> 回调。
-    /// <para>
-    /// 之所以是"一次播放"而不是"一个音效名"：同一个音效完全可能同时响三次，
-    /// 按名字停是停不准的（谁也说不清停的是哪一次）。实例在这一次播放结束后失效，
-    /// 对失效实例调 <see cref="Stop"/> 不会抛异常——目标状态本来就已经达成了。
-    /// </para>
+    /// 一次音效播放（而非一个音效名，因为同一音效可能同时响多次）。取得实例的入口是
+    /// <c>PolarisAPI.Game.Audio.Play</c> 与 <see cref="GameStaticCallbackKind.SoundPlayed"/> 回调；
+    /// 播放结束后失效，对失效实例调 <see cref="Stop"/> 不抛异常。
     /// </summary>
     public sealed class GameAudioPlayback : GameInstance
     {
-        /// <summary>
-        /// 刚开播的这几帧不做回收。CRI 的播放器不是 <c>play()</c> 返回就立刻报 "playing" 的，
-        /// 少了这个宽限期，每一次播放都会在下一帧被回收逻辑当成"已经播完"释放掉。
-        /// </summary>
+        /// <summary>刚开播的这几帧不做回收：CRI 播放器不是 <c>play()</c> 一返回就立刻报 "playing"，缺这个宽限期会被误判为已播完。</summary>
         internal const int CollectGraceFrames = 10;
 
         readonly SndPlayer player;
@@ -97,7 +90,7 @@ namespace Polaris.API
             }
             catch (Exception)
             {
-                // 释放失败没有补救手段，也不值得打扰调用方。
+                // 释放失败无法补救，忽略。
             }
 
             Invalidate();
@@ -111,15 +104,14 @@ namespace Polaris.API
             }
             catch (Exception)
             {
-                // 问不出状态的播放器一律当作已结束：留着它只会每帧再抛一次。
+                // 问不出状态一律当作已结束。
                 return false;
             }
         }
 
         void Control(string what, Action<SndPlayer> action)
         {
-            // 刻意不走 EnsureUsable：对一次可能已经播完的音效说"别响了"是再普通不过的写法，
-            // 为此强迫调用方先查一次状态没有意义。
+            // 不走 EnsureUsable：对可能已播完的音效喊停是正常用法，不必强迫先查状态。
             if (released || player == null)
             {
                 return;

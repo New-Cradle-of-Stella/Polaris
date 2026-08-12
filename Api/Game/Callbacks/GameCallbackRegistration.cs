@@ -3,14 +3,8 @@ using System;
 namespace Polaris.API
 {
     /// <summary>
-    /// 一次回调注册的句柄。<see cref="Dispose"/> 是取消注册的唯一方式——不要求调用方
-    /// 自己配对 <c>+=</c>/<c>-=</c>，也就不会出现"退订时传了另一个等价委托实例导致退不掉"
-    /// 这种只在运行期才暴露的问题。
-    /// <para>
-    /// 三种情况会让它变为非活跃：显式 <see cref="Dispose"/>；
-    /// <see cref="GameCallbackOptions.Once"/> 触发过一次；
-    /// 以及（实例回调）它绑定的游戏实例已经失效。
-    /// </para>
+    /// 一次回调注册的句柄；<see cref="Dispose"/> 是取消注册的唯一方式。
+    /// 变为非活跃的时机：显式 Dispose、Once 触发一次、或绑定的实例失效。
     /// </summary>
     public sealed class GameCallbackRegistration : IDisposable
     {

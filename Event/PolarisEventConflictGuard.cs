@@ -5,9 +5,8 @@ using Polaris.Diagnostics;
 namespace Polaris.Event
 {
     /// <summary>
-    /// 事件 ID 冲突的收集与处置，结构照抄 <c>Lang\PlangConflictGuard.cs</c>：扫描期间收集，
-    /// 扫描结束时（<see cref="Seal"/>）把所有冲突汇总成一条致命错误上报；扫描结束之后才出现的冲突
-    /// （运行期直接调 <see cref="PolarisEventRegistrationContext.Register"/>）当场单独报一条。
+    /// Collects event id conflicts during scanning and reports them as one fatal error via <see cref="Seal"/>;
+    /// any conflict found after scanning is reported individually as it happens.
     /// </summary>
     internal static class PolarisEventConflictGuard
     {

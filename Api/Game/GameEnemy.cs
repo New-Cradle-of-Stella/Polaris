@@ -9,10 +9,7 @@ namespace Polaris.API
     /// </summary>
     public sealed class GameEnemy : GameCharacter
     {
-        /// <summary>
-        /// 游戏用 <c>ENEMYID</c> 的最高位标记"处于狂暴形态"，它不是一个独立的敌人种类。
-        /// 读种类编号时要先剥掉，否则每个调用方都得自己记得做这件事。
-        /// </summary>
+        /// <summary><c>ENEMYID</c> 最高位标记"狂暴形态"，非独立敌人种类，读编号时需先剥掉。</summary>
         const long OverdriveFlag = 2147483648L;
 
         static readonly InstanceTable<NelEnemy, GameEnemy> Table = new();
@@ -64,10 +61,7 @@ namespace Polaris.API
         /// <summary>获取该敌人当前状态。</summary>
         public GameEnemyState State => ReadState(Enemy);
 
-        /// <summary>
-        /// 切换该敌人到目标状态。与 <see cref="GamePlayer.ChangeState"/> 一样是高权限动作，
-        /// 会绕过原本通往该状态的迁移条件。
-        /// </summary>
+        /// <summary>切换该敌人到目标状态；绕过正常迁移条件，与 <see cref="GamePlayer.ChangeState"/> 一样是高权限动作。</summary>
         public void ChangeState(GameEnemyState state)
         {
             EnsureUsable();
@@ -89,13 +83,8 @@ namespace Polaris.API
         }
 
         /// <summary>
-        /// 根据请求参数对该敌人造成一次伤害，返回<b>实际</b>扣掉的体力值。
-        /// <para>
-        /// 魔力伤害同样会结算，但不体现在返回值里——一次调用只能返回一个数，
-        /// 而"这一下打掉多少血"是绝大多数调用方真正要判断的量（例如"打死了没有"）。
-        /// 需要魔力那一份请订阅
-        /// <see cref="GameInstanceCallbackKind.MpDamageApplied"/>。
-        /// </para>
+        /// 对该敌人造成一次伤害，返回实际扣掉的体力值；魔力伤害同样结算但不在返回值中，
+        /// 需要请订阅 <see cref="GameInstanceCallbackKind.MpDamageApplied"/>。
         /// </summary>
         public int ApplyDamage(EnemyDamageRequest request)
         {
@@ -110,10 +99,7 @@ namespace Polaris.API
             return hp;
         }
 
-        /// <summary>
-        /// 给该敌人追加击退速度，走的是游戏自己的击退通道
-        /// （因此会照常受该敌人的抗击退判定影响，而不是硬改速度）。
-        /// </summary>
+        /// <summary>给该敌人追加击退速度，走游戏自身击退通道，因此仍受其抗击退判定影响。</summary>
         public void AddKnockback(KnockbackRequest request)
         {
             EnsureUsable();
@@ -132,7 +118,7 @@ namespace Polaris.API
 
             try
             {
-                // 朝向决定推的方向：游戏按"攻击来自哪一侧"算，来自右侧就往左推。
+                // 朝向决定推的方向：来自右侧就往左推。
                 e.is_right = request.FromRight;
                 e.addKnockbackVelocity(velocity, null, null, default);
             }

@@ -5,14 +5,8 @@ using XX;
 namespace Polaris.Settings
 {
     /// <summary>
-    /// 把一个 <see cref="SettingDefinition"/> 画成原版设置界面里的一行。
-    /// 一行 = 一个标签 <see cref="DsnDataP"/> + 一个控件，与原版
-    /// <c>UiCFG.createBoxDesignerContentMain</c> 里 <c>P("Config_Xxx").addSliderCT(...)</c> 同构。
-    /// <para>
-    /// 控件全部加在 <c>cfg.BxOut</c> 上而不是委托参数给的那个 tab Designer：委托是在
-    /// <c>BxOut.addTab(...)</c> 与 <c>BxOut.endTab()</c> 之间跑的，此时往 BxOut 上加就是往主标签页里加，
-    /// 而且名字会注册到 BxOut 的检索表里——<see cref="Sync"/> 要靠 <c>BxOut.Get(name)</c> 找回控件。
-    /// </para>
+    /// 把一个 <see cref="SettingDefinition"/> 画成原版设置界面里的一行：标签 + 控件。
+    /// 控件全部加在 <c>cfg.BxOut</c> 上，因委托运行期间它等同主标签页，且名字须注册进检索表供 <see cref="Sync"/> 用 <c>Get(name)</c> 找回。
     /// </summary>
     internal static class SettingsRowRenderer
     {
@@ -20,11 +14,7 @@ namespace Polaris.Settings
         const float LabelWidth = 140f;
 
         /// <summary>
-        /// 原版设置行的 setter（值显示区）宽度，抄自 <c>createBoxDesignerContentMain</c>。
-        /// 原版按行的形态分成三档，控件本体的宽度也跟着走（见 <see cref="Meter"/>）：
-        /// checkbox（"窗口模式"）214、左右箭头选项（"窗口大小"）154、纯数值（音量条）用默认的 114。
-        /// 三档不能混：<c>addSliderCT</c> 发现"控件宽 + setter 宽"超出可用宽度会自己插一个
-        /// <c>Br()</c> 把 setter 挤到下一行，看起来就是那一行的排版塌了。
+        /// 原版设置行 setter（值显示区）宽度，按形态分三档（见 <see cref="Meter"/>），不能混用——超宽会被 <c>addSliderCT</c> 自动换行，塌了排版。
         /// </summary>
         const float SetterWidthCheckbox = 214f;
         const float SetterWidthChoices = 154f;
@@ -62,8 +52,7 @@ namespace Polaris.Settings
                           onChanged: cur => s.Value = (int)Math.Round(cur));
                     break;
 
-                // ChoiceSetting 与 EnumSetting<T> 共用这一条：选项少时用 checkbox 形态，
-                // 多时用原版"窗口大小"那种左右箭头形态。
+                // ChoiceSetting 与 EnumSetting<T> 共用：选项少用 checkbox，多用左右箭头形态。
                 case IChoiceSetting c:
                     Label(box, setting, row);
                     bool useCheckbox = c.Choices.Length <= CheckboxMaxChoices;
@@ -88,15 +77,14 @@ namespace Polaris.Settings
                           float current, float min, float max, float step,
                           bool checkbox, string[] keys, Action<float> onChanged)
         {
-            // 三档宽度必须成对取，理由见 SetterWidthCheckbox 的注释。
+            // 三档宽度须成对取，见 SetterWidthCheckbox。
             (float width, float setter) = checkbox
                 ? (cfg.sliderw_sml, SetterWidthCheckbox)
                 : keys != null
                     ? (cfg.sliderw_middle, SetterWidthChoices)
                     : (cfg.sliderw, SetterWidthNumeric);
 
-            // 一行数值控件其实是两个块：meter 本体 + 右侧的值显示区（CtSetterMeter），
-            // 搜索过滤要两个一起收，少登记一个就会在过滤后剩下半行。
+            // 一行数值控件是两个块（meter 本体 + CtSetterMeter），须一起登记，否则过滤后剩半行。
             aBtnMeterNel meter = box.addSliderCT(new DsnDataSlider
             {
                 name = s.RowKey,
@@ -124,8 +112,7 @@ namespace Polaris.Settings
         static void TextField(UiBoxDesigner box, TextSetting s, SettingsSearchFilter.RowRecorder row)
         {
             Label(box, s, row);
-            // DsnDataInput 没有 fnHover 字段，所以文本行不会弹右侧说明框——
-            // 说明只能写进标签里，或者靠上方的分区标题交代。
+            // DsnDataInput 无 fnHover 字段，文本行不会弹右侧说明框。
             row.Add(box.addInput(new DsnDataInput
             {
                 name = s.RowKey,
@@ -147,11 +134,7 @@ namespace Polaris.Settings
             row.Add(PolarisSettingsScreen.Caption(box, s.DisplayLabel, "P_Config_" + s.RowKey, LabelWidth));
         }
 
-        /// <summary>
-        /// 把设置项的当前值推回控件显示。原版的 <c>UiCFG</c> 只 new 一次、之后一直 <c>resume()</c> 复用，
-        /// 所以两次打开设置界面之间模组自己改了值的话，只能靠这个把界面拨正。
-        /// 用 <c>setValue</c> 而不是 <c>setValueAndCallFunc</c>：这是"同步显示"，不是"玩家改了值"。
-        /// </summary>
+        /// <summary>把设置项当前值推回控件显示；用 <c>setValue</c> 而非 <c>setValueAndCallFunc</c>，因这是同步显示不是玩家改值。</summary>
         internal static void Sync(UiCFG cfg, SettingDefinition setting)
         {
             IVariableObject widget = cfg.BxOut.Get(setting.RowKey);

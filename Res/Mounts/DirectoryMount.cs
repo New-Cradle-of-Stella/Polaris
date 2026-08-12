@@ -3,11 +3,7 @@ using System.IO;
 
 namespace Polaris.Res.Mounts
 {
-    /// <summary>
-    /// 一个磁盘根目录。先试精确大小写（快路径，绝大多数情况下一次 <see cref="File.Exists"/>
-    /// 就够了），未命中再查惰性建立的大小写不敏感索引。索引在 M8 热重载接入前不会失效，
-    /// 因为目前也没有任何东西会在运行期往挂载目录里加文件。
-    /// </summary>
+    /// <summary>一个磁盘根目录。先试精确大小写（快路径），未命中再查惰性建立的大小写不敏感索引；索引目前不会失效（运行期不会有文件变化）。</summary>
     internal sealed class DirectoryMount
     {
         internal string RootPath { get; }
@@ -80,13 +76,6 @@ namespace Polaris.Res.Mounts
                     .Replace('\\', '/');
                 lowercaseIndex[relative.ToLowerInvariant()] = relative;
             }
-        }
-
-        /// <summary>热重载 watcher（M8）检测到目录结构变化时调用，强制下次解析重新扫描。</summary>
-        internal void InvalidateIndex()
-        {
-            indexed = false;
-            lowercaseIndex = null;
         }
     }
 }

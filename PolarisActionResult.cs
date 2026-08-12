@@ -21,14 +21,7 @@ namespace Polaris
         Failed,
     }
 
-    /// <summary>
-    /// 一次动作的结果。
-    /// <para>
-    /// Polaris 自己的产品 API（菜单扩展、设置、资源）用它表达动作结果；游戏 API v2 不用
-    /// ——那一层的约定是"查询返回零值/空值，写操作只在实例已失效时抛"，多一层结果包装反而
-    /// 让每一次读血量都要先解一层壳。
-    /// </para>
-    /// </summary>
+    /// <summary>一次动作的结果；用于 Polaris 自身产品 API（菜单扩展、设置、资源），游戏 API v2 不用。</summary>
     public readonly struct PolarisActionResult
     {
         PolarisActionResult(PolarisActionStatus status, string message)

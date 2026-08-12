@@ -8,17 +8,8 @@ using BepInEx;
 namespace Polaris.Diagnostics
 {
     /// <summary>
-    /// 程序集 → <see cref="AssemblyOwner"/> 的归属表，整套错误分析的地基。
-    /// <para>
-    /// <b>判定按路径优先、名字兜底。</b>路径是事实：一个 dll 躺在游戏的 Managed 目录里，
-    /// 它就是随游戏分发的；躺在 plugins 里，它就是玩家自己装的。程序集名则是任人填写的元数据，
-    /// 撞名、伪装、改名都可能发生，只配当最后一档兜底。
-    /// </para>
-    /// <para>
-    /// 结果永久缓存：程序集一旦加载，它是谁的就不会再变（同 <see cref="Infra.TypesAPI"/> 的
-    /// 类型表缓存）。唯一会变的是 BepInEx 插件表，但它在 Chainloader 跑完之后也就定型了，
-    /// 需要时用 <see cref="Invalidate"/> 丢弃重建。
-    /// </para>
+    /// 程序集 → <see cref="AssemblyOwner"/> 的归属表。判定按路径优先、程序集名兜底，
+    /// 结果永久缓存；插件表随 Chainloader 定型，需要时用 <see cref="Invalidate"/> 丢弃重建。
     /// </summary>
     internal static class AssemblyOwnerIndex
     {
@@ -28,7 +19,7 @@ namespace Polaris.Diagnostics
         static Dictionary<Assembly, PluginInfo> pluginByAssembly;
         static Dictionary<string, AssemblyOwner> byNamespace;
 
-        /// <summary>全部判不出来的帧共用一个实例，省得每帧都 new 一个。</summary>
+        /// <summary>判不出归属的帧共用的实例。</summary>
         static readonly AssemblyOwner UnknownOwner = new AssemblyOwner
         {
             Kind = OwnerKind.Unknown,
@@ -55,10 +46,7 @@ namespace Polaris.Diagnostics
             return owner;
         }
 
-        /// <summary>
-        /// 按类型全名取归属，供字符串堆栈（<c>Application.logMessageReceived</c> 只给字符串，
-        /// 没有 <see cref="Exception"/> 对象）使用。逐段剥掉命名空间往上找，全都找不到给"未知"。
-        /// </summary>
+        /// <summary>按类型全名取归属（供只有字符串、没有异常对象的堆栈用），逐级剥命名空间向上查找。</summary>
         internal static AssemblyOwner OfTypeName(string fullTypeName)
         {
             if (string.IsNullOrEmpty(fullTypeName))
@@ -82,17 +70,13 @@ namespace Polaris.Diagnostics
                 probe = probe.Substring(0, dot);
                 if (map.TryGetValue(probe, out AssemblyOwner owner))
                 {
-                    // 命名空间被多个归属不同的程序集共用时存的是 null（见 NamespaceMap），
-                    // 这种情况不猜，继续往上剥反而会得到更不准的结果，直接认输。
+                    // null 表示该命名空间被多个不同归属的程序集共用，不猜，直接认输。
                     return owner ?? UnknownOwner;
                 }
             }
         }
 
-        /// <summary>
-        /// 按 BepInEx 插件 GUID 取归属。Harmony 的 <c>Patch.owner</c> 按约定就是插件 GUID，
-        /// 补丁嫌疑扫描（<see cref="PatchSuspects"/>）靠这个把 owner 字符串换成责任人。
-        /// </summary>
+        /// <summary>按 BepInEx 插件 GUID 取归属（Harmony 的 <c>Patch.owner</c> 即插件 GUID）。</summary>
         internal static AssemblyOwner ByPluginGuid(string guid)
         {
             if (string.IsNullOrEmpty(guid))
@@ -116,7 +100,7 @@ namespace Polaris.Diagnostics
             => PluginMap().Keys.Select(Of).Where(o => o.Kind != OwnerKind.Unknown)
                           .OrderBy(o => o.Kind).ThenBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>丢弃缓存。插件表在 Chainloader 跑完前是不完整的，那之前建的表要作废。</summary>
+        /// <summary>丢弃缓存（Chainloader 跑完前建的插件表不完整，需要作废重建）。</summary>
         internal static void Invalidate()
         {
             byAssembly.Clear();
@@ -134,8 +118,7 @@ namespace Polaris.Diagnostics
                 DisplayName = SafeName(assembly),
             };
 
-            // 1. 自己。放在最前面，不依赖任何路径推断——Polaris.dll 装在 plugins 根下
-            //    还是 plugins/Polaris/ 下由分发方式决定，不该影响"这是我自己"的判断。
+            // 1. 自己：不依赖路径推断，避免分发方式影响判断。
             if (assembly == typeof(Plugin).Assembly)
             {
                 owner.Kind = OwnerKind.Polaris;
@@ -146,7 +129,7 @@ namespace Polaris.Diagnostics
 
             string location = SafeLocation(assembly);
 
-            // 2. 没有落盘位置：Harmony 的 DMD、Emit 出来的动态程序集。
+            // 2. 没有落盘位置：动态程序集（Harmony DMD、Emit）。
             if (string.IsNullOrEmpty(location))
             {
                 owner.Kind = OwnerKind.Dynamic;
@@ -155,30 +138,28 @@ namespace Polaris.Diagnostics
 
             Locate(owner, location);
 
-            // 3. 游戏自己的 Managed 目录：原版本体 + 随包第三方 + Unity 引擎 + BCL。
-            //    引擎与 BCL 要再挑出来单列，它们永远不该出现在"责任人"和堆栈标注里。
+            // 3. 游戏 Managed 目录：原版本体，或按名字再细分出引擎/BCL。
             if (IsUnder(location, ManagedDir))
             {
                 owner.Kind = IsRuntimeName(owner.DisplayName) ? OwnerKind.Runtime : OwnerKind.Vanilla;
                 return owner;
             }
 
-            // 4. BepInEx 自己的 core 目录：加载器与补丁框架。
+            // 4. BepInEx core 目录：加载器与补丁框架。
             if (IsUnder(location, CoreDir))
             {
                 owner.Kind = OwnerKind.Framework;
                 return owner;
             }
 
-            // 5. Polaris 随包分发的第三方依赖。必须排在下面的 plugins 通用判断之前——
-            //    这个目录本来就在 plugins 底下，顺序反了会被认成普通模组。
+            // 5. Polaris 随包分发的第三方依赖；须排在 plugins 通用判断之前，避免误判为普通模组。
             if (IsUnder(location, PolarisAPI.Paths.LibsDir))
             {
                 owner.Kind = OwnerKind.ModLibrary;
                 return owner;
             }
 
-            // 6. plugins 底下的其它 dll：是 BepInEx 插件才算"模组"，否则只是模组随包的依赖。
+            // 6. plugins 下的其它 dll：注册为 BepInEx 插件才算模组，否则算模组依赖。
             if (IsUnder(location, PolarisAPI.Paths.PluginsRoot))
             {
                 owner.Kind = PluginMap().ContainsKey(assembly) ? OwnerKind.Mod : OwnerKind.ModLibrary;
@@ -186,8 +167,7 @@ namespace Polaris.Diagnostics
                 return owner;
             }
 
-            // 7. 名字兜底。走到这里说明 dll 在上面任何一个约定目录之外（玩家手动挪过、
-            //    或者是 GAC / Mono 自带的东西），只能靠名字猜个大类。
+            // 7. 落在约定目录之外，只能按名字猜。
             owner.Kind = ClassifyByName(owner.DisplayName);
             return owner;
         }
@@ -204,10 +184,7 @@ namespace Polaris.Diagnostics
             owner.FileName = Path.GetFileName(location);
         }
 
-        /// <summary>
-        /// 给模组类归属补上 GUID 与 <see cref="PolarisModInfo"/>（作者、主页）——报告尾部
-        /// "该找谁"那一段全靠这些字段，没有它们归因结论就只是一个 dll 名字。
-        /// </summary>
+        /// <summary>给模组归属补上 GUID 与 <see cref="PolarisModInfo"/>（作者、主页）。</summary>
         static void Enrich(AssemblyOwner owner)
         {
             if (owner.FileName != null)
@@ -265,10 +242,7 @@ namespace Polaris.Diagnostics
 
         // ================== 反查表 ==================
 
-        /// <summary>
-        /// <c>Assembly → PluginInfo</c>。BepInEx 只给了 GUID → PluginInfo 的正向表，
-        /// 而归因是从堆栈帧（也就是程序集）出发的，必须有这张反向表。
-        /// </summary>
+        /// <summary><c>Assembly → PluginInfo</c> 反向表（BepInEx 只提供 GUID → PluginInfo 正向表）。</summary>
         static Dictionary<Assembly, PluginInfo> PluginMap()
         {
             if (pluginByAssembly != null)
@@ -292,14 +266,8 @@ namespace Polaris.Diagnostics
         }
 
         /// <summary>
-        /// 命名空间 → 归属。只在真的需要解析字符串堆栈时才建，代价是把每个已加载程序集的
-        /// 类型表读一遍（<see cref="Infra.TypesAPI.Of"/> 本身带缓存，Assembly-CSharp 那 5MB
-        /// 也只解析这一次）。这笔开销发生在"已经出错了"的路径上，换来的是每一帧都能标出归属，
-        /// 值得。
-        /// <para>
-        /// 同一个命名空间被归属不同的程序集共用时存 null（视作"说不清"）：模组用
-        /// <c>Polaris.XXX</c> 之类的命名空间并不罕见，把这种帧算到 Polaris 头上就是冤案。
-        /// </para>
+        /// 命名空间 → 归属，仅在需要解析字符串堆栈时按需构建。
+        /// 同一命名空间被不同归属的程序集共用时存 null，避免误判。
         /// </summary>
         static Dictionary<string, AssemblyOwner> NamespaceMap()
         {
@@ -332,7 +300,7 @@ namespace Polaris.Diagnostics
                         continue;
                     }
 
-                    // 已经被别人占了：同一个归属无所谓，不同归属就作废这个命名空间。
+                    // 归属不同则作废该命名空间。
                     if (existing != null && existing.Kind != owner.Kind)
                     {
                         map[ns] = null;
@@ -345,9 +313,7 @@ namespace Polaris.Diagnostics
         }
 
         // ================== 兜底的反射访问 ==================
-        // 下面这些 try/catch 不是防御性洁癖：错误分析跑在"已经出事了"的路径上，
-        // 此刻 AppDomain 里很可能正躺着几个加载了一半的程序集，读 Location 抛
-        // NotSupportedException 是常事。这里再抛一次异常就会盖掉原始错误。
+        // 错误分析跑在"已经出事了"的路径上，加载了一半的程序集读 Location 可能抛异常，须吞掉。
 
         static string SafeLocation(Assembly assembly)
         {
@@ -420,10 +386,7 @@ namespace Polaris.Diagnostics
             }
         }
 
-        /// <summary>
-        /// <paramref name="path"/> 是否在 <paramref name="directory"/> 之下（含任意层子目录）。
-        /// 补上末尾分隔符再比，否则 <c>plugins</c> 会把 <c>plugins_backup</c> 也算进来。
-        /// </summary>
+        /// <summary>判断 <paramref name="path"/> 是否在 <paramref name="directory"/> 之下（补分隔符防止前缀误匹配，如 plugins_backup）。</summary>
         static bool IsUnder(string path, string directory)
         {
             if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(directory))

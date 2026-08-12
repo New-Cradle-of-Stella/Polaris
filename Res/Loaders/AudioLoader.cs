@@ -5,16 +5,8 @@ using UnityEngine;
 namespace Polaris.Res.Loaders
 {
     /// <summary>
-    /// 从 wav/ogg 字节构造 <see cref="AudioClip"/>。游戏本身没有"原始音频"这类封装——游戏音频
-    /// 走 CRIWARE cue sheet（<c>.acb</c>/<c>.awb</c>），不认裸 wav/ogg 文件——所以这里直接产出
-    /// Unity 原生 <see cref="AudioClip"/>，播放交给模组自己的 <c>AudioSource</c>，PolarisRes
-    /// 只负责把文件解码成能用的 <see cref="AudioClip"/>。
-    /// <para>
-    /// wav 是手写 RIFF/PCM 解析（见 <see cref="WavParser"/>），同步完成没有难度；ogg(Vorbis)
-    /// 解码本身复杂得多，Unity 又没有公开的同步解码 API，这里引入 NVorbis（纯 C#、同步解码）
-    /// 而不是走 <c>UnityWebRequestMultimedia</c> 协程——否则 <see cref="ModResources.Audio"/>
-    /// 会被迫变成像 PXLS 一样的跨帧异步接口，而目前"只有 PXLS 异步"是刻意维持的架构不变量。
-    /// </para>
+    /// 从 wav/ogg 字节构造 Unity 原生 <see cref="AudioClip"/>；播放交给模组自己的 <c>AudioSource</c>。
+    /// ogg 用 NVorbis 同步解码（而非 <c>UnityWebRequestMultimedia</c> 协程），以保持 <see cref="ModResources.Audio"/> 是同步接口。
     /// </summary>
     internal static class AudioLoader
     {
@@ -56,8 +48,7 @@ namespace Polaris.Res.Loaders
                     int read = reader.ReadSamples(samples, readTotal, samples.Length - readTotal);
                     if (read <= 0)
                     {
-                        // Vorbis 流比头部声明的 TotalSamples 短：按实际读到的截断，不报错——
-                        // 这和 wav 遇到被截断 data 块时的容错思路一致。
+                        // 流比头部声明的 TotalSamples 短：按实际读到的截断，不报错。
                         break;
                     }
 

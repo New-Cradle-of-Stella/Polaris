@@ -5,14 +5,8 @@ using UnityEngine;
 namespace Polaris.Patch
 {
     /// <summary>
-    /// 标题界面每帧驱动入口：当某个按钮的窗口处于打开状态时，推进确定/取消按钮条的
-    /// 淡入动画，侦测窗口是否已被自行关闭（自动归位）或玩家按下 ESC/X（请求关闭）。
-    /// 同时每帧重新应用顶部按钮换行末行的居中修正——BxTop 激活时会走一次内部的行高/
-    /// 布局重算（row_remake_flag 消费、box 尺寸随按钮数变化后触发的重排），会用引擎原版
-    /// 公式重新摆一遍按钮位置，把 Patch_SceneTitleTemp_initButtons/fineTexts 里做的居中
-    /// 修正冲掉；这个时机在场景私有方法内部，没有单独的 Harmony 挂载点，所以改成每帧
-    /// 重新断言一次，而不是找到那个具体触发点单独打补丁。CenterTopRow 内部一开始就判断
-    /// 末行是否需要居中（大多数帧都会因为整除而立刻返回），所以每帧调用的开销可以忽略。
+    /// 标题界面每帧驱动入口：推进按钮窗口的淡入动画并侦测其关闭；每帧重新应用顶部按钮居中修正
+    /// （内部布局重算无独立挂载点会冲掉该修正，故逐帧重新断言，CenterTopRow 本身开销可忽略）。
     /// </summary>
     [HarmonyPatch(typeof(SceneTitleTemp), "runIRD")]
     internal static class Patch_SceneTitleTemp_runIRD
@@ -22,15 +16,11 @@ namespace Polaris.Patch
         {
             MainMenuAPI.CenterTopRow(__instance);
 
-            // 标题告知页（致命错误页 / 模组警示页 / 错误通知页，见 TitleOverlays）的淡入。
-            // 放在最前面且不受下面那些 return
-            // 影响：这些页面出现时标题状态机停在 TOP、CurrentOpenButton 为空，走到下面就
-            // 直接返回了。
+            // 标题告知页（见 TitleOverlays）的淡入，须放在下面的 return 之前才能生效。
             TitleOverlays.AdvanceFade(Time.deltaTime);
 
-            // 告知页显示期间压住原版的语言切换行 / 外链按钮 / 底部按键提示，见 TitleChrome。
-            // 必须放在 Postfix 里：原版 runIRD 自己每帧都会重写这几处的 alpha，只有跑在它
-            // 后面写下的值才是这一帧的最终值。
+            // 告知页显示期间压住语言切换行/外链按钮/底部按键提示；必须放在 Postfix 里，
+            // 因为原版 runIRD 每帧都会重写这些 alpha，只有跑在它之后写的值才是最终值。
             TitleChrome.Apply(__instance, TitleOverlays.IsShowing);
 
             MainMenuAPI mainMenu = PolarisAPI.MainMenu;

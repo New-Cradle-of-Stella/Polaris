@@ -13,10 +13,7 @@ namespace Polaris.Lang
         /// <summary>编辑器里展示用的名字（如"简体中文"），不参与运行时匹配。</summary>
         public string DisplayName { get; set; }
 
-        /// <summary>
-        /// 是否启用：启用的语言才会在编辑器表格里出现一列、才会被生成代码/注册进
-        /// <see cref="PlangRuntime"/>。关闭不会丢数据，只是隐藏+跳过生成，重新打开能找回来。
-        /// </summary>
+        /// <summary>是否启用：只有启用的语言会出现在编辑器表格并被生成/注册；关闭只是隐藏+跳过生成，不丢数据。</summary>
         public bool Enabled { get; set; } = true;
     }
 
@@ -35,21 +32,8 @@ namespace Polaris.Lang
     ///   &lt;/Entry&gt;
     /// &lt;/PolarisLang&gt;
     /// </code>
-    /// <para>
-    /// 向后兼容 Version 1（没有 <c>Languages</c>、<c>Entry</c> 直接用 <c>Value=""</c> 属性/纯
-    /// CDATA 子节点）：<see cref="Parse"/> 遇到旧格式时把唯一的那份文案读进
-    /// <see cref="PlangEntry.NeutralValue"/>，<see cref="PlangEntry.Values"/> 留空，不需要手动
-    /// 迁移旧文件。<see cref="ToXmlString"/> 一律按 Version 2 写。
-    /// </para>
-    /// <para>
-    /// 文案没有短/长之分，一律按可换行的长文本存成 CDATA 子节点。旧文件里的 <c>Type</c> 属性
-    /// 读的时候只用来判断 v1 的那份文案是在属性上还是在子节点里（v1 短文本写 <c>Value=""</c>
-    /// 属性），写的时候不再产出，v2 文件里出现也一律忽略。
-    /// </para>
-    /// <para>
-    /// 这份模型同时被 PolarisTool（PolarisSourceCodeGenerator 项目）的编辑器/生成器以源文件
-    /// 链接（Link）方式复用，不重复实现一遍读写逻辑。
-    /// </para>
+    /// 向后兼容 Version 1（旧格式读入 <see cref="PlangEntry.NeutralValue"/>，写出一律按 v2）；
+    /// 文案统一存成 CDATA 子节点，不再区分短/长。此模型同时被 PolarisTool 编辑器/生成器以源文件链接复用。
     /// </summary>
     public sealed class PlangDocument
     {
@@ -143,9 +127,7 @@ namespace Polaris.Lang
             doc.Entries.Add(entry);
         }
 
-        // Version 1（旧格式）：Type="Short"（默认）的文案存在 Value 属性里；Type="Long" 没有
-        // Value 属性，走子节点（CDATA 或纯文本），XElement.Value 会把子节点的文本内容拼起来、
-        // 不含标签本身。Type 在这里只用来决定去哪儿取值，不再进内存模型。
+        // Version 1：Type="Short"（默认）的文案在 Value 属性里，Type="Long" 走子节点；Type 只决定取值位置，不进内存模型。
         static void ParseEntryV1(XElement el, PlangDocument doc)
         {
             string key = (string)el.Attribute("Key");

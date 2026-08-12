@@ -8,10 +8,8 @@ using Polaris.API;
 namespace Polaris.Patch
 {
     /// <summary>
-    /// <c>NelM2DBase.run()</c> 里有两处 <c>GM.isStoppingGame()</c>：一处决定要不要显示"__BLURSC"
-    /// 隐藏标记，一处直接决定这一帧要不要跑世界主循环。两处都改接到
-    /// <see cref="GameMenuPauseRuntime.ShouldStopWorld"/>，只在"普通菜单 + 策略为 false"时放行；
-    /// Game Over、读档、退出等终止状态与其它分支（事件、转场）的判断保持原版不变。
+    /// 把 <c>NelM2DBase.run()</c> 里两处 <c>GM.isStoppingGame()</c> 调用都替换成
+    /// <see cref="GameMenuPauseRuntime.ShouldStopWorld"/>；其它分支（Game Over、读档、事件等）保持原版不变。
     /// </summary>
     [HarmonyPatch(typeof(NelM2DBase), nameof(NelM2DBase.run), new[] { typeof(float) })]
     internal static class Patch_NelM2DBase_run_GameMenuWorldPause

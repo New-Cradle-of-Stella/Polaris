@@ -4,12 +4,7 @@ using nel;
 namespace Polaris.API
 {
     /// <summary>
-    /// 玩家角色。位置、体力、位移这些与其它角色共通的能力继承自 <see cref="GameCharacter"/>，
-    /// 这里只放玩家独有的状态机。
-    /// <para>
-    /// 状态机是判断"玩家现在能不能动"最可靠的依据，比自己去看速度和姿势准得多：
-    /// 受伤、演出、被吞、坐板凳在游戏里都是各自独立的状态。
-    /// </para>
+    /// 玩家角色，共通能力继承自 <see cref="GameCharacter"/>，这里只放玩家独有的状态机。
     /// </summary>
     public sealed class GamePlayer : GameCharacter
     {
@@ -59,11 +54,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 判断该玩家当前是否可以执行游戏动作。问的是游戏自己的那套判定
-        /// （<c>Map2d.playerActionUseable</c>），因此演出、菜单、读档中都会得到 <c>false</c>，
-        /// 不需要调用方自己去枚举"哪些状态算不能动"。
-        /// </summary>
+        /// <summary>判断该玩家当前是否可以执行游戏动作（复用游戏自己的判定，演出/菜单/读档中均为 <c>false</c>）。</summary>
         public bool CanAct()
         {
             if (!IsValid)
@@ -81,14 +72,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 切换该玩家到指定状态。
-        /// <para>
-        /// 这是<b>高权限</b>动作：状态迁移在游戏里带着前后摇、无敌帧、技能锁与消耗，
-        /// 直接写状态会把这一串全部绕过去。内容脚本请优先用游戏自己的触发路径，
-        /// 只有明确知道自己在做什么时才用这个方法。
-        /// </para>
-        /// </summary>
+        /// <summary>切换该玩家到指定状态。<b>高权限</b>操作：会绕过前后摇、无敌帧、技能锁等正常状态迁移流程，慎用。</summary>
         public void ChangeState(GamePlayerState state)
         {
             EnsureUsable();
@@ -181,14 +165,7 @@ namespace Polaris.API
             }
         }
 
-        /// <summary>
-        /// 每帧差分：状态变化、死亡与复活三条实例回调都由这里发布。
-        /// <para>
-        /// 走轮询而不是给 <c>PR.changeState</c> 打补丁，是因为死亡与复活在游戏里有多条入口
-        /// （伤害致死、事件强制、游戏结束恢复、替身猫复活），逐条打补丁要跟着游戏版本追一整串
-        /// 内部调用链；而"状态字段变了"读一个字段就能知道。
-        /// </para>
-        /// </summary>
+        /// <summary>每帧差分，发布状态变化/死亡/复活三条实例回调；用轮询而非打补丁，因为死亡复活入口太多，读字段更简单可靠。</summary>
         internal void PumpState()
         {
             PR pr = Pr;
