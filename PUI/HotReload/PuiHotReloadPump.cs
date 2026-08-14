@@ -45,6 +45,8 @@ namespace Polaris.PUI.HotReload
 
             if (!request.Done.Wait(timeout))
             {
+                request.Done.Dispose();
+                instance.queue.TryPeek(out _);
                 return (false, "Timed out waiting for the game main thread");
             }
 

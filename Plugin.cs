@@ -113,7 +113,6 @@ namespace Polaris
             InitSubsystem("PUI", PUI.PUIManager.Init);
 
             // 扫描登记生成类后顺带把所有事件解包成 plugins/Polaris/events/ 下的 .cmd 文件。
-            InitSubsystem("event", Event.PolarisEventRegistryScanner.ScanAll);
 
             // 须排在三个子系统之后：Builder 轨的设置项注册可能发生在子系统初始化里。
             Settings.SettingsAttributeScanner.ScanAll();

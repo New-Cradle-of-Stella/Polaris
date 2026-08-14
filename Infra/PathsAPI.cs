@@ -22,12 +22,6 @@ namespace Polaris.Infra
         /// </summary>
         public string LibsDir => Path.Combine(PolarisRoot, "libs");
 
-        /// <summary>
-        /// PolarisEvent 解包出的 .cmd 事件脚本目录：<c>plugins/Polaris/events/</c>。DLL 内嵌的 commandText 是唯一真相，
-        /// 落盘只是为了给引擎原生的 <c>EV.getEventContent</c> 走文件路径读取，每次启动都会覆盖同名文件。
-        /// </summary>
-        public string EventsDir => Path.Combine(PolarisRoot, "events");
-
         /// <summary>设置项配置文件目录：<c>BepInEx/config/Polaris/</c>；放在 config 下因为它是用户数据，与 plugins 互不波及。</summary>
         public string ConfigDir => Path.Combine(Paths.ConfigPath, "Polaris");
 
@@ -58,7 +52,6 @@ namespace Polaris.Infra
         internal void EnsureDirectories()
         {
             Directory.CreateDirectory(LibsDir);
-            Directory.CreateDirectory(EventsDir);
             Directory.CreateDirectory(ConfigDir);
 
             // ReportsDir 在 StateDir 之下，CreateDirectory 会一并建出中间层。

@@ -205,7 +205,14 @@ namespace Polaris.PUI
             host = CreateHostObject($"PUI.{Handler.Name}");
             family = host.AddComponent<UiBoxDesignerFamily>();
             window = Handler.GetUIWindow(family);
-            Handler.BuildUI(window);
+            try
+            {
+                Handler.BuildUI(window);
+            }
+            catch (Exception)
+            {
+                Teardown(); //构建异常则直接删除，让调用方抛出异常
+            }
         }
 
         /// <summary>新建一个挂在 <see cref="PUIManager.Root"/> 下的宿主 GameObject；须保持启用状态，因为 <see cref="UiBoxDesignerFamily"/> 依赖 OnEnable 初始化，提前禁用会导致 NullReferenceException。</summary>
