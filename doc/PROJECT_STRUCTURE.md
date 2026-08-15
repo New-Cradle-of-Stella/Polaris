@@ -30,11 +30,13 @@ Polaris 现在由一个 BepInEx 插件核心和十个普通 DLL 组件组成。�
 ## 仓库目录
 
 - `PolarisCore` 与十个 `Polaris*` 目录：各自指向同名私有 GitHub 仓库的 Git submodule。
+- `PolarisCore/doc/design`：Game API 的边界说明和 v2 → v3 分阶段升级计划。
+- `PolarisCore/doc/specs`：Game API v3 表格规格。
+- `PolarisMagic/doc/design`：PolarisMagic 原型、实现与节点编辑器草案。
 - `PolarisEvent/doc/design`：PolarisEvent / PEVT 的设计、实施文档和阶段契约。
 - `PolarisEvent/tests/PolarisEvent.Tests`：PolarisEvent 语言前端单元测试。
 - `PolarisEvent/tests/Polaris.IntegrationTests`：PEVT 宿主程序集边界与跨模块集成测试。
-- `doc/design`：聚合仓库及其他模块的设计和实施文档。
-- `doc/specs`：API 表格规格。
+- `doc/design`：聚合仓库级设计和实施文档。
 - `doc/artifacts`：历史分析、预览和生成产物。
 - `build`：共享 MSBuild 配置；部署脚本位于解决方案同级。
 
