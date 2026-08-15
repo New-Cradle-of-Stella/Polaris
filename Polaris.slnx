@@ -1,3 +1,15 @@
 <Solution>
-  <Project Path="Polaris.csproj" />
+  <Project Path="PolarisCore\PolarisCore.csproj" />
+  <Project Path="PolarisUI\PolarisUI.csproj" />
+  <Project Path="PolarisRes\PolarisRes.csproj" />
+  <Project Path="PolarisLang\PolarisLang.csproj" />
+  <Project Path="PolarisMagic\PolarisMagic.csproj" />
+  <Project Path="PolarisAddons\PolarisAddons.csproj" />
+  <Project Path="PolarisMap\PolarisMap.csproj" />
+  <Project Path="PolarisSandbox\PolarisSandbox.csproj" />
+  <Project Path="PolarisDiagnostics\PolarisDiagnostics.csproj" />
+  <Project Path="PolarisSave\PolarisSave.csproj" />
+  <Project Path="PolarisEvent\PolarisEvent.csproj" />
+  <Project Path="PolarisEvent\tests\PolarisEvent.Tests\PolarisEvent.Tests.csproj" />
+  <Project Path="tests\Polaris.IntegrationTests\Polaris.IntegrationTests.csproj" />
 </Solution>
