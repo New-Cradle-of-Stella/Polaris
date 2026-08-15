@@ -32,7 +32,7 @@ Polaris 现在由一个 BepInEx 插件核心和十个普通 DLL 组件组成。�
 - `PolarisCore` 与十个 `Polaris*` 目录：各自指向同名私有 GitHub 仓库的 Git submodule。
 - `PolarisEvent/doc/design`：PolarisEvent / PEVT 的设计、实施文档和阶段契约。
 - `PolarisEvent/tests/PolarisEvent.Tests`：PolarisEvent 语言前端单元测试。
-- `tests/Polaris.IntegrationTests`：跨模块宿主集成测试。
+- `PolarisEvent/tests/Polaris.IntegrationTests`：PEVT 宿主程序集边界与跨模块集成测试。
 - `doc/design`：聚合仓库及其他模块的设计和实施文档。
 - `doc/specs`：API 表格规格。
 - `doc/artifacts`：历史分析、预览和生成产物。

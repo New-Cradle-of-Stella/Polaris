@@ -11,5 +11,5 @@
   <Project Path="PolarisSave\PolarisSave.csproj" />
   <Project Path="PolarisEvent\PolarisEvent.csproj" />
   <Project Path="PolarisEvent\tests\PolarisEvent.Tests\PolarisEvent.Tests.csproj" />
-  <Project Path="tests\Polaris.IntegrationTests\Polaris.IntegrationTests.csproj" />
+  <Project Path="PolarisEvent\tests\Polaris.IntegrationTests\Polaris.IntegrationTests.csproj" />
 </Solution>
