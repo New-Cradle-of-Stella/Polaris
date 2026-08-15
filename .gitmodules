@@ -1,0 +1,33 @@
+[submodule "PolarisCore"]
+	path = PolarisCore
+	url = https://github.com/New-Cradle-of-Stella/PolarisCore.git
+[submodule "PolarisUI"]
+	path = PolarisUI
+	url = https://github.com/New-Cradle-of-Stella/PolarisUI.git
+[submodule "PolarisRes"]
+	path = PolarisRes
+	url = https://github.com/New-Cradle-of-Stella/PolarisRes.git
+[submodule "PolarisLang"]
+	path = PolarisLang
+	url = https://github.com/New-Cradle-of-Stella/PolarisLang.git
+[submodule "PolarisMagic"]
+	path = PolarisMagic
+	url = https://github.com/New-Cradle-of-Stella/PolarisMagic.git
+[submodule "PolarisAddons"]
+	path = PolarisAddons
+	url = https://github.com/New-Cradle-of-Stella/PolarisAddons.git
+[submodule "PolarisMap"]
+	path = PolarisMap
+	url = https://github.com/New-Cradle-of-Stella/PolarisMap.git
+[submodule "PolarisSandbox"]
+	path = PolarisSandbox
+	url = https://github.com/New-Cradle-of-Stella/PolarisSandbox.git
+[submodule "PolarisDiagnostics"]
+	path = PolarisDiagnostics
+	url = https://github.com/New-Cradle-of-Stella/PolarisDiagnostics.git
+[submodule "PolarisSave"]
+	path = PolarisSave
+	url = https://github.com/New-Cradle-of-Stella/PolarisSave.git
+[submodule "PolarisEvent"]
+	path = PolarisEvent
+	url = https://github.com/New-Cradle-of-Stella/PolarisEvent.git
