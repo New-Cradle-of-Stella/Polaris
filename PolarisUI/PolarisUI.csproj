@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>PolarisUI</AssemblyName>
+    <RootNamespace>Polaris.PUI</RootNamespace>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PolarisCore\PolarisCore.csproj" />
+    <ProjectReference Include="..\PolarisRes\PolarisRes.csproj" />
+  </ItemGroup>
+  <Import Project="build\Polaris.Runtime.props" />
+</Project>
