@@ -106,13 +106,24 @@ player.Register<PlayerDiedCallbackData>(
 
 ### 构建
 
-```powershell
-.\deploy-polaris.ps1 -AicPath 'D:\Games\AliceInCradle'            # 编译并部署
-.\deploy-polaris.ps1 -AicPath 'D:\Games\AliceInCradle' -Package   # 打发布包
+先在仓库根建一个 `aic_path.txt`，里面只写一行——游戏根目录，也就是含 `AliceInCradle_Data`
+的那一层：
+
+```
+D:\Games\AliceInCradle
 ```
 
-编译期引用的游戏程序集位置见 `Directory.Build.props`（环境变量 `AIC_GAME_DIR` 或
-`Directory.Build.props.user` 可覆盖）；部署脚本必须显式传入游戏根目录 `-AicPath`。
+这是整套构建流程唯一的路径配置：编译期的游戏程序集引用（`Directory.Build.props`，含各子模块
+自己那份）和 `deploy-polaris.ps1` 的部署目标都读它，没有环境变量、也没有硬编码的默认路径。
+该文件已被 `.gitignore` 忽略，逐机器各自配置。
+
+```powershell
+.\deploy-polaris.ps1            # 编译并部署
+.\deploy-polaris.ps1 -Package   # 打发布包
+```
+
+临时要用另一份游戏安装：部署脚本传 `-AicPath 'D:\其他安装'`，只编译的话
+`dotnet build -p:AicGameDir='D:\其他安装'`。
 
 ### 相关项目
 
@@ -209,14 +220,25 @@ player.Register<PlayerDiedCallbackData>(
 
 ### Building
 
-```powershell
-.\deploy-polaris.ps1 -AicPath 'D:\Games\AliceInCradle'            # build and deploy
-.\deploy-polaris.ps1 -AicPath 'D:\Games\AliceInCradle' -Package   # build a release package
+First create an `aic_path.txt` in the repository root holding a single line — the game install
+directory, i.e. the one that contains `AliceInCradle_Data`:
+
+```
+D:\Games\AliceInCradle
 ```
 
-Where the game assemblies are referenced from is configured in `Directory.Build.props` (override
-with the `AIC_GAME_DIR` env var or a `Directory.Build.props.user`); the deploy target comes from
-the script's required `-AicPath` argument.
+That file is the only path configuration in the whole build: both the compile-time game assembly
+references (`Directory.Build.props`, including each submodule's own copy) and the
+`deploy-polaris.ps1` deploy target read it. No environment variables, no hardcoded defaults. It is
+`.gitignore`d, so every machine configures its own.
+
+```powershell
+.\deploy-polaris.ps1            # build and deploy
+.\deploy-polaris.ps1 -Package   # build a release package
+```
+
+To use a different install just once, pass `-AicPath 'D:\Other install'` to the deploy script, or
+`dotnet build -p:AicGameDir='D:\Other install'` to only build.
 
 ### Related Projects
 

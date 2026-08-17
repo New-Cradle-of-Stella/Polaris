@@ -7,18 +7,20 @@
     PolarisUI/Res/Lang/Magic/Addons/Map/Sandbox/Diagnostics/Save/Event/Particles/AI 都是普通类库，
     放在 BepInEx\plugins\Polaris\libs\，由 PolarisCore 的组件宿主发现并驱动。
 
-    AicPath 必须显式提供，指向包含 AliceInCradle_Data 的游戏根目录。该路径同时用于
-    编译期游戏程序集引用；非 Package 模式下也作为部署目标。
+    游戏根目录（含 AliceInCradle_Data 的那一层）默认从仓库根的 aic_path.txt 读取——
+    那是整套构建流程唯一的路径配置，MSBuild 侧的 Directory.Build.props 读的也是它。
+    -AicPath 只是临时覆盖它，用来往另一份游戏安装上部署。该路径同时用于编译期游戏程序集
+    引用；非 Package 模式下也作为部署目标。
 
 .EXAMPLE
+    .\deploy-polaris.ps1
+    .\deploy-polaris.ps1 -Configuration Release
+    .\deploy-polaris.ps1 -Package
     .\deploy-polaris.ps1 -AicPath 'D:\Games\AliceInCradle'
-    .\deploy-polaris.ps1 -AicPath 'D:\Games\AliceInCradle' -Configuration Release
-    .\deploy-polaris.ps1 -AicPath 'D:\Games\AliceInCradle' -Package
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateNotNullOrEmpty()]
+    [Parameter(Position = 0)]
     [string] $AicPath,
     [ValidateSet('Debug', 'Release')]
     [string] $Configuration = 'Debug',
@@ -29,6 +31,16 @@ if ($Package) { $Configuration = 'Release' }
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = $PSScriptRoot
+$AicPathFile = Join-Path $RepoRoot 'aic_path.txt'
+
+if (-not $AicPath) {
+    if (-not (Test-Path -LiteralPath $AicPathFile -PathType Leaf)) {
+        throw "aic_path.txt not found: $AicPathFile`nCreate it with a single line holding the AliceInCradle install directory (the one that contains AliceInCradle_Data), or pass -AicPath to override it."
+    }
+    $AicPath = (Get-Content -LiteralPath $AicPathFile -Raw).Trim().Trim('"')
+    if (-not $AicPath) { throw "aic_path.txt is empty: $AicPathFile" }
+}
+
 $AicPath = (Resolve-Path -LiteralPath $AicPath -ErrorAction Stop).Path
 $ManagedDir = Join-Path $AicPath 'AliceInCradle_Data\Managed'
 $Solution = Join-Path $RepoRoot 'Polaris.slnx'
