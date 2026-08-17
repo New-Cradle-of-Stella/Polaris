@@ -31,3 +31,12 @@
 [submodule "PolarisEvent"]
 	path = PolarisEvent
 	url = https://github.com/New-Cradle-of-Stella/PolarisEvent.git
+[submodule "PolarisParticles"]
+	path = PolarisParticles
+	url = https://github.com/New-Cradle-of-Stella/PolarisParticles.git
+[submodule "PolarisAI"]
+	path = PolarisAI
+	url = https://github.com/New-Cradle-of-Stella/PolarisAI.git
+[submodule "PolarisNetwork"]
+	path = PolarisNetwork
+	url = https://github.com/New-Cradle-of-Stella/PolarisNetwork.git

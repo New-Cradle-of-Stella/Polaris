@@ -1,6 +1,6 @@
 # Polaris 项目结构
 
-Polaris 现在由一个 BepInEx 插件核心和十个普通 DLL 组件组成。只有 `PolarisCore.dll`
+Polaris 现在由一个 BepInEx 插件核心和十二个普通 DLL 组件组成。只有 `PolarisCore.dll`
 声明 `BepInPlugin`；其他程序集由核心的组件宿主发现并按生命周期驱动。
 
 | 项目 | 输出 | 职责 |
@@ -16,6 +16,8 @@ Polaris 现在由一个 BepInEx 插件核心和十个普通 DLL 组件组成。�
 | `PolarisDiagnostics` | `PolarisDiagnostics.dll` | 高级诊断引擎：错误归因与去重、报告、会话哨兵、卡死看门狗及致命错误聚合 |
 | `PolarisSave` | `PolarisSave.dll` | 模组存档能力边界 |
 | `PolarisEvent` | `PolarisEvent.dll` | PEVT 的 Text、Syntax、Binding、Flow、静态诊断、运行时组件与内置事件内容 |
+| `PolarisParticles` | `PolarisParticles.dll` | 自定义粒子与特效能力边界 |
+| `PolarisAI` | `PolarisAI.dll` | 自定义 AI 行为能力边界 |
 
 ## 依赖和加载规则
 
@@ -24,15 +26,16 @@ Polaris 现在由一个 BepInEx 插件核心和十个普通 DLL 组件组成。�
 - `PolarisCore` 从插件目录和 `libs` 目录加载 `Polaris*.dll`，先发现全部程序集，再按
   `Order` 调用 `Awake`、`Start`、`Update`、`LateUpdate` 和逆序 `Shutdown`。
 - `PolarisEvent` 双目标构建：游戏运行时使用 `netstandard2.1` 并依赖 Core；`netstandard2.0` 兼容目标只编译纯 PEVT 前端，供 net472 的 PolarisTools 引用。
-- 发布布局中 `PolarisCore.dll` 位于 `BepInEx/plugins/Polaris/`，十个组件和第三方依赖位于
+- 发布布局中 `PolarisCore.dll` 位于 `BepInEx/plugins/Polaris/`，十二个组件和第三方依赖位于
   `BepInEx/plugins/Polaris/libs/`。
 
 ## 仓库目录
 
-- `PolarisCore` 与十个 `Polaris*` 目录：各自指向同名私有 GitHub 仓库的 Git submodule。
+- `PolarisCore` 与十二个 `Polaris*` 目录：各自指向同名私有 GitHub 仓库的 Git submodule。
+- `PolarisNetwork`：已接入的 Git submodule，仓库尚无工程，暂不参与解决方案与部署。
 - `PolarisCore/doc/design`：Game API 的边界说明和 v2 → v3 分阶段升级计划。
-- `PolarisCore/doc/specs`：Game API v3 表格规格。
-- `PolarisMagic/doc/design`：PolarisMagic 原型、实现与节点编辑器草案。
+- `PolarisCore/doc/specs`：Game API v3、v4 表格规格。
+- `PolarisMagic/doc/design`：PolarisMagic 原型框架与实现方案；落地计划见 `PolarisMagic/PolarisMagic-落地计划.md`。
 - `PolarisEvent/doc/design`：PolarisEvent / PEVT 的设计、实施文档和阶段契约。
 - `PolarisEvent/tests/PolarisEvent.Tests`：PolarisEvent 语言前端单元测试。
 - `PolarisEvent/tests/Polaris.IntegrationTests`：PEVT 宿主程序集边界与跨模块集成测试。

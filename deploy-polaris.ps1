@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    构建、部署或打包 PolarisCore 与十个普通 DLL 组件。
+    构建、部署或打包 PolarisCore 与十二个普通 DLL 组件。
 
 .DESCRIPTION
     PolarisCore.dll 是唯一带 BepInPlugin 的插件，放在 BepInEx\plugins\Polaris\。
-    PolarisUI/Res/Lang/Magic/Addons/Map/Sandbox/Diagnostics/Save/Event 都是普通类库，
+    PolarisUI/Res/Lang/Magic/Addons/Map/Sandbox/Diagnostics/Save/Event/Particles/AI 都是普通类库，
     放在 BepInEx\plugins\Polaris\libs\，由 PolarisCore 的组件宿主发现并驱动。
 
     AicPath 必须显式提供，指向包含 AliceInCradle_Data 的游戏根目录。该路径同时用于
@@ -45,7 +45,9 @@ $Projects = @(
     @{ Name = 'PolarisSandbox'; Tfm = 'netstandard2.1' },
     @{ Name = 'PolarisDiagnostics'; Tfm = 'netstandard2.1' },
     @{ Name = 'PolarisSave'; Tfm = 'netstandard2.1' },
-    @{ Name = 'PolarisEvent'; Tfm = 'netstandard2.1' }
+    @{ Name = 'PolarisEvent'; Tfm = 'netstandard2.1' },
+    @{ Name = 'PolarisParticles'; Tfm = 'netstandard2.1' },
+    @{ Name = 'PolarisAI'; Tfm = 'netstandard2.1' }
 )
 
 $PluginsDir = Join-Path $AicPath 'BepInEx\plugins'

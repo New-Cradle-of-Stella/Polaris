@@ -10,6 +10,8 @@
   <Project Path="PolarisDiagnostics\PolarisDiagnostics.csproj" />
   <Project Path="PolarisSave\PolarisSave.csproj" />
   <Project Path="PolarisEvent\PolarisEvent.csproj" />
+  <Project Path="PolarisParticles\PolarisParticles.csproj" />
+  <Project Path="PolarisAI\PolarisAI.csproj" />
   <Project Path="PolarisEvent\tests\PolarisEvent.Tests\PolarisEvent.Tests.csproj" />
   <Project Path="PolarisEvent\tests\Polaris.IntegrationTests\Polaris.IntegrationTests.csproj" />
 </Solution>
