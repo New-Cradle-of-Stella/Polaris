@@ -22,7 +22,7 @@
 
 ### 简介
 
-Polaris 是 Alice in Cradle 的模组框架：`PolarisCore.dll` 是唯一的 BepInEx 插件，十二个功能组件是由核心加载的普通 DLL。完整目录说明见 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)。
+Polaris 是 Alice in Cradle 的模组框架：`PolarisCore.dll` 是唯一的 BepInEx 插件，十一个功能组件是由核心加载的普通 DLL。完整目录说明见 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)。
 它把模组作者反复要做的四件事一次做好：**接进游戏原生界面**、**加载素材**、**做界面**、**多语言**。
 
 > 项目仍在早期开发阶段，文档与特性列表将持续补充。
@@ -142,7 +142,7 @@ D:\Games\AliceInCradle
 ### Overview
 
 Polaris is a mod framework for Alice in Cradle. `PolarisCore.dll` is its only BepInEx plugin;
-twelve plain DLL components are loaded by that core. It does the four things every mod author ends up doing anyway, once and properly:
+eleven plain DLL components are loaded by that core. It does the four things every mod author ends up doing anyway, once and properly:
 **hooking into the game's native UI**, **loading assets**, **building interfaces**, and
 **localization**.
 

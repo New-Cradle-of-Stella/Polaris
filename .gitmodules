@@ -19,9 +19,6 @@
 [submodule "PolarisMap"]
 	path = PolarisMap
 	url = https://github.com/New-Cradle-of-Stella/PolarisMap.git
-[submodule "PolarisSandbox"]
-	path = PolarisSandbox
-	url = https://github.com/New-Cradle-of-Stella/PolarisSandbox.git
 [submodule "PolarisDiagnostics"]
 	path = PolarisDiagnostics
 	url = https://github.com/New-Cradle-of-Stella/PolarisDiagnostics.git

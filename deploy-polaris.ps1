@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     PolarisCore.dll 是唯一带 BepInPlugin 的插件，放在 BepInEx\plugins\Polaris\。
-    PolarisUI/Res/Lang/Magic/Addons/Map/Sandbox/Diagnostics/Save/Event/Particles/AI 都是普通类库，
+    PolarisUI/Res/Lang/Magic/Addons/Map/Diagnostics/Save/Event/Particles/AI 都是普通类库，
     放在 BepInEx\plugins\Polaris\libs\，由 PolarisCore 的组件宿主发现并驱动。
 
     游戏根目录（含 AliceInCradle_Data 的那一层）默认从仓库根的 aic_path.txt 读取——
@@ -54,7 +54,6 @@ $Projects = @(
     @{ Name = 'PolarisMagic'; Tfm = 'netstandard2.1' },
     @{ Name = 'PolarisAddons'; Tfm = 'netstandard2.1' },
     @{ Name = 'PolarisMap'; Tfm = 'netstandard2.1' },
-    @{ Name = 'PolarisSandbox'; Tfm = 'netstandard2.1' },
     @{ Name = 'PolarisDiagnostics'; Tfm = 'netstandard2.1' },
     @{ Name = 'PolarisSave'; Tfm = 'netstandard2.1' },
     @{ Name = 'PolarisEvent'; Tfm = 'netstandard2.1' },
