@@ -21,18 +21,16 @@ Polaris 是 Alice in Cradle 的模块化模组框架。本仓库是聚合与发�
 | `PolarisMagic` | **仅骨架** | 1 文件 / 9 行 | 只有组件入口，注释也明确“后续实现”；已有原型、实现方案和落地计划文档，但没有魔法 API/运行时代码。 |
 | `PolarisMap` | **仅骨架** | 1 文件 / 9 行 | 只有组件入口；没有地图格式、注册、加载或游戏接线。 |
 | `PolarisParticles` | **部分实现** | 18 文件 / 1,651 行 | 已实现 `.peffect` 嵌入资源登记、分节和 `@include` 校验、批次合并、原版 `EfParticleManager` 重载，以及可按特性启用的调试协议、F9 调试页和隔离 RenderTexture 预览。当前公开 API 主要是特效文件登记，尚未落地通用的运行时生成、实例控制和作用域 API。 |
-| `PolarisSandbox` | **仅骨架** | 1 文件 / 9 行 | 正式 `PolarisSandbox.dll` 只有组件入口。`Probe/` 虽有约 13,346 行 C#，但项目文件明确将其全部排除；它是测试结束后保留的动态探针原始记录，不属于正式模块实现。 |
 | `PolarisNetwork` | **空模块** | 0 文件 / 0 行 | 当前目录没有工程和源码，不在 `Polaris.slnx` 中，也不参与构建或部署。 |
 
 ### 汇总与已知缺口
 
 - **有实质代码：8 个**：`Core`、`Diagnostics`、`Event`、`Lang`、`Res`、`UI`、`Save`、`Particles`；其中 `Particles` 仍是范围有限的部分实现。
-- **只有可加载骨架：5 个**：`Addons`、`AI`、`Magic`、`Map`、`Sandbox`。这些工程可以生成 DLL，也能被 Core 发现，但目前没有实际业务能力。
+- **只有可加载骨架：4 个**：`Addons`、`AI`、`Magic`、`Map`。这些工程可以生成 DLL，也能被 Core 发现，但目前没有实际业务能力。
 - **完全为空：1 个**：`Network`。
 - 解决方案内目前只有 `PolarisEvent` 自带测试项目；其余模块即使已有主体，也缺少仓库内自动化测试证据。
 - `PolarisEvent` 的自动存档适配在 `PevtGameState` 中明确返回不支持并抛出运行时失败，其他 PEVT 主体不因此成为空壳。
 - 现有功能文档声称音频支持 `.mp3`，但 `PolarisRes` 的 `AudioLoader` 实际只接受 `.wav` 和 `.ogg`；当前不能把 MP3 视为已实现。
-- 本表按“正式工程会编译什么”判断，而不是按目录体积判断，尤其避免把 `PolarisSandbox/Probe` 的历史代码误算成 Sandbox 功能。
 
 ## 获取源码
 

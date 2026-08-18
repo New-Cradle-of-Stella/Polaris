@@ -6,7 +6,6 @@
   <Project Path="PolarisMagic\PolarisMagic.csproj" />
   <Project Path="PolarisAddons\PolarisAddons.csproj" />
   <Project Path="PolarisMap\PolarisMap.csproj" />
-  <Project Path="PolarisSandbox\PolarisSandbox.csproj" />
   <Project Path="PolarisDiagnostics\PolarisDiagnostics.csproj" />
   <Project Path="PolarisSave\PolarisSave.csproj" />
   <Project Path="PolarisEvent\PolarisEvent.csproj" />
