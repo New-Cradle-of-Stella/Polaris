@@ -365,7 +365,8 @@ FodyWeavers.xsd
 # 本机游戏安装位置：整套构建流程唯一的路径配置，逐机器不同，见 Directory.Build.props
 aic_path.txt
 
-# Claude Code 的本机工具授权列表：全是这台机器上的绝对路径，对别人没有意义
+# AI 编码工具的本机状态
 .claude/
-
+.codex/
 .codex-work/
+.agents/
