@@ -1,5 +1,7 @@
 # Polaris
 
+个人娱乐项目，纯 vibe coding。
+
 Polaris 是 Alice in Cradle 的模块化模组框架。本仓库是聚合与发行仓库；各运行时模块保存在独立 GitHub 仓库中，并以 Git submodule 固定版本。
 
 ## 模块职责
